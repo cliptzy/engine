@@ -1,0 +1,120 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: cliptzy-linux
+          - os: windows-latest
+            artifact_name: cliptzy-windows
+          - os: macos-latest
+            artifact_name: cliptzy-macos
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-cursor0 libasound2
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Executable
+        run: |
+          python build_executable.py
+
+      - name: Archive Executable
+        shell: bash
+        run: |
+          cd dist
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            7z a ../${{ matrix.artifact_name }}.zip cliptzy
+          else
+            zip -r ../${{ matrix.artifact_name }}.zip cliptzy
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.zip
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Changelog
+        run: |
+          export TAG_NAME=${GITHUB_REF#refs/tags/}
+          cat << 'EOF' > generate_changelog.py
+          import os
+          import subprocess
+          
+          tag = os.environ.get("TAG_NAME", "")
+          content = ""
+          if os.path.exists("CHANGELOG.md"):
+              with open("CHANGELOG.md", "r", encoding="utf-8") as f:
+                  lines = f.readlines()
+              in_section = False
+              for line in lines:
+                  if line.startswith(f"## [{tag}]") or line.startswith(f"## {tag}"):
+                      in_section = True
+                      continue
+                  elif line.startswith("## ") and in_section:
+                      break
+                  if in_section:
+                      content += line
+          
+          if not content.strip():
+              try:
+                  content = subprocess.check_output(['git', 'log', '-1', '--pretty=format:%B']).decode('utf-8')
+              except Exception:
+                  content = f"Release {tag}"
+          
+          with open("release_notes.md", "w", encoding="utf-8") as f:
+              f.write(content.strip())
+          EOF
+          python3 generate_changelog.py
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          files: artifacts/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
