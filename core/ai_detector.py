@@ -106,18 +106,29 @@ class AIHighlightDetector:
             "model": model,
             "prompt": prompt,
             "format": "json",
-            "stream": False,
+            "stream": True,
             "options": {"temperature": 0.3}
         }
         
         log.info(f"Connecting to Local Ollama at {url} (model: {model})...")
         try:
-            res = requests.post(url, json=payload, timeout=120)
+            res = requests.post(url, json=payload, timeout=120, stream=True)
             if res.status_code != 200:
                 err_detail = res.text[:300]
                 raise RuntimeError(f"HTTP {res.status_code}: {err_detail}")
-            data = res.json()
-            return data.get("response", "")
+            
+            full_response = ""
+            for line in res.iter_lines():
+                if line:
+                    data = json.loads(line)
+                    chunk = data.get("response", "")
+                    full_response += chunk
+                    if callable(event_hook) and chunk:
+                        event_hook("log_inline", chunk)
+            
+            if callable(event_hook):
+                event_hook("log", "") # Add newline at the end
+            return full_response
         except Exception as e:
             msg = f"Gagal menghubungi Local Ollama ({url}): {e}"
             log.error(msg)
@@ -134,10 +145,10 @@ class AIHighlightDetector:
             from google import genai
             from google.genai import types
 
-            log.info(f"Connecting to Google GenAI SDK (model: {model_name})...")
+            log.info(f"Connecting to Google GenAI SDK (model: {model_name}) with streaming...")
             client = genai.Client(api_key=api_key)
             
-            response = client.models.generate_content(
+            response = client.models.generate_content_stream(
                 model=model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
@@ -145,15 +156,25 @@ class AIHighlightDetector:
                     temperature=0.2,
                 ),
             )
-            if response and response.text:
-                return response.text
-            raise RuntimeError("Respon dari Google GenAI SDK kosong.")
+            full_response = ""
+            for chunk in response:
+                if chunk.text:
+                    full_response += chunk.text
+                    if callable(event_hook):
+                        event_hook("log_inline", chunk.text)
+            
+            if callable(event_hook):
+                event_hook("log", "")
+                
+            if not full_response:
+                raise RuntimeError("Respon dari Google GenAI SDK kosong.")
+            return full_response
         except Exception as e:
-            log.warning(f"Google GenAI SDK error ({e}). Falling back to REST API...")
+            log.warning(f"Google GenAI SDK error ({e}). Falling back to REST API streaming...")
             return self._call_gemini_rest(prompt, api_key, model_name, event_hook)
 
     def _call_gemini_rest(self, prompt: str, api_key: str, model_name: str, event_hook: Optional[Any]) -> str:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:streamGenerateContent?alt=sse&key={api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
@@ -161,7 +182,7 @@ class AIHighlightDetector:
                 "responseMimeType": "application/json"
             }
         }
-        res = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=60)
+        res = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=120, stream=True)
         if res.status_code != 200:
             try:
                 err_msg = res.json().get("error", {}).get("message", res.text[:200])
@@ -169,13 +190,29 @@ class AIHighlightDetector:
                 err_msg = res.text[:200]
             raise RuntimeError(f"HTTP {res.status_code} - {err_msg}")
         
-        data = res.json()
-        candidates = data.get("candidates", [])
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            if parts:
-                return parts[0].get("text", "")
-        raise RuntimeError("Respon dari Gemini REST API kosong.")
+        full_response = ""
+        for line in res.iter_lines():
+            line = line.decode('utf-8').strip()
+            if line.startswith("data: "):
+                try:
+                    data = json.loads(line[6:])
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            chunk = parts[0].get("text", "")
+                            full_response += chunk
+                            if callable(event_hook) and chunk:
+                                event_hook("log_inline", chunk)
+                except Exception:
+                    pass
+                    
+        if callable(event_hook):
+            event_hook("log", "")
+            
+        if not full_response:
+            raise RuntimeError("Respon dari Gemini REST API kosong.")
+        return full_response
 
 
 
@@ -198,11 +235,12 @@ class AIHighlightDetector:
                 {"role": "user", "content": prompt}
             ],
             "response_format": {"type": "json_object"},
-            "temperature": 0.3
+            "temperature": 0.3,
+            "stream": True
         }
 
         try:
-            res = requests.post(url, json=payload, headers=headers, timeout=60)
+            res = requests.post(url, json=payload, headers=headers, timeout=120, stream=True)
             if res.status_code != 200:
                 try:
                     err_json = res.json()
@@ -211,11 +249,29 @@ class AIHighlightDetector:
                     err_msg = res.text[:200]
                 raise RuntimeError(f"HTTP {res.status_code} - {err_msg}")
 
-            data = res.json()
-            choices = data.get("choices", [])
-            if choices:
-                return choices[0].get("message", {}).get("content", "")
-            raise RuntimeError("Respon dari OpenAI API kosong.")
+            full_response = ""
+            for line in res.iter_lines():
+                line = line.decode('utf-8').strip()
+                if line.startswith("data: ") and line != "data: [DONE]":
+                    try:
+                        data = json.loads(line[6:])
+                        choices = data.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta", {})
+                            chunk = delta.get("content", "")
+                            if chunk:
+                                full_response += chunk
+                                if callable(event_hook):
+                                    event_hook("log_inline", chunk)
+                    except Exception:
+                        pass
+                        
+            if callable(event_hook):
+                event_hook("log", "")
+                
+            if not full_response:
+                raise RuntimeError("Respon dari OpenAI API kosong.")
+            return full_response
         except Exception as e:
             msg = f"Gagal memanggil OpenAI API: {e}"
             log.error(msg)

@@ -42,9 +42,19 @@ class GlobalLogWidget(QFrame):
         layout.addWidget(self.log_edit)
         
         signals.log_message.connect(self.append_log)
+        signals.log_message_inline.connect(self.append_log_inline)
         
     def append_log(self, text: str):
         self.log_edit.append(text)
+        sb = self.log_edit.verticalScrollBar()
+        sb.setValue(sb.maximum())
+
+    def append_log_inline(self, text: str):
+        from PyQt6.QtGui import QTextCursor
+        cursor = self.log_edit.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self.log_edit.setTextCursor(cursor)
+        self.log_edit.insertPlainText(text)
         sb = self.log_edit.verticalScrollBar()
         sb.setValue(sb.maximum())
         

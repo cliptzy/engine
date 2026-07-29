@@ -75,8 +75,11 @@ class AIGenerateMetadataWorker(QThread):
             }
             
             def event_hook(ev_type, data):
+                from gui.globals import signals
                 if ev_type == "log":
-                    self.log_signal.emit(str(data))
+                    signals.log_message.emit(str(data))
+                elif ev_type == "log_inline":
+                    signals.log_message_inline.emit(str(data))
                     
             metadata = ai_detector.generate_metadata(
                 clip_text=clip_text,

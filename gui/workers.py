@@ -121,6 +121,9 @@ class AIScanWorker(QThread):
         def event_hook(kind: str, data: Any):
             if kind == "log":
                 self.log_signal.emit(str(data))
+            elif kind == "log_inline":
+                from gui.globals import signals
+                signals.log_message_inline.emit(str(data))
             elif kind == "stage" and isinstance(data, dict):
                 stage_name = data.get("stage", "")
                 self.stage_signal.emit(stage_name, data)
