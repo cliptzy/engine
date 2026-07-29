@@ -196,8 +196,18 @@ class ClipController:
         job_dir = os.path.join("clips", video_id)
         os.makedirs(job_dir, exist_ok=True)
         config.output_dir = job_dir
+        
+        try:
+            url = payload.get("url")
+            if url:
+                preview = self.get_preview(url)
+                with open(os.path.join(job_dir, "preview.json"), "w", encoding="utf-8") as f:
+                    json.dump(preview, f)
+        except Exception as e:
+            if callable(event_hook):
+                event_hook("log", f"Gagal menyimpan preview.json: {e}")
 
-        ok = check_dependencies(install_whisper=subtitle, skip_update_ytdlp=True, fatal=False, whisper_model=whisper_model)
+        ok = check_dependencies(install_whisper=True, skip_update_ytdlp=True, fatal=False, whisper_model=whisper_model)
         if not ok:
             raise RuntimeError("FFmpeg tidak ditemukan di sistem")
 

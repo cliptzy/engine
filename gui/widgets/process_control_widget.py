@@ -1,14 +1,14 @@
 """
-Widget for showing execution progress, real-time log terminal, and process controls.
+Widget for showing execution progress and process controls.
 """
 
 from PyQt6.QtWidgets import (
-    QFrame, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar, QTextEdit,
-    QPushButton, QFileDialog, QMessageBox
+    QFrame, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar,
+    QPushButton, QMessageBox
 )
 from PyQt6.QtCore import pyqtSignal, Qt
 
-class LogConsoleWidget(QFrame):
+class ProcessControlWidget(QFrame):
     start_requested = pyqtSignal()
     cancel_requested = pyqtSignal()
 
@@ -25,7 +25,7 @@ class LogConsoleWidget(QFrame):
 
         # Header Title & Stage Indicator
         header_layout = QHBoxLayout()
-        title_label = QLabel("🚀 Process Dashboard & Log Console")
+        title_label = QLabel("🚀 Process Dashboard & Control")
         title_label.setProperty("class", "section-header")
 
         self.stage_badge = QLabel("Status: Idle")
@@ -49,13 +49,6 @@ class LogConsoleWidget(QFrame):
         progress_layout.addWidget(self.progress_label)
         layout.addLayout(progress_layout)
 
-        # Real-time Console Log Viewer
-        self.log_edit = QTextEdit()
-        self.log_edit.setReadOnly(True)
-        self.log_edit.setFixedHeight(180)
-        self.log_edit.setPlaceholderText("Log proses akan muncul di sini...")
-        layout.addWidget(self.log_edit)
-
         # Control Buttons
         controls_layout = QHBoxLayout()
 
@@ -69,24 +62,15 @@ class LogConsoleWidget(QFrame):
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self.cancel_requested.emit)
 
-        self.clear_btn = QPushButton("🗑 Clear Log")
-        self.clear_btn.clicked.connect(self.log_edit.clear)
-
-        self.export_btn = QPushButton("💾 Export Log")
-        self.export_btn.clicked.connect(self.on_export_log)
-
         controls_layout.addWidget(self.start_btn)
         controls_layout.addWidget(self.cancel_btn)
         controls_layout.addStretch()
-        controls_layout.addWidget(self.clear_btn)
-        controls_layout.addWidget(self.export_btn)
 
         layout.addLayout(controls_layout)
 
     def append_log(self, text: str):
-        self.log_edit.append(text)
-        sb = self.log_edit.verticalScrollBar()
-        sb.setValue(sb.maximum())
+        from gui.globals import signals
+        signals.log_message.emit(text)
 
     def update_stage(self, stage_name: str, data: dict):
         stage_map = {
@@ -125,17 +109,3 @@ class LogConsoleWidget(QFrame):
         else:
             self.stage_badge.setText("Status: Idle")
             self.stage_badge.setStyleSheet("background-color: #1e293b; color: #94a3b8; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 11px;")
-
-    def on_export_log(self):
-        content = self.log_edit.toPlainText()
-        if not content:
-            QMessageBox.warning(self, "Peringatan", "Log masih kosong.")
-            return
-        file_path, _ = QFileDialog.getSaveFileName(self, "Simpan File Log", "cliptzy.log", "Log Files (*.log);;Text Files (*.txt)")
-        if file_path:
-            try:
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(content)
-                QMessageBox.information(self, "Berhasil", f"Log berhasil disimpan di:\n{file_path}")
-            except Exception as e:
-                QMessageBox.critical(self, "Error Export", f"Gagal menyimpan log: {e}")

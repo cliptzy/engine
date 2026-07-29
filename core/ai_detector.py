@@ -272,4 +272,65 @@ class AIHighlightDetector:
             log.warning(f"Gagal meng-parse JSON dari respon AI: {e}. Raw text: {raw_text[:200]}")
             return []
 
+    def generate_metadata(
+        self,
+        clip_text: str,
+        youtube_title: str,
+        channel_name: str,
+        ai_config: Dict[str, Any],
+        event_hook: Optional[Any] = None
+    ) -> Dict[str, Any]:
+        if not clip_text or not clip_text.strip():
+            log.warning("Teks subtitle klip kosong, tidak dapat men-generate metadata.")
+            return {}
+
+        clip_text = clip_text.strip()
+        if len(clip_text) > 10000:
+            clip_text = clip_text[:10000] + "..."
+
+        prompt = f"""
+Anda adalah seorang Social Media Manager spesialis konten viral (TikTok, YouTube Shorts, Reels).
+Berdasarkan teks subtitle spesifik dari klip video berikut, dan informasi konteks video aslinya, buatkan Title (Judul menarik), Description (Deskripsi ringkas yang memancing interaksi), dan Tags (Hashtags yang relevan).
+Respons HANYA dalam bentuk JSON yang valid di dalam blok kode Markdown (```json ... ```) tanpa tambahan teks apapun.
+
+Konteks Video Asli:
+- Channel: {channel_name}
+- Judul Video: {youtube_title}
+
+Teks Subtitle Klip Ini:
+{clip_text}
+
+Format JSON yang wajib:
+```json
+{{
+    "title": "Judul klip clickbait yang menarik",
+    "description": "Deskripsi klip yang interaktif",
+    "tags": "#foryou #viral #dsb"
+}}
+```
+"""
+        provider = (ai_config.get("provider") or "ollama").lower()
+        if callable(event_hook):
+            event_hook("log", f"[AI] Mengirim permintaan metadata ke AI Provider: {provider.upper()}...")
+
+        try:
+            if provider == "ollama":
+                raw_response = self._call_ollama(prompt, ai_config, event_hook)
+            elif provider == "gemini":
+                raw_response = self._call_gemini(prompt, ai_config, event_hook)
+            elif provider == "openai":
+                raw_response = self._call_openai(prompt, ai_config, event_hook)
+            else:
+                raise ValueError(f"AI Provider tidak dikenal: {provider}")
+
+            # Find JSON
+            match_obj = re.search(r'\{\s*".*"\s*:.*\s*\}', raw_response, re.DOTALL)
+            if match_obj:
+                return json.loads(match_obj.group(0))
+            return json.loads(raw_response.strip())
+        except Exception as e:
+            if callable(event_hook):
+                event_hook("log", f"[ERROR] Gagal men-generate metadata: {e}")
+            return {}
+
 ai_detector = AIHighlightDetector()

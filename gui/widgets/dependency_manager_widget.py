@@ -141,30 +141,18 @@ class DependencyManagerWidget(QFrame):
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
-        self.console = QPlainTextEdit()
-        self.console.setReadOnly(True)
-        self.console.setFixedHeight(150)
-        self.console.setStyleSheet("background-color: #0f172a; color: #a5b4fc; font-family: monospace; font-size: 11px;")
-        layout.addWidget(self.console)
-
     def start_installation(self):
         if self.worker and self.worker.isRunning():
             QMessageBox.warning(self, "Peringatan", "Proses instalasi sedang berjalan.")
             return
 
         self.btn_install.setEnabled(False)
-        self.console.clear()
         
         self.worker = DependencyWorker()
-        self.worker.log_signal.connect(self.append_log)
+        from gui.globals import signals
+        self.worker.log_signal.connect(signals.log_message.emit)
         self.worker.finished_signal.connect(self.on_installation_finished)
         self.worker.start()
-
-    def append_log(self, text: str):
-        self.console.appendPlainText(text)
-        # Scroll to bottom
-        scrollbar = self.console.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
 
     def on_installation_finished(self, success: bool):
         self.btn_install.setEnabled(True)

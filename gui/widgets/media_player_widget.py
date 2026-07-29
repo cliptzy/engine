@@ -72,26 +72,6 @@ class MediaPlayerWidget(QFrame):
         ctrl_layout.addWidget(self.seek_slider)
         right_layout.addLayout(ctrl_layout)
 
-        # Upload Controls
-        upload_layout = QHBoxLayout()
-        upload_layout.addWidget(QLabel("Upload ke:"))
-        
-        self.chk_youtube = QCheckBox("YouTube Shorts")
-        self.chk_tiktok = QCheckBox("TikTok")
-        self.chk_instagram = QCheckBox("Instagram Reels")
-        
-        self.btn_upload = QPushButton("📤 Upload Video Terpilih")
-        self.btn_upload.setProperty("class", "primary")
-        self.btn_upload.clicked.connect(self.on_upload_clicked)
-        
-        upload_layout.addWidget(self.chk_youtube)
-        upload_layout.addWidget(self.chk_tiktok)
-        upload_layout.addWidget(self.chk_instagram)
-        upload_layout.addStretch()
-        upload_layout.addWidget(self.btn_upload)
-        
-        right_layout.addLayout(upload_layout)
-
         content_layout.addLayout(right_layout, 1)
 
         layout.addLayout(content_layout)
@@ -149,26 +129,3 @@ class MediaPlayerWidget(QFrame):
         if os.path.exists(self.output_dir):
             abs_path = os.path.abspath(self.output_dir)
             QDesktopServices.openUrl(QUrl.fromLocalFile(abs_path))
-
-    def on_upload_clicked(self):
-        item = self.clip_list.currentItem()
-        if not item:
-            QMessageBox.warning(self, "Peringatan", "Pilih video klip dari daftar terlebih dahulu untuk di-upload.")
-            return
-
-        path = item.data(Qt.ItemDataRole.UserRole)
-        platforms = []
-        if self.chk_youtube.isChecked():
-            platforms.append("YouTube Shorts")
-        if self.chk_tiktok.isChecked():
-            platforms.append("TikTok")
-        if self.chk_instagram.isChecked():
-            platforms.append("Instagram Reels")
-
-        if not platforms:
-            QMessageBox.warning(self, "Peringatan", "Centang minimal satu platform target untuk meng-upload.")
-            return
-            
-        video_name = os.path.basename(path)
-        msg = f"Mempersiapkan antrean upload untuk:\n\n🎥 {video_name}\n\nPlatform tujuan:\n- " + "\n- ".join(platforms) + "\n\n(Catatan: Fitur ini terhubung dengan konfigurasi di menu Auto Upload & Distribution)"
-        QMessageBox.information(self, "Simulasi Upload", msg)

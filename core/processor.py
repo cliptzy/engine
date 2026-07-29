@@ -118,47 +118,48 @@ def process_single_clip(
 
         current_clip = cropped_file
 
-        if use_subtitle:
+        if callable(event_hook):
+            try:
+                event_hook("stage", {"stage": "subtitle", "clip_index": index})
+            except Exception as e:
+                log.debug(f"Event hook error: {e}")
+                
+        log.info(f"Generating subtitle for clip {index} (for metadata/burn)...")
+        subtitle_generated = generate_subtitle(cropped_file, subtitle_file, config.whisper_model, event_hook=event_hook)
+        if not subtitle_generated:
+            log.warning("Subtitle generation failed, continuing without subtitle...")
+
+        if use_subtitle and subtitle_generated:
             if callable(event_hook):
                 try:
-                    event_hook("stage", {"stage": "subtitle", "clip_index": index})
+                    event_hook("stage", {"stage": "burn_subtitle", "clip_index": index})
                 except Exception as e:
                     log.debug(f"Event hook error: {e}")
                     
-            log.info(f"Generating subtitle for clip {index}...")
-            if generate_subtitle(cropped_file, subtitle_file, config.whisper_model, event_hook=event_hook):
+            log.info(f"Burning subtitle to video for clip {index}...")
+            fontsdir_arg = ""
+            if config.subtitle_fonts_dir and os.path.isdir(config.subtitle_fonts_dir):
+                fontsdir_arg = f":fontsdir='{config.subtitle_fonts_dir}'"
+            
+            cmd_subtitle = [
+                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
+                "-i", cropped_file,
+                "-vf", f"subtitles=filename='{subtitle_file}'{fontsdir_arg}",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+                "-c:a", "copy",
+                subbed_file
+            ]
+            
+            try:
+                _run_command_with_logging(cmd_subtitle, event_hook, prefix="[ffmpeg-subtitle]")
+                current_clip = subbed_file
+            except subprocess.CalledProcessError as e:
+                log.warning("FFmpeg subtitle filter failed (likely missing libass). Falling back to non-subbed video.")
                 if callable(event_hook):
                     try:
-                        event_hook("stage", {"stage": "burn_subtitle", "clip_index": index})
-                    except Exception as e:
-                        log.debug(f"Event hook error: {e}")
-                        
-                log.info(f"Burning subtitle to video for clip {index}...")
-                fontsdir_arg = ""
-                if config.subtitle_fonts_dir and os.path.isdir(config.subtitle_fonts_dir):
-                    fontsdir_arg = f":fontsdir='{config.subtitle_fonts_dir}'"
-                
-                cmd_subtitle = [
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                    "-i", cropped_file,
-                    "-vf", f"subtitles=filename='{subtitle_file}'{fontsdir_arg}",
-                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
-                    "-c:a", "copy",
-                    subbed_file
-                ]
-                
-                try:
-                    _run_command_with_logging(cmd_subtitle, event_hook, prefix="[ffmpeg-subtitle]")
-                    current_clip = subbed_file
-                except subprocess.CalledProcessError as e:
-                    log.warning("FFmpeg subtitle filter failed (likely missing libass). Falling back to non-subbed video.")
-                    if callable(event_hook):
-                        try:
-                            event_hook("log", "[ffmpeg-subtitle] ERROR: FFmpeg pada sistem ini tidak memiliki filter 'subtitles' (missing libass). Menyimpan video tanpa subtitle.")
-                        except Exception:
-                            pass
-            else:
-                log.warning("Subtitle generation failed, continuing without subtitle...")
+                        event_hook("log", "[ffmpeg-subtitle] ERROR: FFmpeg pada sistem ini tidak memiliki filter 'subtitles' (missing libass). Menyimpan video tanpa subtitle.")
+                    except Exception:
+                        pass
 
         # Process Intro / Outro Concatenation
         has_intro = config.intro_video and os.path.isfile(config.intro_video)

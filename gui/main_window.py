@@ -18,8 +18,10 @@ from gui.widgets.preview_widget import PreviewWidget
 from gui.widgets.clip_config_widget import ClipConfigWidget
 from gui.widgets.ai_settings_widget import AiSettingsWidget
 from gui.widgets.dependency_manager_widget import DependencyManagerWidget
-from gui.widgets.log_console_widget import LogConsoleWidget
+from gui.widgets.process_control_widget import ProcessControlWidget
+from gui.widgets.global_log_widget import GlobalLogWidget
 from gui.widgets.media_player_widget import MediaPlayerWidget
+from gui.widgets.uploader_widget import UploaderWidget
 from gui.widgets.auto_upload_widget import AutoUploadWidget
 from gui.widgets.creator_hub_widget import CreatorHubWidget
 from gui.workers import PreviewWorker, ScanWorker, ClipWorker, SubtitlePreviewWorker, AIScanWorker
@@ -97,13 +99,16 @@ class MainWindow(QMainWindow):
         self.clip_config_widget.test_subtitle_requested.connect(self.on_test_subtitle_preview)
         content_layout.addWidget(self.clip_config_widget)
 
-        self.log_widget = LogConsoleWidget(scroll_content)
+        self.log_widget = ProcessControlWidget(scroll_content)
         self.log_widget.start_requested.connect(self.on_start_clipping)
         self.log_widget.cancel_requested.connect(self.on_cancel_clipping)
         content_layout.addWidget(self.log_widget)
 
         self.player_widget = MediaPlayerWidget(scroll_content)
         content_layout.addWidget(self.player_widget)
+
+        self.uploader_widget = UploaderWidget(scroll_content)
+        content_layout.addWidget(self.uploader_widget)
 
         scroll_area.setWidget(scroll_content)
         clipper_layout.addWidget(scroll_area)
@@ -133,12 +138,12 @@ class MainWindow(QMainWindow):
         settings_layout.addStretch()
         self.stacked_view.addWidget(settings_page)
 
-
-
-
-
         body_layout.addWidget(self.stacked_view, 1)
         root_layout.addLayout(body_layout, 1)
+
+        # 4. Global Bottom Log Console
+        self.global_log_widget = GlobalLogWidget(central_widget)
+        root_layout.addWidget(self.global_log_widget)
 
     def init_system_tray(self):
         """Initializes System Tray Icon and Context Menu."""
@@ -227,6 +232,7 @@ class MainWindow(QMainWindow):
                 
                 # Reset UI components
                 self.player_widget.update_outputs([], "clips")
+                self.uploader_widget.update_outputs([], "clips")
                 self.log_widget.append_log(f"[INFO] Cache berhasil dibersihkan! {del_count} file terhapus ({del_mb} MB terbebaskan).")
                 
                 QMessageBox.information(
@@ -329,6 +335,7 @@ class MainWindow(QMainWindow):
         
         self.log_widget.append_log(f"[SUCCESS] Pembuatan klip selesai! {len(outputs)} klip berhasil dibuat.")
         self.player_widget.update_outputs(outputs, output_dir)
+        self.uploader_widget.update_outputs(outputs, output_dir)
         self.notify_user("Cliptzy - Clipping Selesai", f"Berhasil memproses {len(outputs)} video klip!", QSystemTrayIcon.MessageIcon.Information)
         QMessageBox.information(self, "Selesai", f"Berhasil memproses klip!\n{len(outputs)} video tersimpan di folder:\n{output_dir}")
 
