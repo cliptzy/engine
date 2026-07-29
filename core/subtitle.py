@@ -139,3 +139,43 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         return False
 
     return True
+
+def transcribe_audio_file(audio_file: str, whisper_model: str = "small", event_hook: Optional[Callable[[str, Any], None]] = None) -> list:
+    """
+    Transcribes audio file using Faster-Whisper and returns timestamped segment list.
+    """
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        log.error("faster_whisper module not found.")
+        return []
+
+    if callable(event_hook):
+        event_hook("stage", {"stage": "subtitle_model_load"})
+
+    log.info(f"Loading Faster-Whisper model '{whisper_model}' for audio transcription...")
+    model = WhisperModel(whisper_model, device="cpu", compute_type="int8")
+
+    if callable(event_hook):
+        event_hook("stage", {"stage": "subtitle_transcribe"})
+
+    segments_gen, _ = model.transcribe(
+        audio_file,
+        language="id",
+        condition_on_previous_text=False,
+        word_timestamps=False,
+        vad_filter=True,
+        vad_parameters=dict(min_silence_duration_ms=500)
+    )
+
+    results = []
+    for s in segments_gen:
+        text_clean = s.text.strip()
+        if text_clean:
+            item = {"start": round(s.start, 2), "end": round(s.end, 2), "text": text_clean}
+            results.append(item)
+            if callable(event_hook):
+                event_hook("log", f"[transcribe] {s.start:.2f}s - {s.end:.2f}s : {text_clean}")
+
+    return results
+

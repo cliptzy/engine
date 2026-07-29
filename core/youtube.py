@@ -38,6 +38,8 @@ def fetch_most_replayed(video_id: str, min_score: float, max_duration: int) -> L
         sys.executable,
         "-m",
         "yt_dlp",
+        "--remote-components",
+        "ejs:github",
         "--dump-json",
         "--skip-download"
     ]
@@ -87,6 +89,8 @@ def get_video_duration(video_id: str) -> int:
         sys.executable,
         "-m",
         "yt_dlp",
+        "--remote-components",
+        "ejs:github",
         "--get-duration"
     ]
     

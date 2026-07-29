@@ -10,33 +10,34 @@ def is_ffmpeg_available() -> bool:
 
 def attempt_add_ffmpeg_to_path() -> bool:
     """
-    Attempts to find ffmpeg installed via winget on Windows and add it to PATH.
-    Returns True if ffmpeg is successfully found and added (or already available).
+    Attempts to find ffmpeg in local app bin/ directory, WinGet packages, or system PATH.
+    Returns True if ffmpeg is successfully found and added to PATH.
     """
     if is_ffmpeg_available():
         return True
 
+    # 1. Check local bin/ folder in application directory
+    app_root = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    bin_dir = os.path.join(app_root, "bin")
+    if os.path.isdir(bin_dir):
+        os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+        if is_ffmpeg_available():
+            return True
+
+    # 2. Check Windows Winget packages if on Windows
     local_app_data = os.environ.get("LOCALAPPDATA")
-    if not local_app_data:
-        return False
+    if local_app_data:
+        winget_packages = os.path.join(local_app_data, "Microsoft", "WinGet", "Packages")
+        gyan_root = os.path.join(winget_packages, "Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe")
+        
+        if os.path.isdir(gyan_root):
+            for root, _, files in os.walk(gyan_root):
+                if ("ffmpeg.exe" in files or "ffmpeg" in files) and os.path.basename(root).lower() == "bin":
+                    os.environ["PATH"] = f"{root}{os.pathsep}{os.environ.get('PATH', '')}"
+                    break
 
-    winget_packages = os.path.join(local_app_data, "Microsoft", "WinGet", "Packages")
-    gyan_root = os.path.join(winget_packages, "Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe")
-    
-    if not os.path.isdir(gyan_root):
-        return False
-
-    found_bin_dir = None
-    for root, _, files in os.walk(gyan_root):
-        if "ffmpeg.exe" in files and os.path.basename(root).lower() == "bin":
-            found_bin_dir = root
-            break
-
-    if not found_bin_dir:
-        return False
-
-    os.environ["PATH"] = f"{found_bin_dir};{os.environ.get('PATH', '')}"
     return is_ffmpeg_available()
+
 
 def get_model_size(model_name: str) -> str:
     """Returns the approximate size of a Whisper model."""

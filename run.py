@@ -15,7 +15,8 @@ from core import (
 )
 
 def parse_args():
-    parser = argparse.ArgumentParser(prog="yt-heatmap-clipper", description="YouTube Heatmap Clipper CLI")
+    parser = argparse.ArgumentParser(prog="cliptzy", description="Cliptzy YouTube Heatmap Clipper")
+    parser.add_argument("--cli", action="store_true", help="Run in CLI interactive mode instead of Desktop GUI")
     parser.add_argument("--url", help="YouTube URL (watch/shorts/youtu.be)")
     parser.add_argument(
         "--crop",
@@ -41,10 +42,18 @@ def parse_args():
     parser.add_argument("--no-update-ytdlp", action="store_true", help="Skip auto-update yt-dlp")
     return parser.parse_args()
 
+
 def main():
     args = parse_args()
 
+    # Launch Desktop GUI by default if no CLI flag or direct CLI processing requested
+    if not args.cli and not args.url and not args.check:
+        from gui.app import main as launch_gui
+        launch_gui()
+        return
+
     # Apply configuration from arguments
+
     if args.whisper_model:
         config.whisper_model = args.whisper_model
     if args.subtitle_font:

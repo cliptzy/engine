@@ -3,6 +3,7 @@ from core.config import config, AppConfig
 from core.utils import check_dependencies, is_ffmpeg_available, get_model_size
 from core.youtube import extract_video_id, fetch_most_replayed, get_video_duration
 from core.processor import process_single_clip
+from core.controller import controller, ClipController
 
 __all__ = [
     "log",
@@ -16,4 +17,7 @@ __all__ = [
     "fetch_most_replayed",
     "get_video_duration",
     "process_single_clip",
+    "controller",
+    "ClipController",
 ]
+
