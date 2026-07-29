@@ -5,12 +5,18 @@ import sys
 import threading
 import time
 import uuid
-from types import SimpleNamespace
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
-import run as core
-
+from core import (
+    config,
+    log,
+    check_dependencies,
+    extract_video_id,
+    fetch_most_replayed,
+    get_video_duration,
+    process_single_clip
+)
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
@@ -19,17 +25,14 @@ jobs = {}
 preview_lock = threading.Lock()
 preview_cache = {}
 
-
-def now_ms():
+def now_ms() -> int:
     return int(time.time() * 1000)
-
 
 def safe_int(value, default=None):
     try:
         return int(value)
     except Exception:
         return default
-
 
 def parse_time_to_seconds(value):
     if value is None:
@@ -50,14 +53,12 @@ def parse_time_to_seconds(value):
         return int(h) * 3600 + int(m) * 60 + int(float(sec))
     return None
 
-
 def set_job(job_id, **patch):
     with jobs_lock:
         job = jobs.get(job_id)
         if not job:
             return
         job.update(patch)
-
 
 def add_log(job_id, line):
     with jobs_lock:
@@ -67,7 +68,7 @@ def add_log(job_id, line):
         job["logs"].append(line)
         if len(job["logs"]) > 300:
             job["logs"] = job["logs"][-300:]
-
+    log.info(f"[Job {job_id}] {line}")
 
 def list_outputs(job_dir):
     if not os.path.isdir(job_dir):
@@ -80,7 +81,6 @@ def list_outputs(job_dir):
     items.sort(key=lambda x: x["name"])
     return items
 
-
 def run_job(job_id, payload):
     started = now_ms()
     try:
@@ -88,7 +88,7 @@ def run_job(job_id, payload):
 
         url = (payload.get("url") or "").strip()
         if not url:
-            raise ValueError("URL kosong")
+            raise ValueError("Empty URL")
 
         crop = payload.get("crop") or "default"
         ratio = payload.get("ratio") or "9:16"
@@ -97,39 +97,48 @@ def run_job(job_id, payload):
         subtitle_font = payload.get("subtitle_font") or "Arial"
         subtitle_location = payload.get("subtitle_location") or "bottom"
         subtitle_fontsdir = payload.get("subtitle_fontsdir") or None
+        
+        try:
+            subtitle_delay = float(payload.get("subtitle_delay") or 0.0)
+        except ValueError:
+            subtitle_delay = 0.0
+            
         if not subtitle_fontsdir and os.path.isdir("fonts"):
             subtitle_fontsdir = "fonts"
+            
         padding = safe_int(payload.get("padding"), 10)
         max_clips = safe_int(payload.get("max_clips"), 10)
         mode = payload.get("mode") or "heatmap"
+        
         set_job(job_id, subtitle_enabled=subtitle)
 
-        core.WHISPER_MODEL = whisper_model
-        core.SUBTITLE_FONT = subtitle_font
-        core.SUBTITLE_FONTS_DIR = subtitle_fontsdir
-        core.SUBTITLE_LOCATION = subtitle_location
-        core.PADDING = max(0, padding if padding is not None else 10)
-        core.set_ratio_preset(ratio)
-
-        job_dir = os.path.join("clips", job_id)
-        os.makedirs(job_dir, exist_ok=True)
-        core.OUTPUT_DIR = job_dir
-
-        core.cek_dependensi._args = SimpleNamespace(no_update_ytdlp=True)
-        ok = core.cek_dependensi(install_whisper=subtitle, fatal=False)
-        if not ok:
-            raise RuntimeError("FFmpeg tidak ketemu")
-
-        video_id = core.extract_video_id(url)
+        video_id = extract_video_id(url)
         if not video_id:
-            raise ValueError("URL YouTube invalid")
+            raise ValueError("Invalid YouTube URL")
 
-        total_duration = core.get_duration(video_id)
+        # Update application configuration
+        config.whisper_model = whisper_model
+        config.subtitle_font = subtitle_font
+        config.subtitle_fonts_dir = subtitle_fontsdir
+        config.subtitle_location = subtitle_location
+        config.subtitle_delay = subtitle_delay / 1000.0  # Convert ms to seconds
+        config.padding = max(0, padding if padding is not None else 10)
+        config.set_ratio_preset(ratio)
+
+        job_dir = os.path.join("clips", video_id)
+        os.makedirs(job_dir, exist_ok=True)
+        config.output_dir = job_dir
+
+        ok = check_dependencies(install_whisper=subtitle, skip_update_ytdlp=True, fatal=False, whisper_model=whisper_model)
+        if not ok:
+            raise RuntimeError("FFmpeg not found")
+
+        total_duration = get_video_duration(video_id)
 
         targets = []
         picked = payload.get("segments")
         if isinstance(picked, list) and len(picked) > 0:
-            add_log(job_id, f"Pakai {len(picked)} segment yang dipilih...")
+            add_log(job_id, f"Using {len(picked)} selected segments...")
             for seg in picked:
                 try:
                     start = float(seg.get("start"))
@@ -141,25 +150,28 @@ def run_job(job_id, payload):
                     continue
                 targets.append({"start": start, "duration": dur, "score": score})
             if not targets:
-                raise ValueError("Segment pilihan invalid")
+                raise ValueError("Selected segments are invalid")
         elif mode == "custom":
             start_s = parse_time_to_seconds(payload.get("start"))
             end_s = parse_time_to_seconds(payload.get("end"))
             if start_s is None or end_s is None:
-                raise ValueError("Start/End belum diisi")
+                raise ValueError("Start/End times must be provided")
             if end_s <= start_s:
-                raise ValueError("End harus lebih besar dari Start")
+                raise ValueError("End time must be greater than Start time")
             targets = [{"start": float(start_s), "duration": float(end_s - start_s), "score": 1.0}]
         else:
-            add_log(job_id, "Scan heatmap...")
-            segments = core.ambil_most_replayed(video_id)
+            add_log(job_id, "Scanning heatmap...")
+            segments = fetch_most_replayed(video_id, config.min_score, config.max_duration)
             if not segments:
-                raise RuntimeError("Tidak ada heatmap/Most Replayed data")
+                raise RuntimeError("No heatmap / Most Replayed data available for this video")
             targets = segments[: max(1, max_clips or 10)]
 
         set_job(job_id, total=len(targets), done=0, status_text="processing")
 
         def event_hook(kind, data):
+            if kind == "log":
+                add_log(job_id, str(data))
+                return
             if kind != "stage" or not isinstance(data, dict):
                 return
             stage = data.get("stage") or ""
@@ -169,13 +181,22 @@ def run_job(job_id, payload):
         success = 0
         for idx, item in enumerate(targets, start=1):
             set_job(job_id, current=idx, status_text=f"clip {idx}/{len(targets)}")
-            ok = core.proses_satu_clip(video_id, item, idx, total_duration, crop, subtitle, event_hook=event_hook)
+            ok = process_single_clip(
+                video_id=video_id,
+                item=item,
+                index=idx,
+                total_duration=total_duration,
+                crop_mode=crop,
+                use_subtitle=subtitle,
+                event_hook=event_hook
+            )
             if ok:
                 success += 1
             set_job(job_id, done=idx, success=success, outputs=list_outputs(job_dir))
 
         set_job(job_id, status="done", finished_at=now_ms(), outputs=list_outputs(job_dir))
     except Exception as e:
+        log.exception(f"Job {job_id} failed: {e}")
         set_job(job_id, status="error", error=str(e), finished_at=now_ms())
 
 
@@ -187,11 +208,10 @@ def index():
 def serve_font(filename):
     return send_from_directory("fonts", filename, as_attachment=False)
 
-
 def get_preview(url):
     key = url.strip()
     if not key:
-        raise ValueError("URL kosong")
+        raise ValueError("Empty URL")
 
     with preview_lock:
         cached = preview_cache.get(key)
@@ -204,11 +224,15 @@ def get_preview(url):
         "yt_dlp",
         "--skip-download",
         "-J",
-        key,
     ]
+    
+    if config.cookies_file and os.path.exists(config.cookies_file):
+        cmd.extend(["--cookies", config.cookies_file])
+        
+    cmd.append(key)
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
-        raise RuntimeError((res.stderr or res.stdout or "Gagal ambil metadata").strip())
+        raise RuntimeError((res.stderr or res.stdout or "Failed to fetch metadata").strip())
 
     raw = json.loads(res.stdout)
     item = raw["entries"][0] if isinstance(raw, dict) and "entries" in raw and raw.get("entries") else raw
@@ -238,6 +262,7 @@ def api_preview():
         preview = get_preview(url)
         return jsonify({"ok": True, "preview": preview})
     except Exception as e:
+        log.error(f"API Preview error: {e}")
         return jsonify({"ok": False, "error": str(e)}), 400
 
 
@@ -245,17 +270,35 @@ def api_preview():
 def api_scan():
     data = request.get_json(silent=True) or {}
     url = (data.get("url") or "").strip()
-    video_id = core.extract_video_id(url)
+    video_id = extract_video_id(url)
     if not video_id:
-        return jsonify({"ok": False, "error": "URL YouTube invalid"}), 400
+        return jsonify({"ok": False, "error": "Invalid YouTube URL"}), 400
 
-    core.cek_dependensi._args = SimpleNamespace(no_update_ytdlp=True)
-    ok = core.cek_dependensi(install_whisper=False, fatal=False)
+    ok = check_dependencies(install_whisper=False, skip_update_ytdlp=True, fatal=False)
     if not ok:
-        return jsonify({"ok": False, "error": "FFmpeg tidak ketemu"}), 400
+        return jsonify({"ok": False, "error": "FFmpeg not found"}), 400
 
-    segments = core.ambil_most_replayed(video_id)
-    total = core.get_duration(video_id)
+    job_dir = os.path.join("clips", video_id)
+    os.makedirs(job_dir, exist_ok=True)
+    cache_file = os.path.join(job_dir, "segments.json")
+    
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "r", encoding="utf-8") as f:
+                data_cache = json.load(f)
+                return jsonify({"ok": True, "video_id": video_id, "duration": data_cache.get("duration", 0), "segments": data_cache.get("segments", [])})
+        except Exception:
+            pass
+
+    segments = fetch_most_replayed(video_id, config.min_score, config.max_duration)
+    total = get_video_duration(video_id)
+    
+    try:
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump({"duration": total, "segments": segments}, f)
+    except Exception:
+        pass
+        
     return jsonify({"ok": True, "video_id": video_id, "duration": total, "segments": segments})
 
 
@@ -303,6 +346,93 @@ def serve_clip(job_id, filename):
     job_dir = os.path.join("clips", job_id)
     return send_from_directory(job_dir, filename, as_attachment=True)
 
+
+@app.post("/api/cookies")
+def api_cookies():
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"ok": False, "error": "No file selected"}), 400
+    try:
+        content = file.read().decode("utf-8")
+        if not content.startswith("# Netscape HTTP Cookie File") and ".youtube.com" not in content:
+             return jsonify({"ok": False, "error": "Invalid cookie format. Must be Netscape HTTP Cookie File."}), 400
+             
+        # Parse and ensure it's valid format
+        valid_lines = []
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                valid_lines.append(line)
+                continue
+            parts = line.split("\t")
+            if len(parts) >= 7:
+                valid_lines.append(line)
+                
+        if len(valid_lines) < 2: # At least some comments + actual cookies
+             return jsonify({"ok": False, "error": "No valid cookies found."}), 400
+             
+        with open("cookies.txt", "w", encoding="utf-8") as f:
+            f.write("\n".join(valid_lines))
+            
+        config.cookies_file = "cookies.txt"
+        return jsonify({"ok": True, "message": "Cookies imported successfully"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.delete("/api/logs")
+def clear_logs():
+    try:
+        log_dir = "logs"
+        if os.path.isdir(log_dir):
+            for filename in os.listdir(log_dir):
+                if filename.endswith(".log"):
+                    open(os.path.join(log_dir, filename), "w").close()
+        return jsonify({"ok": True, "message": "Logs cleared"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.get("/api/cookies/status")
+def cookies_status():
+    exists = False
+    if config.cookies_file and os.path.exists(config.cookies_file):
+        exists = True
+    return jsonify({"ok": True, "exists": exists})
+
+@app.post("/api/intro")
+def upload_intro():
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"ok": False, "error": "No file selected"}), 400
+    os.makedirs("assets", exist_ok=True)
+    ext = os.path.splitext(file.filename)[1]
+    path = os.path.join("assets", f"intro{ext}")
+    file.save(path)
+    config.intro_video = path
+    return jsonify({"ok": True, "message": "Intro uploaded"})
+
+@app.post("/api/outro")
+def upload_outro():
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"ok": False, "error": "No file selected"}), 400
+    os.makedirs("assets", exist_ok=True)
+    ext = os.path.splitext(file.filename)[1]
+    path = os.path.join("assets", f"outro{ext}")
+    file.save(path)
+    config.outro_video = path
+    return jsonify({"ok": True, "message": "Outro uploaded"})
+
+@app.get("/api/assets/status")
+def assets_status():
+    has_intro = bool(config.intro_video and os.path.exists(config.intro_video))
+    has_outro = bool(config.outro_video and os.path.exists(config.outro_video))
+    return jsonify({"ok": True, "has_intro": has_intro, "has_outro": has_outro})
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)

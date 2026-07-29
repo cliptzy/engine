@@ -60,3 +60,6 @@ models/
 test.py
 check_*.py
 debug_*.py
+
+# User defined
+cookies*

@@ -353,6 +353,7 @@ function readPayload() {
     whisper_model: $("whisper_model").value,
     subtitle_font: subtitleFont,
     subtitle_location: $("subtitle_location").value,
+    subtitle_delay: Number($("subtitle_delay").value || 0.0),
     subtitle_fontsdir: $("subtitle_fontsdir").value || "",
     start: $("start").value || "",
     end: $("end").value || "",
@@ -427,7 +428,12 @@ function clearSelectedSegments() {
 async function clipSelected() {
   if ($("mode").value !== "heatmap") return;
   if (selectedKeys.size === 0) return;
+  
+  const btn = $("segCreateBtn");
+  const prevTxt = btn.innerText;
+  btn.innerText = "Creating...";
   setBusy(true);
+  
   try {
     const payload = readPayload();
     const picked = lastScanSegments.filter((s) => selectedKeys.has(segKey(s)));
@@ -437,6 +443,7 @@ async function clipSelected() {
   } catch (e) {
     renderProgress({ status: "error", error: e.message, total: 0, done: 0, id: "" });
   } finally {
+    btn.innerText = prevTxt;
     setBusy(false);
     updateSelectedUi();
   }
@@ -456,22 +463,21 @@ function renderSegments(segments) {
     const end = start + dur;
     const score = Number(s.score || 0);
     const el = document.createElement("div");
-    el.className = "seg";
     const key = segKey(s);
-    if (selectedKeys.has(key)) el.classList.add("selected");
+    el.className = "flex gap-4 border-4 border-black p-2 bg-white brutal-shadow cursor-pointer transition-transform hover:-translate-y-1 mb-4" + (selectedKeys.has(key) ? " bg-pink-200" : "");
     const thumb = getVideoThumb(currentVideoId, currentPreview?.thumbnail);
     el.innerHTML = `
-      <div class="segThumb">
-        <img alt="" src="${thumb}" />
-        <div class="segTime">${fmtTime(start)}</div>
+      <div class="relative w-32 shrink-0 border-4 border-black bg-black">
+        <img alt="" src="${thumb}" class="w-full h-full object-cover opacity-80 hover:opacity-100" />
+        <div class="absolute bottom-1 right-1 bg-black text-white font-bold text-xs px-1 border-2 border-white">${fmtTime(start)}</div>
       </div>
-      <div class="segMain">
-        <div class="t">#${idx + 1} ${fmtTime(start)} → ${fmtTime(end)}</div>
-        <div class="m">durasi ${Math.round(dur)}s</div>
+      <div class="flex-1 flex flex-col justify-center">
+        <div class="font-bold text-lg uppercase">#${idx + 1} ${fmtTime(start)} → ${fmtTime(end)}</div>
+        <div class="text-sm font-bold opacity-80">durasi ${Math.round(dur)}s</div>
       </div>
-      <div class="segSide">
-        <div class="pill">${score.toFixed(2)}</div>
-        <button class="btn ghost smallBtn" type="button" data-preview="1">Preview</button>
+      <div class="flex flex-col justify-between items-end">
+        <div class="bg-yellow-400 border-2 border-black font-bold px-2 py-1 text-sm brutal-shadow-hover">${score.toFixed(2)}</div>
+        <button class="bg-cyan-300 border-2 border-black font-bold px-2 py-1 text-sm brutal-shadow-hover" type="button" data-preview="1">Preview</button>
       </div>
     `;
     el.addEventListener("click", (ev) => {
@@ -487,9 +493,13 @@ function renderSegments(segments) {
         $("end").value = Math.floor(end);
         return;
       }
-      if (selectedKeys.has(key)) selectedKeys.delete(key);
-      else selectedKeys.add(key);
-      el.classList.toggle("selected");
+      if (selectedKeys.has(key)) {
+        selectedKeys.delete(key);
+        el.classList.remove("bg-pink-200");
+      } else {
+        selectedKeys.add(key);
+        el.classList.add("bg-pink-200");
+      }
       updateSelectedUi();
     });
     root.appendChild(el);
@@ -513,11 +523,11 @@ function renderProgress(job) {
   meta.textContent = `${job.status} • ${(job.status_text || "").trim()}${stage ? " • " + stage : ""}`.trim();
 
   const bar = document.createElement("div");
-  bar.innerHTML = `<div class="bar"><div style="width:${pct}%"></div></div>`;
+  bar.innerHTML = `<div class="w-full h-6 border-4 border-black bg-white brutal-shadow relative overflow-hidden"><div class="absolute top-0 left-0 h-full bg-cyan-300 border-r-4 border-black transition-all duration-300" style="width:${pct}%"></div></div>`;
   root.appendChild(bar);
 
   const line = document.createElement("div");
-  line.className = "small";
+  line.className = "text-sm font-bold mt-2";
   line.textContent =
     total > 0
       ? t("js.progress.count", { done, total, success: job.success || 0 })
@@ -534,16 +544,16 @@ function renderProgress(job) {
   if (Array.isArray(job.outputs) && job.outputs.length > 0) {
     job.outputs.forEach((f) => {
       const el = document.createElement("div");
-      el.className = "out";
+      el.className = "flex justify-between items-center bg-white border-4 border-black p-4 brutal-shadow";
       const href = `/clips/${job.id}/${encodeURIComponent(f.name)}`;
       el.innerHTML = `
-        <div class="outLeft">
-          <a href="${href}" target="_blank" rel="noreferrer">${f.name}</a>
-          <div class="small">${Math.round((f.size || 0) / 1024)} KB</div>
+        <div>
+          <a href="${href}" target="_blank" rel="noreferrer" class="font-bold text-lg underline hover:text-blue-600">${f.name}</a>
+          <div class="text-sm font-bold opacity-80">${Math.round((f.size || 0) / 1024)} KB</div>
         </div>
-        <div class="outRight">
-          <button class="btn ghost smallBtn" type="button" data-play="1">Play</button>
-          <a class="btn smallBtn" href="${href}" download>Download</a>
+        <div class="flex gap-2">
+          <button class="bg-yellow-400 border-2 border-black font-bold px-4 py-2 brutal-shadow-hover" type="button" data-play="1">Play</button>
+          <a class="bg-cyan-300 border-2 border-black font-bold px-4 py-2 brutal-shadow-hover text-black no-underline" href="${href}" download>Download</a>
         </div>
       `;
       el.querySelector("[data-play]")?.addEventListener("click", (ev) => {
@@ -552,6 +562,23 @@ function renderProgress(job) {
       });
       out.appendChild(el);
     });
+  }
+
+  const consoleLog = $("consoleLog");
+  if (consoleLog) {
+    if (job.logs && job.logs.length > 0) {
+      consoleLog.classList.remove("hide");
+      const isScrolledToBottom = consoleLog.scrollHeight - consoleLog.clientHeight <= consoleLog.scrollTop + 5;
+      
+      consoleLog.textContent = job.logs.join("\n");
+      
+      if (isScrolledToBottom) {
+        consoleLog.scrollTop = consoleLog.scrollHeight;
+      }
+    } else {
+      consoleLog.classList.add("hide");
+      consoleLog.textContent = "";
+    }
   }
 }
 
@@ -562,7 +589,11 @@ let currentVideoId = "";
 let selectedKeys = new Set();
 
 async function scan() {
+  const btn = $("scanBtn");
+  const prevTxt = btn.innerText;
+  btn.innerText = "Scanning...";
   setBusy(true);
+  
   try {
     const { url } = readPayload();
     const data = await postJson("/api/scan", { url });
@@ -575,6 +606,7 @@ async function scan() {
     $("segMeta").textContent = e.message;
     renderSegments([]);
   } finally {
+    btn.innerText = prevTxt;
     setBusy(false);
     updateSelectedUi();
   }
@@ -608,7 +640,11 @@ async function preview() {
 }
 
 async function clip() {
+  const btn = $("clipBtn");
+  const prevTxt = btn.innerText;
+  btn.innerText = "Creating...";
   setBusy(true);
+  
   try {
     const payload = readPayload();
     const data = await postJson("/api/clip", payload);
@@ -617,6 +653,7 @@ async function clip() {
   } catch (e) {
     renderProgress({ status: "error", error: e.message, total: 0, done: 0, id: "" });
   } finally {
+    btn.innerText = prevTxt;
     setBusy(false);
   }
 }
@@ -654,7 +691,7 @@ function toggleFont() {
 
 $("mode").addEventListener("change", toggleMode);
 $("subtitle_font_select").addEventListener("change", toggleFont);
-$("url").addEventListener("input", debounce(preview, 500));
+$("cekUrlBtn")?.addEventListener("click", preview);
 $("scanBtn").addEventListener("click", scan);
 $("clipBtn").addEventListener("click", clip);
 $("segSelectAllBtn").addEventListener("click", selectAllSegments);
@@ -664,13 +701,174 @@ $("modalClose").addEventListener("click", closeModal);
 $("modalBackdrop").addEventListener("click", closeModal);
 $("langId")?.addEventListener("click", () => setLang("id"));
 $("langEn")?.addEventListener("click", () => setLang("en"));
+
+$("themeToggle")?.addEventListener("click", () => {
+  document.documentElement.classList.toggle("dark");
+  const isDark = document.documentElement.classList.contains("dark");
+  localStorage.setItem("theme", isDark ? "dark" : "light");
+});
+
+$("uploadCookiesBtn")?.addEventListener("click", async () => {
+  const fileInput = $("cookies_file");
+  if (!fileInput.files.length) {
+    alert("Please select a cookies.txt file first!");
+    return;
+  }
+
+  const btn = $("uploadCookiesBtn");
+  const prevText = btn.innerText;
+  btn.innerText = "Uploading...";
+  btn.disabled = true;
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  try {
+    const res = await fetch("/api/cookies", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.ok) {
+      $("cookieStatus").classList.remove("hide");
+      checkCookieStatus();
+      setTimeout(() => {
+        $("cookieStatus").classList.add("hide");
+      }, 3000);
+    } else {
+      alert("Upload failed: " + data.error);
+    }
+  } catch (e) {
+    alert("Error: " + e.message);
+  } finally {
+    btn.innerText = prevText;
+    btn.disabled = false;
+  }
+});
+
+$("uploadIntroBtn")?.addEventListener("click", async () => {
+  const fileInput = $("intro_file");
+  if (!fileInput.files.length) return alert("Select intro video first!");
+  const btn = $("uploadIntroBtn");
+  const prev = btn.innerText;
+  btn.innerText = "Uploading...";
+  btn.disabled = true;
+  const fd = new FormData();
+  fd.append("file", fileInput.files[0]);
+  try {
+    const res = await fetch("/api/intro", { method: "POST", body: fd });
+    const data = await res.json();
+    if (data.ok) checkAssetStatus();
+    else alert("Upload failed: " + data.error);
+  } catch (e) {
+    alert("Error: " + e.message);
+  } finally {
+    btn.innerText = prev;
+    btn.disabled = false;
+  }
+});
+
+$("uploadOutroBtn")?.addEventListener("click", async () => {
+  const fileInput = $("outro_file");
+  if (!fileInput.files.length) return alert("Select outro video first!");
+  const btn = $("uploadOutroBtn");
+  const prev = btn.innerText;
+  btn.innerText = "Uploading...";
+  btn.disabled = true;
+  const fd = new FormData();
+  fd.append("file", fileInput.files[0]);
+  try {
+    const res = await fetch("/api/outro", { method: "POST", body: fd });
+    const data = await res.json();
+    if (data.ok) checkAssetStatus();
+    else alert("Upload failed: " + data.error);
+  } catch (e) {
+    alert("Error: " + e.message);
+  } finally {
+    btn.innerText = prev;
+    btn.disabled = false;
+  }
+});
+
+$("clearLogsBtn")?.addEventListener("click", async () => {
+  try {
+    const res = await fetch("/api/logs", { method: "DELETE" });
+    const data = await res.json();
+    if (data.ok) {
+      alert("Logs cleared successfully.");
+      const consoleLog = $("consoleLog");
+      if (consoleLog) {
+        consoleLog.textContent = "";
+        consoleLog.classList.add("hide");
+      }
+    } else {
+      alert("Failed to clear logs: " + data.error);
+    }
+  } catch (e) {
+    alert("Error: " + e.message);
+  }
+});
+
+async function checkCookieStatus() {
+  try {
+    const res = await fetch("/api/cookies/status");
+    const data = await res.json();
+    const statusText = $("cookieStatusText");
+    if (statusText) {
+      if (data.exists) {
+        statusText.textContent = "Cookies are loaded and active.";
+        statusText.classList.remove("text-red-600");
+        statusText.classList.add("text-green-600");
+      } else {
+        statusText.textContent = "No cookies loaded.";
+        statusText.classList.remove("text-green-600");
+        statusText.classList.add("text-red-600");
+      }
+    }
+  } catch (e) {
+    console.error("Failed to check cookie status", e);
+  }
+}
+
+async function checkAssetStatus() {
+  try {
+    const res = await fetch("/api/assets/status");
+    const data = await res.json();
+    if ($("introStatusText")) {
+      if (data.has_intro) {
+        $("introStatusText").textContent = "Intro loaded.";
+        $("introStatusText").className = "text-xs font-bold text-green-600 mt-1";
+      } else {
+        $("introStatusText").textContent = "No intro loaded.";
+        $("introStatusText").className = "text-xs font-bold text-red-600 mt-1";
+      }
+    }
+    if ($("outroStatusText")) {
+      if (data.has_outro) {
+        $("outroStatusText").textContent = "Outro loaded.";
+        $("outroStatusText").className = "text-xs font-bold text-green-600 mt-1";
+      } else {
+        $("outroStatusText").textContent = "No outro loaded.";
+        $("outroStatusText").className = "text-xs font-bold text-red-600 mt-1";
+      }
+    }
+  } catch (e) {}
+}
+
+checkCookieStatus();
+checkAssetStatus();
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
 });
 
 currentLang = localStorage.getItem("lang") || document.documentElement.lang || "id";
 currentLang = currentLang === "en" ? "en" : "id";
+if (localStorage.getItem("theme") === "dark") {
+  document.documentElement.classList.add("dark");
+}
 applyI18n();
 toggleMode();
 toggleFont();
 renderSegments([]);
+checkCookieStatus();
