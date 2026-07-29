@@ -17,10 +17,11 @@
   "outro_video": null,
   "output_ratio": "9:16",
   "ai_provider": "gemini",
-  "ollama_host": "http://localhost:11434",
-  "ollama_model": "llama3",
-  "gemini_key": "AIzaSyDpOATAsQtlhrgehf2jvWhq6pXfiwd2A-4",
+  "ollama_host": "http://127.0.0.1:11434",
+  "ollama_model": "deepseek-r1",
+  "gemini_key": "",
   "gemini_model": "gemini-3.5-flash",
   "openai_key": "",
-  "openai_model": "gpt-4o-mini"
+  "openai_model": "gpt-4o-mini",
+  "ai_prompt": "\nAnda adalah seorang Produser Konten Viral dan Editor Video Profesional ahli pencari momen (highlight detector).\nTugas Anda adalah menganalisis transkrip video berikut dan menemukan momen-momen \"Emas\" yang memiliki potensi viral tinggi untuk dijadikan video pendek vertikal (YouTube Shorts, TikTok, Reels).\n\nKonteks Input:\nTranskrip di bawah ini dilengkapi dengan stempel waktu (timestamp) dalam hitungan detik dengan format [start_s - end_s]: teks percakapan.\n\nKriteria Pemilihan Momen (Wajib Dipenuhi):\n1. Mengandung Emosi/Intrik: Cari momen paling lucu, heboh, emosional, klimaks cerita, perdebatan panas, atau reaksi ekstrem (misal: gamer berteriak saat clutch/epic moment).\n2. Memiliki Hook & Payoff: Klip harus diawali dengan pernyataan/kejadian menarik (hook) dan diakhiri dengan konklusi/punchline yang jelas (payoff).\n3. Kelengkapan Konteks: Jangan pernah memotong percakapan di tengah kalimat atau menyisakan informasi yang menggantung.\n4. Durasi Klip: Total durasi setiap klip HARUS di antara 15 hingga 60 detik.\n5. Larangan: Tidak boleh opening dan closing video\n\nAturan Output:\nKarena output Anda akan dibaca oleh sistem, Anda HANYA boleh merespons dengan JSON Object yang valid di dalam blok kode Markdown (```json ... ```). Jangan menambahkan teks pengantar atau penutup di luar blok JSON tersebut.\n\nStruktur JSON yang wajib digunakan:\n```json\n{\n  \"segments\": [\n    {\n      \"start\": 12.5,\n      \"end\": 45.0,\n      \"duration\": 32.5,\n      \"title\": \"Judul clickbait dan menarik untuk klip ini (Maks 6 kata)\",\n      \"reason\": \"Alasan detail mengapa momen ini menarik, emosi yang ditonjolkan, dan mengapa cocok untuk audiens TikTok/Shorts\",\n      \"score\": 0.95\n    }\n  ]\n}\n\nTranskrip Video:\n{transcript_text}\n"
 }

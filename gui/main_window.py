@@ -15,7 +15,9 @@ from gui.widgets.header_widget import HeaderWidget
 from gui.widgets.sidebar_widget import SidebarWidget
 from gui.widgets.video_input_widget import VideoInputWidget
 from gui.widgets.preview_widget import PreviewWidget
-from gui.widgets.settings_widget import SettingsWidget
+from gui.widgets.clip_config_widget import ClipConfigWidget
+from gui.widgets.ai_settings_widget import AiSettingsWidget
+from gui.widgets.dependency_manager_widget import DependencyManagerWidget
 from gui.widgets.log_console_widget import LogConsoleWidget
 from gui.widgets.media_player_widget import MediaPlayerWidget
 from gui.widgets.auto_upload_widget import AutoUploadWidget
@@ -91,9 +93,9 @@ class MainWindow(QMainWindow):
         self.preview_widget.ai_scan_requested.connect(self.on_run_ai_scan)
         content_layout.addWidget(self.preview_widget)
 
-        self.settings_widget = SettingsWidget(scroll_content)
-        self.settings_widget.test_subtitle_requested.connect(self.on_test_subtitle_preview)
-        content_layout.addWidget(self.settings_widget)
+        self.clip_config_widget = ClipConfigWidget(scroll_content)
+        self.clip_config_widget.test_subtitle_requested.connect(self.on_test_subtitle_preview)
+        content_layout.addWidget(self.clip_config_widget)
 
         self.log_widget = LogConsoleWidget(scroll_content)
         self.log_widget.start_requested.connect(self.on_start_clipping)
@@ -120,8 +122,14 @@ class MainWindow(QMainWindow):
         settings_page = QWidget()
         settings_layout = QVBoxLayout(settings_page)
         settings_layout.setContentsMargins(16, 16, 16, 16)
-        self.page_settings_widget = SettingsWidget(settings_page)
-        settings_layout.addWidget(self.page_settings_widget)
+        settings_layout.setSpacing(16)
+
+        self.page_ai_settings_widget = AiSettingsWidget(settings_page)
+        settings_layout.addWidget(self.page_ai_settings_widget)
+
+        self.dependency_manager_widget = DependencyManagerWidget(settings_page)
+        settings_layout.addWidget(self.dependency_manager_widget)
+        
         settings_layout.addStretch()
         self.stacked_view.addWidget(settings_page)
 
@@ -254,6 +262,13 @@ class MainWindow(QMainWindow):
         self.preview_widget.set_scan_data(scan_result)
         self.log_widget.append_log(f"[SUCCESS] Heatmap scan selesai! {len(scan_result.get('segments', []))} segmen ditemukan.")
 
+        # Auto-load AI Cache
+        url = self.input_widget.url_input.text().strip()
+        cached_ai = controller.get_cached_ai_highlights(url)
+        if cached_ai:
+            self.preview_widget.set_ai_scan_data(cached_ai)
+            self.log_widget.append_log(f"[INFO] Memuat {len(cached_ai.get('segments', []))} AI Highlights dari cache lokal.")
+
     def on_fetch_error(self, err_msg: str):
         self.input_widget.set_loading(False)
         self.log_widget.append_log(f"[ERROR] Gagal memuat video: {err_msg}")
@@ -265,7 +280,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Peringatan", "Silakan masukkan URL YouTube terlebih dahulu.")
             return
 
-        payload = self.settings_widget.get_settings_payload()
+        payload = self.clip_config_widget.get_settings_payload()
         payload["url"] = url
 
         mode = self.preview_widget.get_selected_mode()
@@ -329,7 +344,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Peringatan", "Silakan masukkan URL YouTube terlebih dahulu untuk menguji subtitle.")
             return
 
-        payload = self.settings_widget.get_settings_payload()
+        payload = self.clip_config_widget.get_settings_payload()
         payload["url"] = url
         payload["mode"] = self.preview_widget.get_selected_mode()
         if payload["mode"] == "heatmap":

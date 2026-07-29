@@ -4,9 +4,26 @@ import shutil
 import subprocess
 from core.logger import log
 
+def inject_local_bin_to_path():
+    """
+    Unconditionally prepends the local app bin/ directory to the system PATH.
+    This ensures that downloaded dependencies (FFmpeg, Deno) take highest priority.
+    """
+    app_root = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    bin_dir = os.path.join(app_root, "bin")
+    if os.path.isdir(bin_dir) and bin_dir not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+
+# Execute immediately on import to ensure all subprocesses see the local bin directory
+inject_local_bin_to_path()
+
 def is_ffmpeg_available() -> bool:
     """Checks if ffmpeg is accessible from PATH."""
     return bool(shutil.which("ffmpeg"))
+
+def is_deno_available() -> bool:
+    """Checks if deno is accessible from PATH."""
+    return bool(shutil.which("deno"))
 
 def attempt_add_ffmpeg_to_path() -> bool:
     """
@@ -17,12 +34,9 @@ def attempt_add_ffmpeg_to_path() -> bool:
         return True
 
     # 1. Check local bin/ folder in application directory
-    app_root = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    bin_dir = os.path.join(app_root, "bin")
-    if os.path.isdir(bin_dir):
-        os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"
-        if is_ffmpeg_available():
-            return True
+    # (Already handled by inject_local_bin_to_path, but keeping check just in case)
+    if is_ffmpeg_available():
+        return True
 
     # 2. Check Windows Winget packages if on Windows
     local_app_data = os.environ.get("LOCALAPPDATA")

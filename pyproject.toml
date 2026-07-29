@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Dicky Mulia Fiqri", email = "santrialanwari@gmail.com" }
 ]
-requires-python = "==3.11.10"
+requires-python = "==3.13.13"
 dependencies = []
 
 [project.scripts]

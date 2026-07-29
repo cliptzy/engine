@@ -56,20 +56,26 @@ def process_single_clip(
 
     cmd_download = [
         sys.executable, "-m", "yt_dlp",
+        "-v",
         "--force-ipv4",
-        "--quiet", "--no-warnings",
+        "--remote-components",
+        "ejs:github",
+        "--no-warnings",
         "--downloader", "ffmpeg",
-        "--downloader-args", f"ffmpeg_i:-ss {start} -to {end} -hide_banner -loglevel error",
+        "--downloader-args", f"ffmpeg_i:-ss {start} -to {end} -hide_banner",
         "--merge-output-format", "mkv",
         "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b",
     ]
     
     cmd_download_fallback = [
         sys.executable, "-m", "yt_dlp",
+        "-v",
         "--force-ipv4",
-        "--quiet", "--no-warnings",
+        "--remote-components",
+        "ejs:github",
+        "--no-warnings",
         "--downloader", "ffmpeg",
-        "--downloader-args", f"ffmpeg_i:-ss {start} -to {end} -hide_banner -loglevel error",
+        "--downloader-args", f"ffmpeg_i:-ss {start} -to {end} -hide_banner",
         "--merge-output-format", "mkv",
         "-f", "bv*+ba/b",
     ]

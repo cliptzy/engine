@@ -32,10 +32,12 @@ class AppConfig:
     ollama_host: str = "http://localhost:11434"
     ollama_model: str = "llama3"
     gemini_key: str = ""
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-3.5-flash"
 
     openai_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    
+    ai_prompt: str = ""
 
     def set_ratio_preset(self, preset: str) -> None:
         """Sets the output resolution based on the given ratio preset."""
@@ -78,6 +80,7 @@ class AppConfig:
             "gemini_model": self.gemini_model,
             "openai_key": self.openai_key,
             "openai_model": self.openai_model,
+            "ai_prompt": self.ai_prompt,
         }
 
 
@@ -131,6 +134,8 @@ class AppConfig:
             self.openai_key = data["openai_key"]
         if "openai_model" in data and data["openai_model"]:
             self.openai_model = data["openai_model"]
+        if "ai_prompt" in data and data["ai_prompt"]:
+            self.ai_prompt = data["ai_prompt"]
 
 
     def save_to_file(self, filepath: str = "config.json") -> bool:

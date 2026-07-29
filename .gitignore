@@ -63,3 +63,4 @@ debug_*.py
 
 # User defined
 cookies*
+bin/

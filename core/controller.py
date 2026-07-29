@@ -133,6 +133,20 @@ class ClipController:
             
         return {"video_id": video_id, "duration": total_duration, "segments": segments}
 
+    def get_cached_ai_highlights(self, url: str) -> Optional[Dict[str, Any]]:
+        video_id = extract_video_id(url)
+        if not video_id:
+            return None
+        job_dir = os.path.join("clips", video_id)
+        ai_cache_file = os.path.join(job_dir, "ai_segments.json")
+        if os.path.exists(ai_cache_file):
+            try:
+                with open(ai_cache_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return None
+
     def execute_clipping(
         self,
         payload: Dict[str, Any],

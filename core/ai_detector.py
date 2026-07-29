@@ -9,21 +9,36 @@ from typing import List, Dict, Any, Optional
 from core.logger import log
 
 DEFAULT_PROMPT_TEMPLATE = """
-Anda adalah seorang editor video profesional dan ahli pembaca momen menarik (highlight detector).
-Berikut adalah transkrip video dengan timestamp yang akurat dalam format [start_s - end_s]: text.
+Anda adalah seorang Produser Konten Viral dan Editor Video Profesional ahli pencari momen (highlight detector).
+Tugas Anda adalah menganalisis transkrip video berikut dan menemukan momen-momen "Emas" yang memiliki potensi viral tinggi untuk dijadikan video pendek vertikal (YouTube Shorts, TikTok, Reels).
 
-Tugas Anda:
-Analisis transkrip di bawah ini dan tentukan segmen-segmen momen paling menarik, lucu, heboh, emosional, klimaks cerita, atau momen gamer berteriak/excited yang cocok dijadikan klip video pendek (Shorts/TikTok/Reels).
+Konteks Input:
+Transkrip di bawah ini dilengkapi dengan stempel waktu (timestamp) dalam hitungan detik dengan format [start_s - end_s]: teks percakapan.
 
-Petunjuk:
-1. Durasi tiap segmen idealnya antara 15 hingga 60 detik.
-2. Berikan hasil HANYA dalam bentuk format JSON array murni atau JSON object dengan kunci "segments".
-3. Setiap objek segmen harus memiliki kunci berikut:
-   - "start": float (waktu mulai dalam detik)
-   - "duration": float (durasi segmen dalam detik)
-   - "title": string (judul ringkas momen menarik tersebut)
-   - "reason": string (alasan mengapa momen ini menarik, misal: "Respon gamer berteriak gembira saat clutch play")
-   - "score": float (skor ketertarikan antara 0.50 hingga 1.0)
+Kriteria Pemilihan Momen (Wajib Dipenuhi):
+1. Mengandung Emosi/Intrik: Cari momen paling lucu, heboh, emosional, klimaks cerita, perdebatan panas, atau reaksi ekstrem (misal: gamer berteriak saat clutch/epic moment).
+2. Memiliki Hook & Payoff: Klip harus diawali dengan pernyataan/kejadian menarik (hook) dan diakhiri dengan konklusi/punchline yang jelas (payoff).
+3. Kelengkapan Konteks: Jangan pernah memotong percakapan di tengah kalimat atau menyisakan informasi yang menggantung.
+4. Durasi Klip: Total durasi setiap klip HARUS di antara 15 hingga 60 detik.
+5. Larangan: Tidak boleh opening dan closing video
+
+Aturan Output:
+Karena output Anda akan dibaca oleh sistem, Anda HANYA boleh merespons dengan JSON Object yang valid di dalam blok kode Markdown (```json ... ```). Jangan menambahkan teks pengantar atau penutup di luar blok JSON tersebut.
+
+Struktur JSON yang wajib digunakan:
+```json
+{
+  "segments": [
+    {
+      "start": 12.5,
+      "end": 45.0,
+      "duration": 32.5,
+      "title": "Judul clickbait dan menarik untuk klip ini (Maks 6 kata)",
+      "reason": "Alasan detail mengapa momen ini menarik, emosi yang ditonjolkan, dan mengapa cocok untuk audiens TikTok/Shorts",
+      "score": 0.95
+    }
+  ]
+}
 
 Transkrip Video:
 {transcript_text}
@@ -57,7 +72,11 @@ class AIHighlightDetector:
             # Trim if transcript exceeds context budget
             transcript_text = transcript_text[:25000] + "\n...[transkrip dipotong]"
 
-        prompt = DEFAULT_PROMPT_TEMPLATE.format(transcript_text=transcript_text)
+        template = ai_config.get("ai_prompt")
+        if not template or not template.strip():
+            template = DEFAULT_PROMPT_TEMPLATE
+        
+        prompt = template.replace("{transcript_text}", transcript_text)
         provider = (ai_config.get("provider") or "ollama").lower()
 
         if callable(event_hook):

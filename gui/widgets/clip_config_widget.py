@@ -10,7 +10,7 @@ from core import controller, config
 
 from PyQt6.QtCore import pyqtSignal
 
-class SettingsWidget(QFrame):
+class ClipConfigWidget(QFrame):
     test_subtitle_requested = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -106,41 +106,6 @@ class SettingsWidget(QFrame):
 
         layout.addLayout(grid)
 
-        # AI Settings Layout
-        ai_title = QLabel("🤖 Pengaturan AI Highlights")
-        ai_title.setStyleSheet("font-weight: bold; font-size: 13px; margin-top: 10px;")
-        layout.addWidget(ai_title)
-
-        ai_grid = QGridLayout()
-        ai_grid.setHorizontalSpacing(16)
-        ai_grid.setVerticalSpacing(10)
-        
-        ai_grid.addWidget(QLabel("Provider AI:"), 0, 0)
-        self.ai_provider_combo = QComboBox()
-        self.ai_provider_combo.addItem("Local Ollama (Offline / Local)", "ollama")
-        self.ai_provider_combo.addItem("Google Gemini API (Online)", "gemini")
-        self.ai_provider_combo.addItem("OpenAI GPT API (Online)", "openai")
-        self.ai_provider_combo.currentIndexChanged.connect(self.on_ai_provider_changed)
-        ai_grid.addWidget(self.ai_provider_combo, 0, 1)
-
-        self.ai_key_label = QLabel("Ollama Host:")
-        self.ai_key_input = QLineEdit("http://localhost:11434")
-        ai_grid.addWidget(self.ai_key_label, 0, 2)
-        ai_grid.addWidget(self.ai_key_input, 0, 3)
-
-        ai_grid.addWidget(QLabel("Model Name:"), 1, 0)
-        self.ai_model_input = QLineEdit("llama3")
-        self.ai_model_input.setPlaceholderText("misal: llama3, gemini-1.5-flash, gpt-4o-mini")
-        ai_grid.addWidget(self.ai_model_input, 1, 1)
-
-        self.btn_save_ai = QPushButton("💾 Simpan Pengaturan AI")
-        self.btn_save_ai.setProperty("class", "primary")
-        self.btn_save_ai.clicked.connect(self.save_ai_config)
-        ai_grid.addWidget(self.btn_save_ai, 1, 3)
-
-        layout.addLayout(ai_grid)
-
-
         # Assets & Cookies Buttons
         assets_layout = QHBoxLayout()
         assets_layout.setSpacing(10)
@@ -158,6 +123,8 @@ class SettingsWidget(QFrame):
         assets_layout.addWidget(self.btn_intro)
         assets_layout.addWidget(self.btn_outro)
         layout.addLayout(assets_layout)
+
+
 
     def load_from_config(self):
         # Crop combo
@@ -189,13 +156,7 @@ class SettingsWidget(QFrame):
 
         self.on_subtitle_toggled(config.use_subtitle)
         
-        # Load AI config
-        provider = getattr(config, "ai_provider", "ollama")
-        idx = self.ai_provider_combo.findData(provider)
-        if idx >= 0:
-            self.ai_provider_combo.setCurrentIndex(idx)
-        else:
-            self.on_ai_provider_changed(0)
+
 
     def on_subtitle_toggled(self, checked: bool):
         self.whisper_combo.setEnabled(checked)
@@ -214,44 +175,7 @@ class SettingsWidget(QFrame):
             self.btn_lock_delay.setText("🔓")
             self.btn_lock_delay.setStyleSheet("")
 
-    def on_ai_provider_changed(self, idx: int):
-        provider = self.ai_provider_combo.currentData()
-        if provider == "ollama":
-            self.ai_key_label.setText("Ollama Host:")
-            self.ai_key_input.setEchoMode(QLineEdit.EchoMode.Normal)
-            self.ai_key_input.setText(config.ollama_host or "http://localhost:11434")
-            self.ai_model_input.setText(config.ollama_model or "llama3")
-        elif provider == "gemini":
-            self.ai_key_label.setText("Gemini API Key:")
-            self.ai_key_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.ai_key_input.setText(config.gemini_key or "")
-            self.ai_key_input.setPlaceholderText("Masukkan Gemini API Key")
-            self.ai_model_input.setText(config.gemini_model or "gemini-1.5-flash")
-        elif provider == "openai":
-            self.ai_key_label.setText("OpenAI API Key:")
-            self.ai_key_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.ai_key_input.setText(config.openai_key or "")
-            self.ai_key_input.setPlaceholderText("sk-...")
-            self.ai_model_input.setText(config.openai_model or "gpt-4o-mini")
 
-    def save_ai_config(self):
-        provider = self.ai_provider_combo.currentData()
-        val = self.ai_key_input.text().strip()
-        model_val = self.ai_model_input.text().strip()
-
-        config.ai_provider = provider
-        if provider == "ollama":
-            config.ollama_host = val
-            config.ollama_model = model_val
-        elif provider == "gemini":
-            config.gemini_key = val
-            config.gemini_model = model_val
-        elif provider == "openai":
-            config.openai_key = val
-            config.openai_model = model_val
-
-        config.save_to_file("config.json")
-        QMessageBox.information(self, "Berhasil", "Pengaturan AI berhasil disimpan!")
 
     def get_settings_payload(self) -> dict:
         return {

@@ -13,7 +13,7 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
 3. **DILARANG HARDCODE PATH ABSOLUT LOKAL**
    - Dilarang keras menuliskan path sistem lokal (seperti `/home/user/...` atau `C:\Users\...`) di dalam kode. Seluruh path harus bersifat relatif terhadap root aplikasi atau lokasi biner executable (`sys._MEIPASS` / `os.path.dirname(sys.executable)`).
 4. **DILARANG MEMATIKAN DUKUNGAN SUBTITLE / FFMPEG DENGAN FIX DUMMY**
-   - Dilarang menyembunyikan error atau mengembalikan nilai *dummy/empty fallback* saat pemrosesan subtitle atau cropping gagal. Setiap kegagalan harus memiliki penanganan error eksplisit (*graceful degradation*) dan pesan log yang rinci.
+   - Dilarang menyembunyikan error atau mengembalikan nilai _dummy/empty fallback_ saat pemrosesan subtitle atau cropping gagal. Setiap kegagalan harus memiliki penanganan error eksplisit (_graceful degradation_) dan pesan log yang rinci.
 5. **DILARANG MENGUBAH ALGORITMA CORE VIDEO CROP & TIMELINE TANPA VERIFIKASI**
    - Dilarang mengubah rumus perhitungan crop, vstack split-screen (`get_split_heights`), atau penyusunan file `.ass` subtitle di `core/` tanpa pengujian empiris bahwa output video tetap valid.
 
@@ -33,9 +33,9 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
 ## 🧵 3. ATURAN MANAJEMEN THREADING & RESPONSIFITAS UI
 
 1. **Non-Blocking UI Policy**:
-   - Aplikasi tidak boleh mengalami kondisi *not responding* atau *freeze* saat sedang mengunduh video, memotong video, atau mengekstrak subtitle.
+   - Aplikasi tidak boleh mengalami kondisi _not responding_ atau _freeze_ saat sedang mengunduh video, memotong video, atau mengekstrak subtitle.
 2. **Cancellation Handling**:
-   - Fitur pembatalan (*Abort/Cancel Job*) harus didukung. Worker thread harus secara berkala mengecek flag pembatalan (`is_cancelled`) untuk menghentikan proses subprocess FFmpeg/yt-dlp secara aman tanpa meninggalkan file sampah (*leftover temp files*).
+   - Fitur pembatalan (_Abort/Cancel Job_) harus didukung. Worker thread harus secara berkala mengecek flag pembatalan (`is_cancelled`) untuk menghentikan proses subprocess FFmpeg/yt-dlp secara aman tanpa meninggalkan file sampah (_leftover temp files_).
 3. **Pembersihan Temporary File**:
    - Semua file mentah temporer (`*_raw.mkv`, `*.ass`, `*_nosub.mp4`) wajib dibersihkan secara otomatis jika proses selesai atau terjadi kegagalan/pembatalan.
 
@@ -56,9 +56,9 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
 ## 📋 5. ATURAN LOGGING & DIAGNOSIS ERROR
 
 1. **Silent Log Inspection & Professional Reporting**:
-   - Gunakan logger terpusat di `core/logger.py`. Log output dari subprocess FFmpeg dan yt-dlp harus dialirkan secara *real-time* ke file log lokal (`logs/cliptzy.log`) dan ke widget log viewer di GUI.
+   - Gunakan logger terpusat di `core/logger.py`. Log output dari subprocess FFmpeg dan yt-dlp harus dialirkan secara _real-time_ ke file log lokal (`logs/cliptzy.log`) dan ke widget log viewer di GUI.
 2. **Investigasi Error Berbasis Log Empiris**:
-   - Jika terjadi *runtime error* atau *crash*, AI Model harus mengekstrak log lengkap sebelum mendiagnosis penyebab utama. Dilarang menebak-nebak tanpa melihat *stack trace*.
+   - Jika terjadi _runtime error_ atau _crash_, AI Model harus mengekstrak log lengkap sebelum mendiagnosis penyebab utama. Dilarang menebak-nebak tanpa melihat _stack trace_.
 
 ---
 
@@ -73,4 +73,4 @@ Setiap pekerjaan refactoring atau penambahan fitur dianggap **SELESAI** hanya ap
 
 ---
 
-*Peraturan dalam AGENTS.md ini mengikat untuk semua aktivitas pengembangan proyek Cliptzy.*
+_Peraturan dalam AGENTS.md ini mengikat untuk semua aktivitas pengembangan proyek Cliptzy._
