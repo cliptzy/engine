@@ -81,7 +81,7 @@ class AutoUploadWidget(QFrame):
         tt_box = QGroupBox("TikTok Content Posting API Settings")
         tt_grid = QGridLayout(tt_box)
 
-        tt_grid.addWidget(QLabel("Open API Access Token / Session:"), 0, 0)
+        tt_grid.addWidget(QLabel("File Cookies TikTok (.txt/.json):"), 0, 0)
         
         tt_session_layout = QHBoxLayout()
         self.tt_session_input = QLineEdit()
@@ -233,7 +233,8 @@ class AutoUploadWidget(QFrame):
 
     def on_import_tt_cookies(self):
         from PyQt6.QtWidgets import QFileDialog, QMessageBox
-        import json
+        import shutil
+        import os
         
         file_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -246,35 +247,11 @@ class AutoUploadWidget(QFrame):
             return
             
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                
-            session_id = ""
-            
-            # Try parsing as JSON first (EditThisCookie format)
-            try:
-                cookies = json.loads(content)
-                for cookie in cookies:
-                    if cookie.get('name') == 'sessionid' and 'tiktok' in cookie.get('domain', ''):
-                        session_id = cookie.get('value', '')
-                        break
-            except json.JSONDecodeError:
-                # Try parsing as Netscape format
-                for line in content.splitlines():
-                    if line.startswith('#') or not line.strip():
-                        continue
-                    parts = line.split('\t')
-                    if len(parts) >= 7:
-                        if 'tiktok.com' in parts[0] and parts[5] == 'sessionid':
-                            session_id = parts[6].strip()
-                            break
-                            
-            if session_id:
-                self.tt_session_input.setText(session_id)
-                self.on_save_settings()
-                QMessageBox.information(self, "Berhasil", "Session ID TikTok berhasil diekstrak dan disimpan dari cookies!")
-            else:
-                QMessageBox.warning(self, "Gagal", "Tidak menemukan cookie 'sessionid' untuk domain tiktok di file ini.")
+            target_path = "tiktok_cookies.txt"
+            shutil.copy(file_path, target_path)
+            self.tt_session_input.setText(target_path)
+            self.on_save_settings()
+            QMessageBox.information(self, "Berhasil", f"File cookies berhasil di-copy ke '{target_path}' dan disimpan ke konfigurasi!")
                 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Gagal membaca file cookies: {str(e)}")

@@ -157,7 +157,11 @@ class UploadWorker(QThread):
                 self.log_signal.emit(f"[UPLOAD] Memulai upload {clip_name} ke {uploader.platform_name}...")
                 
                 try:
-                    result = uploader.upload(clip, clip_meta)
+                    def upload_event_hook(kind, data):
+                        if kind == "log":
+                            self.log_signal.emit(str(data))
+                            
+                    result = uploader.upload(clip, clip_meta, event_hook=upload_event_hook)
                     if result.success:
                         self.log_signal.emit(f"[UPLOAD] ✅ Sukses upload ke {uploader.platform_name}: {result.url}")
                     else:

@@ -67,3 +67,4 @@ bin/
 config.json
 *.json
 test*
+*.txt

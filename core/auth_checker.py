@@ -34,26 +34,44 @@ def check_youtube_auth() -> tuple[bool, str]:
         return False, f"Error validasi token: {str(e)}"
 
 def check_tiktok_auth() -> tuple[bool, str]:
-    if not config.tt_session:
-        return False, "Session ID belum diisi."
+    if not config.tt_session or not os.path.exists(config.tt_session):
+        return False, "File cookie TikTok belum diisi atau tidak ditemukan."
         
     try:
+        session_id = ""
+        with open(config.tt_session, 'r', encoding='utf-8') as f:
+            content = f.read()
+            
+        try:
+            cookies_json = json.loads(content)
+            for cookie in cookies_json:
+                if cookie.get('name') == 'sessionid' and 'tiktok' in cookie.get('domain', ''):
+                    session_id = cookie.get('value', '')
+                    break
+        except Exception:
+            for line in content.splitlines():
+                if line.startswith('#') or not line.strip(): continue
+                parts = line.split('\t')
+                if len(parts) >= 7 and 'tiktok.com' in parts[0] and parts[5] == 'sessionid':
+                    session_id = parts[6].strip()
+                    break
+
+        if not session_id:
+            return False, "Tidak ditemukan cookie sessionid di dalam file tersebut."
+
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
         cookies = {
-            "sessionid": config.tt_session
+            "sessionid": session_id
         }
         
-        if len(config.tt_session) < 20:
-            return False, "Session ID sepertinya tidak valid (terlalu pendek)."
-            
         resp = requests.get("https://www.tiktok.com/passport/web/account/info/", cookies=cookies, headers=headers, timeout=15)
         
         if resp.status_code == 200:
             data = resp.json()
             if data.get("data", {}).get("user_id") or data.get("message") == "success":
-                return True, "Session ID TikTok valid dan aktif."
+                return True, "Session ID TikTok di dalam file valid dan aktif."
             else:
                 return False, "Session ID tidak valid atau sudah expired."
         

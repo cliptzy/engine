@@ -16,10 +16,11 @@ class BaseUploader(ABC):
         self.platform_name = platform_name
 
     @abstractmethod
-    def upload(self, file_path: str, metadata: Dict[str, Any]) -> UploadResult:
+    def upload(self, file_path: str, metadata: Dict[str, Any], event_hook=None) -> UploadResult:
         """
         Uploads the given file to the platform.
         metadata contains keys like: 'title', 'description', 'privacy', 'tags'.
+        event_hook(kind: str, data: Any) is used to report progress or detailed logs.
         """
         pass
 
@@ -30,8 +31,10 @@ class DummyUploader(BaseUploader):
     def __init__(self, platform_name: str):
         super().__init__(platform_name)
         
-    def upload(self, file_path: str, metadata: Dict[str, Any]) -> UploadResult:
+    def upload(self, file_path: str, metadata: Dict[str, Any], event_hook=None) -> UploadResult:
         # Simulate upload time
+        if event_hook:
+            event_hook("log", f"[{self.platform_name}] Memulai simulasi upload...")
         time.sleep(2.0)
         return UploadResult(
             success=True,
@@ -43,7 +46,7 @@ class YouTubeUploader(BaseUploader):
     def __init__(self):
         super().__init__("YouTube Shorts")
         
-    def upload(self, file_path: str, metadata: Dict[str, Any]) -> UploadResult:
+    def upload(self, file_path: str, metadata: Dict[str, Any], event_hook=None) -> UploadResult:
         from core.config import config
         from google_auth_oauthlib.flow import InstalledAppFlow
         from googleapiclient.discovery import build
@@ -139,6 +142,9 @@ class YouTubeUploader(BaseUploader):
         response = None
         while response is None:
             status, response = request.next_chunk()
+            if status and event_hook:
+                prog = int(status.progress() * 100)
+                event_hook("log", f"[YouTube] Progress Uploading Chunk: {prog}%")
             
         video_id = response.get("id")
         if video_id:
@@ -151,106 +157,44 @@ class TikTokUploader(BaseUploader):
     def __init__(self):
         super().__init__("TikTok")
         
-    def upload(self, file_path: str, metadata: Dict[str, Any]) -> UploadResult:
+    def upload(self, file_path: str, metadata: Dict[str, Any], event_hook=None) -> UploadResult:
         from core.config import config
         from core.logger import log as logger
         try:
-            from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+            from tiktok_uploader.upload import TikTokUploader as TTUploader
         except ImportError:
-            return UploadResult(False, self.platform_name, error_msg="Modul playwright belum diinstal. Jalankan: pip install playwright && playwright install")
+            return UploadResult(False, self.platform_name, error_msg="Modul tiktok-uploader belum diinstal. Jalankan: pip install tiktok-uploader")
             
-        session_id = config.tt_session
-        if not session_id:
-            return UploadResult(False, self.platform_name, error_msg="Session ID TikTok belum dikonfigurasi.")
+        cookie_path = config.tt_session
+        if not cookie_path or not os.path.exists(cookie_path):
+            return UploadResult(False, self.platform_name, error_msg="File cookie TikTok tidak ditemukan atau path belum diatur.")
             
         try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                context = browser.new_context()
+            title = metadata.get("title", "")
+            caption = f"{title} {config.tt_caption}".strip()
                 
-                # Set cookie sessionid
-                context.add_cookies([{
-                    'name': 'sessionid',
-                    'value': session_id,
-                    'domain': '.tiktok.com',
-                    'path': '/'
-                }])
-                
-                page = context.new_page()
-                page.set_default_timeout(60000)
-                
-                logger.info("Membuka halaman upload TikTok...")
-                page.goto("https://www.tiktok.com/creator-center/upload?from=upload")
-                
-                # Wait for file input and upload file
-                logger.info("Menunggu elemen input file...")
-                # Usually tiktok uses an iframe for the uploader, so we locate the file input
-                # Try finding in page
-                file_input = page.locator("input[type='file']").first
-                file_input.wait_for(state="attached", timeout=30000)
-                
-                logger.info("Mengunggah file video...")
-                file_input.set_input_files(file_path)
-                
-                # Wait for upload to complete
-                # Usually there's an uploading indicator or the caption box becomes interactable
-                logger.info("Menunggu video selesai diunggah...")
-                # The editor for caption
-                editor_selector = ".public-DraftEditor-content, .editor, div[contenteditable='true']"
-                page.wait_for_selector(editor_selector, timeout=120000)
-                
-                # Fill caption
-                title = metadata.get("title", "")
-                caption = f"{title} {config.tt_caption}".strip()
-                logger.info(f"Mengetik caption: {caption}")
-                
-                editor = page.locator(editor_selector).first
-                editor.click()
-                
-                # Clear existing and type new
-                page.keyboard.press("Control+A")
-                page.keyboard.press("Backspace")
-                page.keyboard.type(caption, delay=100)
-                
-                # Set privacy
-                privacy = config.tt_privacy.lower()
-                logger.info(f"Mengatur privasi ke: {config.tt_privacy}")
-                
-                # Find privacy dropdown, usually contains text 'Public' by default
-                try:
-                    privacy_dropdown = page.locator("div:has-text('Public')").locator("xpath=..").locator("div[role='combobox'], div[role='button']").first
-                    if privacy_dropdown.count() > 0:
-                        privacy_dropdown.click(timeout=5000)
-                        
-                        if "private" in privacy:
-                            page.locator("div[role='option']:has-text('Private')").first.click(timeout=5000)
-                        elif "friend" in privacy:
-                            page.locator("div[role='option']:has-text('Friends')").first.click(timeout=5000)
-                        else:
-                            page.locator("div[role='option']:has-text('Public')").first.click(timeout=5000)
-                except Exception as e:
-                    logger.warning(f"Gagal mengatur privasi, menggunakan default: {str(e)}")
-                
-                # Wait a bit
-                page.wait_for_timeout(2000)
-                
-                # Click post
-                logger.info("Mengeklik tombol Post...")
-                post_button = page.locator("button:has-text('Post'), div:has-text('Post')[role='button']").last
-                post_button.click()
-                
-                # Wait for success dialog or redirection
-                logger.info("Menunggu konfirmasi upload...")
-                try:
-                    # Look for confirmation modal or 'Manage your posts' text
-                    page.wait_for_selector("div:has-text('Manage your posts')", timeout=30000)
-                except PlaywrightTimeoutError:
-                    pass
-                    
-                browser.close()
-                
-                return UploadResult(True, self.platform_name, url="https://www.tiktok.com/profile")
-                
+            if event_hook: event_hook("log", f"[TikTok] Memulai upload menggunakan tiktok-uploader dari file {cookie_path}...")
+            logger.info(f"Mengunggah ke TikTok: {file_path}, caption: {caption}")
+            
+            # Use tiktok-uploader package
+            uploader = TTUploader(cookies=cookie_path, headless=True)
+            videos = [
+                {
+                    'video': file_path,
+                    'description': caption
+                }
+            ]
+            failed_videos = uploader.upload_videos(videos=videos)
+            
+            if failed_videos:
+                err_msg = f"Gagal upload: {failed_videos}"
+                if event_hook: event_hook("log", f"[TikTok] ❌ {err_msg}")
+                logger.error(err_msg)
+                return UploadResult(False, self.platform_name, error_msg=err_msg)
+            
+            if event_hook: event_hook("log", "[TikTok] ✅ Upload berhasil!")
+            return UploadResult(True, self.platform_name, url="https://www.tiktok.com/profile")
+            
         except Exception as e:
             logger.error(f"TikTok Upload error: {str(e)}", exc_info=True)
             return UploadResult(False, self.platform_name, error_msg=f"Gagal upload ke TikTok: {str(e)}")
