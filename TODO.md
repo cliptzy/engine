@@ -37,11 +37,11 @@ Dokumen ini berisi rencana pengembangan dan daftar tugas (TODO) untuk mengimplem
 
 ## 🎵 3. Spesifik: TikTok
 
-- [ ] **Instalasi Dependensi**
+- [x] **Instalasi Dependensi**
   - Mengingat TikTok tidak memiliki API publik untuk akun personal, siapkan *library* otomasi. Sangat direkomendasikan menggunakan `playwright` (atau *wrapper* khusus seperti `tiktok-uploader`).
-- [ ] **Sistem Autentikasi (Cookies/Session)**
+- [x] **Sistem Autentikasi (Cookies/Session)**
   - Bangun logika untuk membaca token/sesi dari `config.tt_session` atau menggunakan sistem *cookie injection*.
-- [ ] **Logika Upload Otomatis (Headless Browser)**
+- [x] **Logika Upload Otomatis (Headless Browser)**
   - Inisialisasi *headless browser* untuk melakukan unggah video seolah-olah dilakukan oleh manusia.
   - Otomatisasi pengetikan *caption* (gabungan dari Judul AI + `config.tt_caption`).
   - Implementasi logika pemilihan Dropdown privasi (*Public*, *Friends*, *Private*).

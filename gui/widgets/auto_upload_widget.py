@@ -63,6 +63,10 @@ class AutoUploadWidget(QFrame):
 
         yt_layout.addWidget(yt_box)
         
+        self.btn_check_yt = QPushButton("🔍 Cek Status Auth YouTube")
+        self.btn_check_yt.clicked.connect(self.on_check_yt_auth)
+        yt_layout.addWidget(self.btn_check_yt)
+        
         self.yt_auto_check = QCheckBox("Otomatis Upload ke YouTube Shorts begitu klip selesai diproses")
         yt_layout.addWidget(self.yt_auto_check)
         yt_layout.addStretch()
@@ -78,8 +82,16 @@ class AutoUploadWidget(QFrame):
         tt_grid = QGridLayout(tt_box)
 
         tt_grid.addWidget(QLabel("Open API Access Token / Session:"), 0, 0)
+        
+        tt_session_layout = QHBoxLayout()
         self.tt_session_input = QLineEdit()
-        tt_grid.addWidget(self.tt_session_input, 0, 1)
+        tt_session_layout.addWidget(self.tt_session_input)
+        
+        self.btn_import_tt_cookies = QPushButton("Import Cookies")
+        self.btn_import_tt_cookies.clicked.connect(self.on_import_tt_cookies)
+        tt_session_layout.addWidget(self.btn_import_tt_cookies)
+        
+        tt_grid.addLayout(tt_session_layout, 0, 1)
 
         tt_grid.addWidget(QLabel("Privasi Posting:"), 1, 0)
         self.tt_privacy_combo = QComboBox()
@@ -92,6 +104,10 @@ class AutoUploadWidget(QFrame):
         tt_grid.addWidget(self.tt_caption_input, 2, 1)
 
         tt_layout.addWidget(tt_box)
+
+        self.btn_check_tt = QPushButton("🔍 Cek Status Auth TikTok")
+        self.btn_check_tt.clicked.connect(self.on_check_tt_auth)
+        tt_layout.addWidget(self.btn_check_tt)
 
         self.tt_auto_check = QCheckBox("Otomatis Upload ke TikTok begitu klip selesai diproses")
         tt_layout.addWidget(self.tt_auto_check)
@@ -121,6 +137,10 @@ class AutoUploadWidget(QFrame):
         ig_grid.addWidget(self.ig_caption_input, 2, 1)
 
         ig_layout.addWidget(ig_box)
+
+        self.btn_check_ig = QPushButton("🔍 Cek Status Auth Instagram")
+        self.btn_check_ig.clicked.connect(self.on_check_ig_auth)
+        ig_layout.addWidget(self.btn_check_ig)
 
         self.ig_auto_check = QCheckBox("Otomatis Upload ke Instagram Reels begitu klip selesai diproses")
         ig_layout.addWidget(self.ig_auto_check)
@@ -179,3 +199,82 @@ class AutoUploadWidget(QFrame):
         else:
             signals.log_message.emit("[ERROR] Gagal menyimpan pengaturan Auto Upload.")
 
+    def on_check_yt_auth(self):
+        from core.auth_checker import check_youtube_auth
+        from PyQt6.QtWidgets import QMessageBox
+        valid, msg = check_youtube_auth()
+        if valid:
+            QMessageBox.information(self, "Status YouTube", f"✅ {msg}")
+        else:
+            QMessageBox.warning(self, "Status YouTube", f"❌ {msg}")
+
+    def on_check_tt_auth(self):
+        from core.config import config
+        from core.auth_checker import check_tiktok_auth
+        from PyQt6.QtWidgets import QMessageBox
+        config.tt_session = self.tt_session_input.text()
+        valid, msg = check_tiktok_auth()
+        if valid:
+            QMessageBox.information(self, "Status TikTok", f"✅ {msg}")
+        else:
+            QMessageBox.warning(self, "Status TikTok", f"❌ {msg}")
+
+    def on_check_ig_auth(self):
+        from core.config import config
+        from core.auth_checker import check_instagram_auth
+        from PyQt6.QtWidgets import QMessageBox
+        config.ig_business_id = self.ig_business_id_input.text()
+        config.ig_access_token = self.ig_access_token_input.text()
+        valid, msg = check_instagram_auth()
+        if valid:
+            QMessageBox.information(self, "Status Instagram", f"✅ {msg}")
+        else:
+            QMessageBox.warning(self, "Status Instagram", f"❌ {msg}")
+
+    def on_import_tt_cookies(self):
+        from PyQt6.QtWidgets import QFileDialog, QMessageBox
+        import json
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Pilih File Cookies TikTok (JSON/TXT)",
+            "",
+            "Cookies Files (*.json *.txt);;All Files (*)"
+        )
+        
+        if not file_path:
+            return
+            
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                
+            session_id = ""
+            
+            # Try parsing as JSON first (EditThisCookie format)
+            try:
+                cookies = json.loads(content)
+                for cookie in cookies:
+                    if cookie.get('name') == 'sessionid' and 'tiktok' in cookie.get('domain', ''):
+                        session_id = cookie.get('value', '')
+                        break
+            except json.JSONDecodeError:
+                # Try parsing as Netscape format
+                for line in content.splitlines():
+                    if line.startswith('#') or not line.strip():
+                        continue
+                    parts = line.split('\t')
+                    if len(parts) >= 7:
+                        if 'tiktok.com' in parts[0] and parts[5] == 'sessionid':
+                            session_id = parts[6].strip()
+                            break
+                            
+            if session_id:
+                self.tt_session_input.setText(session_id)
+                self.on_save_settings()
+                QMessageBox.information(self, "Berhasil", "Session ID TikTok berhasil diekstrak dan disimpan dari cookies!")
+            else:
+                QMessageBox.warning(self, "Gagal", "Tidak menemukan cookie 'sessionid' untuk domain tiktok di file ini.")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Gagal membaca file cookies: {str(e)}")

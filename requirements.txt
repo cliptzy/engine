@@ -76,3 +76,4 @@ wcwidth==0.8.2
 websockets==16.1.1
 Werkzeug==3.1.8
 yt-dlp==2026.7.4
+playwright>=1.40.0

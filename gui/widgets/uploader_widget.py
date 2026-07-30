@@ -115,7 +115,7 @@ class UploadWorker(QThread):
         self.is_cancelled = False
         
     def run(self):
-        from core.uploader import DummyUploader, YouTubeUploader
+        from core.uploader import DummyUploader, YouTubeUploader, TikTokUploader
         from datetime import datetime, timedelta, timezone
         
         total_tasks = len(self.clips) * len(self.platforms)
@@ -126,6 +126,8 @@ class UploadWorker(QThread):
         for p in self.platforms:
             if p == "YouTube Shorts":
                 uploaders.append(YouTubeUploader())
+            elif p == "TikTok":
+                uploaders.append(TikTokUploader())
             else:
                 uploaders.append(DummyUploader(p))
                 
