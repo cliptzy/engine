@@ -27,7 +27,7 @@ class AppConfig:
     subtitle_animation: str = "none"
     subtitle_max_words: int = 3
     
-    cookies_file: Optional[str] = None
+    cookies_file: Optional[str] = "cred/cookies.txt"
     intro_video: Optional[str] = None
     outro_video: Optional[str] = None
     
@@ -47,12 +47,13 @@ class AppConfig:
     hw_accel: str = "cpu"
     
     yt_client_id: str = ""
+
     yt_client_secret: str = ""
     yt_visibility: str = "Public"
     yt_tags: str = "#Shorts #Viral #Cliptzy"
     yt_auto_upload: bool = False
 
-    tt_session: str = ""
+    tt_session: str = "cred/tiktok_cookies.txt"
     tt_privacy: str = "Public (Semua Orang)"
     tt_caption: str = "Cuplikan seru hari ini! #fyp #viral"
     tt_auto_upload: bool = False

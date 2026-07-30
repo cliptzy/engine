@@ -318,7 +318,7 @@ class ClipController:
         if "# Netscape HTTP Cookie File" not in content and ".youtube.com" not in content:
             raise ValueError("Format file cookie tidak valid. Harus format Netscape HTTP Cookie File.")
 
-        dest = "cookies.txt"
+        dest = "cred/cookies.txt"
         shutil.copy2(file_path, dest)
         config.cookies_file = dest
         config.save_to_file()

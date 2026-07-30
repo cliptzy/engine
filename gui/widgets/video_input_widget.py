@@ -2,8 +2,9 @@
 Widget for entering YouTube URL and triggering metadata/scan preview.
 """
 
-from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLineEdit, QPushButton, QApplication
+from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLineEdit, QPushButton, QApplication, QFileDialog, QMessageBox
 from PyQt6.QtCore import pyqtSignal
+from core import controller
 
 class VideoInputWidget(QFrame):
     fetch_requested = pyqtSignal(str)
@@ -22,26 +23,25 @@ class VideoInputWidget(QFrame):
         self.url_input.setPlaceholderText("Tempel URL YouTube di sini (watch / shorts / youtu.be)...")
         self.url_input.returnPressed.connect(self.on_fetch_clicked)
 
-        self.paste_btn = QPushButton("📋 Paste")
-        self.paste_btn.clicked.connect(self.on_paste_clicked)
-
-        self.clear_btn = QPushButton("✕ Clear")
-        self.clear_btn.clicked.connect(self.url_input.clear)
+        self.import_cookies_btn = QPushButton("🔑 Import Cookies")
+        self.import_cookies_btn.clicked.connect(self.on_upload_cookies)
 
         self.fetch_btn = QPushButton("🔍 Load Video")
         self.fetch_btn.setProperty("class", "primary")
         self.fetch_btn.clicked.connect(self.on_fetch_clicked)
 
         layout.addWidget(self.url_input)
-        layout.addWidget(self.paste_btn)
-        layout.addWidget(self.clear_btn)
+        layout.addWidget(self.import_cookies_btn)
         layout.addWidget(self.fetch_btn)
 
-    def on_paste_clicked(self):
-        clipboard = QApplication.clipboard()
-        text = clipboard.text().strip()
-        if text:
-            self.url_input.setText(text)
+    def on_upload_cookies(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Pilih File Cookies Netscape", "", "Text Files (*.txt);;All Files (*)")
+        if file_path:
+            try:
+                controller.import_cookies(file_path)
+                QMessageBox.information(self, "Berhasil", "File cookies.txt berhasil diimpor!")
+            except Exception as e:
+                QMessageBox.critical(self, "Error Cookies", f"Gagal mengimpor cookies: {e}")
 
     def on_fetch_clicked(self):
         url = self.url_input.text().strip()
@@ -50,8 +50,6 @@ class VideoInputWidget(QFrame):
 
     def set_loading(self, loading: bool):
         self.fetch_btn.setEnabled(not loading)
-        self.paste_btn.setEnabled(not loading)
-        self.clear_btn.setEnabled(not loading)
         if loading:
             self.fetch_btn.setText("Loading...")
         else:

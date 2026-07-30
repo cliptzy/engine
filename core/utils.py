@@ -9,7 +9,11 @@ def inject_local_bin_to_path():
     Unconditionally prepends the local app bin/ directory to the system PATH.
     This ensures that downloaded dependencies (FFmpeg, Deno) take highest priority.
     """
-    app_root = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if getattr(sys, 'frozen', False):
+        app_root = os.path.dirname(sys.executable)
+    else:
+        app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
     bin_dir = os.path.join(app_root, "bin")
     if os.path.isdir(bin_dir) and bin_dir not in os.environ.get("PATH", ""):
         os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"
@@ -71,7 +75,9 @@ def check_dependencies(install_whisper: bool = False, skip_update_ytdlp: bool = 
     Ensures required dependencies are available.
     Automatically updates yt-dlp and checks FFmpeg availability.
     """
-    if not skip_update_ytdlp:
+    is_frozen = getattr(sys, 'frozen', False)
+    
+    if not skip_update_ytdlp and not is_frozen:
         log.info("Updating yt-dlp...")
         subprocess.run(
             [sys.executable, "-m", "pip", "install", "-U", "yt-dlp"],

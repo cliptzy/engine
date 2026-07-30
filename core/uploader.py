@@ -72,7 +72,7 @@ class YouTubeUploader(BaseUploader):
         
         scopes = ["https://www.googleapis.com/auth/youtube.upload"]
         creds = None
-        token_file = "youtube_token.json"
+        token_file = "cred/youtube_token.json"
         
         if os.path.exists(token_file):
             try:
@@ -178,16 +178,29 @@ class TikTokUploader(BaseUploader):
             
             # Use tiktok-uploader package
             uploader = TTUploader(cookies=cookie_path, headless=True)
-            videos = [
-                {
-                    'video': file_path,
-                    'description': caption
-                }
-            ]
-            failed_videos = uploader.upload_videos(videos=videos)
             
-            if failed_videos:
-                err_msg = f"Gagal upload: {failed_videos}"
+            import datetime
+            schedule = None
+            if "publish_at" in metadata:
+                try:
+                    # metadata["publish_at"] format: "YYYY-MM-DDTHH:MM:SS.000Z"
+                    time_str = metadata["publish_at"].replace(".000Z", "").replace("Z", "")
+                    schedule = datetime.datetime.fromisoformat(time_str)
+                    if event_hook: event_hook("log", f"[TikTok] Menjadwalkan upload untuk {schedule}")
+                except Exception as e:
+                    logger.warning(f"Gagal memparsing jadwal: {e}")
+            
+            if schedule:
+                # `tiktok_uploader` upload_video function with schedule
+                failed = uploader.upload_video(file_path, description=caption, schedule=schedule)
+            else:
+                failed = uploader.upload_video(file_path, description=caption)
+            
+            # Note: upload_video returns True on failure in tiktok-uploader, or throws exception.
+            # We assume truthy value indicates failure as per typical fail boolean return,
+            # or it might raise Exception which is caught below.
+            if failed:
+                err_msg = f"Gagal upload video ke TikTok."
                 if event_hook: event_hook("log", f"[TikTok] ❌ {err_msg}")
                 logger.error(err_msg)
                 return UploadResult(False, self.platform_name, error_msg=err_msg)

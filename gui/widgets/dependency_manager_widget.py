@@ -26,7 +26,11 @@ class DependencyWorker(QThread):
 
         try:
             self.log_signal.emit("[INFO] Memulai proses instalasi dependensi secara otomatis...")
-            app_root = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+            if getattr(sys, 'frozen', False):
+                app_root = os.path.dirname(sys.executable)
+            else:
+                app_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                
             bin_dir = os.path.join(app_root, "bin")
             os.makedirs(bin_dir, exist_ok=True)
             self.log_signal.emit(f"[INFO] Direktori bin: {bin_dir}")

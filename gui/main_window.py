@@ -67,6 +67,8 @@ class MainWindow(QMainWindow):
         self.sidebar_widget = SidebarWidget(central_widget)
         self.sidebar_widget.page_changed.connect(self.on_page_changed)
         self.sidebar_widget.clear_cache_requested.connect(self.on_clear_cache)
+        self.sidebar_widget.restore_config_requested.connect(self.on_restore_config)
+        self.sidebar_widget.logout_requested.connect(self.on_logout)
         body_layout.addWidget(self.sidebar_widget)
 
         # 3. Stacked View for Navigation Pages
@@ -242,6 +244,59 @@ class MainWindow(QMainWindow):
                 )
             except Exception as e:
                 QMessageBox.critical(self, "Error Hapus Cache", f"Gagal membersihkan cache: {e}")
+
+    def on_restore_config(self):
+        from core.supabase_sync import supabase_sync
+        from core.config import config
+        
+        reply = QMessageBox.question(
+            self,
+            "Konfirmasi Restore",
+            "Apakah Anda yakin ingin me-restore konfigurasi dari Cloud (Supabase)?\nIni akan menimpa pengaturan lokal Anda saat ini.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                cloud_config = supabase_sync.sync_config_down()
+                if cloud_config:
+                    config.update_from_dict(cloud_config)
+                    config.save_to_file()
+                    
+                    # Update settings UI
+                    self.page_ai_settings_widget.load_from_config()
+                    self.clip_config_widget.load_from_config()
+                    self.auto_upload_widget.load_from_config()
+                    
+                    self.log_widget.append_log("[INFO] Konfigurasi berhasil dipulihkan dari Cloud!")
+                    QMessageBox.information(self, "Restore Berhasil", "Konfigurasi berhasil dipulihkan dari Cloud!")
+                else:
+                    QMessageBox.warning(self, "Restore Gagal", "Tidak ada konfigurasi tersimpan di Cloud atau gagal menghubungi server.")
+            except Exception as e:
+                QMessageBox.critical(self, "Error Restore", f"Terjadi kesalahan saat restore: {e}")
+
+    def on_logout(self):
+        reply = QMessageBox.question(
+            self,
+            "Konfirmasi Logout",
+            "Apakah Anda yakin ingin keluar dari akun?\nAplikasi akan ditutup setelah logout.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            from core.supabase_sync import supabase_sync
+            import os
+            
+            supabase_sync.logout()
+            session_file = "cred/supabase_session.json"
+            if os.path.exists(session_file):
+                try:
+                    os.remove(session_file)
+                except Exception:
+                    pass
+                    
+            QMessageBox.information(self, "Logout Berhasil", "Anda telah keluar dari akun. Sampai jumpa!")
+            self.close()
 
     def on_fetch_requested(self, url: str):
         self.input_widget.set_loading(True)

@@ -156,16 +156,12 @@ class ClipConfigWidget(QFrame):
         assets_layout = QHBoxLayout()
         assets_layout.setSpacing(10)
 
-        self.btn_cookies = QPushButton("🔑 Upload Cookies.txt")
-        self.btn_cookies.clicked.connect(self.on_upload_cookies)
-
         self.btn_intro = QPushButton("🎬 Set Video Intro")
         self.btn_intro.clicked.connect(self.on_set_intro)
 
         self.btn_outro = QPushButton("🎬 Set Video Outro")
         self.btn_outro.clicked.connect(self.on_set_outro)
 
-        assets_layout.addWidget(self.btn_cookies)
         assets_layout.addWidget(self.btn_intro)
         assets_layout.addWidget(self.btn_outro)
         layout.addLayout(assets_layout)
@@ -348,15 +344,6 @@ class ClipConfigWidget(QFrame):
             "padding": self.padding_spin.value(),
             "hw_accel": self.hw_combo.currentData(),
         }
-
-    def on_upload_cookies(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Pilih File Cookies Netscape", "", "Text Files (*.txt);;All Files (*)")
-        if file_path:
-            try:
-                controller.import_cookies(file_path)
-                QMessageBox.information(self, "Berhasil", "File cookies.txt berhasil diimpor!")
-            except Exception as e:
-                QMessageBox.critical(self, "Error Cookies", f"Gagal mengimpor cookies: {e}")
 
     def on_set_intro(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Pilih Video Intro", "", "Video Files (*.mp4 *.mkv *.mov);;All Files (*)")

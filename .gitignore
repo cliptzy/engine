@@ -68,3 +68,4 @@ config.json
 *.json
 test*
 *.txt
+.env
