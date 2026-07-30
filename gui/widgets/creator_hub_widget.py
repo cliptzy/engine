@@ -11,6 +11,7 @@ from PyQt6.QtGui import QPixmap, QImage
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from core.channel_manager import channel_manager
 from core.logger import log
+import ssl
 
 class ImageDownloader(QThread):
     finished_signal = pyqtSignal(str, bytes)
@@ -22,7 +23,10 @@ class ImageDownloader(QThread):
     def run(self):
         try:
             req = urllib.request.Request(self.url, headers={'User-Agent': 'Mozilla/5.0'})
-            data = urllib.request.urlopen(req, timeout=5).read()
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            data = urllib.request.urlopen(req, timeout=5, context=ctx).read()
             self.finished_signal.emit(self.url, data)
         except Exception:
             self.finished_signal.emit(self.url, b"")

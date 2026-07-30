@@ -173,6 +173,15 @@ class ClipController:
         except (ValueError, TypeError):
             subtitle_delay = 0.0
             
+        subtitle_font_size = payload.get("subtitle_font_size") or 60
+        subtitle_color = payload.get("subtitle_color") or "&H0000FFFF"
+        subtitle_bg_color = payload.get("subtitle_bg_color") or "&H80000000"
+        subtitle_border_style = payload.get("subtitle_border_style")
+        if subtitle_border_style is None:
+            subtitle_border_style = 3
+        subtitle_animation = payload.get("subtitle_animation") or "none"
+        subtitle_max_words = payload.get("subtitle_max_words") or 3
+            
         if not subtitle_fontsdir and os.path.isdir("fonts"):
             subtitle_fontsdir = "fonts"
             
@@ -190,12 +199,20 @@ class ClipController:
         config.subtitle_fonts_dir = subtitle_fontsdir
         config.subtitle_location = subtitle_location
         config.subtitle_delay = subtitle_delay / 1000.0 if subtitle_delay > 10 else subtitle_delay # Convert ms to s if > 10
+        
+        config.subtitle_font_size = int(subtitle_font_size)
+        config.subtitle_color = str(subtitle_color)
+        config.subtitle_bg_color = str(subtitle_bg_color)
+        config.subtitle_border_style = int(subtitle_border_style)
+        config.subtitle_animation = str(subtitle_animation)
+        config.subtitle_max_words = int(subtitle_max_words)
+        
         config.padding = max(0, int(padding))
         config.set_ratio_preset(ratio)
 
         job_dir = os.path.join("clips", video_id)
         os.makedirs(job_dir, exist_ok=True)
-        config.output_dir = job_dir
+        config.job_dir = job_dir
         
         try:
             url = payload.get("url")
@@ -403,6 +420,15 @@ class ClipController:
         except (ValueError, TypeError):
             subtitle_delay = 0.0
 
+        subtitle_font_size = payload.get("subtitle_font_size") or 60
+        subtitle_color = payload.get("subtitle_color") or "&H0000FFFF"
+        subtitle_bg_color = payload.get("subtitle_bg_color") or "&H80000000"
+        subtitle_border_style = payload.get("subtitle_border_style")
+        if subtitle_border_style is None:
+            subtitle_border_style = 3
+        subtitle_animation = payload.get("subtitle_animation") or "none"
+        subtitle_max_words = payload.get("subtitle_max_words") or 3
+
         if not subtitle_fontsdir and os.path.isdir("fonts"):
             subtitle_fontsdir = "fonts"
 
@@ -411,11 +437,19 @@ class ClipController:
         config.subtitle_fonts_dir = subtitle_fontsdir
         config.subtitle_location = subtitle_location
         config.subtitle_delay = subtitle_delay / 1000.0 if subtitle_delay > 10 or subtitle_delay < -10 else subtitle_delay
+        
+        config.subtitle_font_size = int(subtitle_font_size)
+        config.subtitle_color = str(subtitle_color)
+        config.subtitle_bg_color = str(subtitle_bg_color)
+        config.subtitle_border_style = int(subtitle_border_style)
+        config.subtitle_animation = str(subtitle_animation)
+        config.subtitle_max_words = int(subtitle_max_words)
+        
         config.set_ratio_preset(ratio)
 
         preview_dir = os.path.join("clips", video_id)
         os.makedirs(preview_dir, exist_ok=True)
-        config.output_dir = preview_dir
+        config.job_dir = preview_dir
 
         # Determine 10-second test segment start
         start = 30.0

@@ -40,11 +40,11 @@ def process_single_clip(
     end_str = str(int(end))
     base_name = f"clip_{index}_{start_str}_{end_str}_{crop_mode}"
 
-    temp_file = os.path.join(config.output_dir, f"{base_name}_raw.mkv")
-    cropped_file = os.path.join(config.output_dir, f"{base_name}_nosub.mp4")
-    subtitle_file = os.path.join(config.output_dir, f"{base_name}.ass")
-    subbed_file = os.path.join(config.output_dir, f"{base_name}_subbed.mp4")
-    output_file = os.path.join(config.output_dir, f"clip_{index}.mp4")
+    temp_file = os.path.join(config.job_dir, f"{base_name}_raw.mkv")
+    cropped_file = os.path.join(config.job_dir, f"{base_name}_nosub.mp4")
+    subtitle_file = os.path.join(config.job_dir, f"{base_name}.ass")
+    subbed_file = os.path.join(config.job_dir, f"{base_name}_subbed.mp4")
+    output_file = os.path.join(config.job_dir, f"clip_{index}.mp4")
 
     log.info(f"[Clip {index}] Processing segment ({int(start)}s - {int(end)}s, padding {config.padding}s)")
     
@@ -61,8 +61,8 @@ def process_single_clip(
         "--remote-components",
         "ejs:github",
         "--no-warnings",
-        "--downloader", "ffmpeg",
-        "--downloader-args", f"ffmpeg_i:-ss {start} -to {end} -hide_banner",
+        "--download-sections", f"*{start}-{end}",
+        "--force-keyframes-at-cuts",
         "--merge-output-format", "mkv",
         "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b",
     ]
@@ -74,8 +74,8 @@ def process_single_clip(
         "--remote-components",
         "ejs:github",
         "--no-warnings",
-        "--downloader", "ffmpeg",
-        "--downloader-args", f"ffmpeg_i:-ss {start} -to {end} -hide_banner",
+        "--download-sections", f"*{start}-{end}",
+        "--force-keyframes-at-cuts",
         "--merge-output-format", "mkv",
         "-f", "bv*+ba/b",
     ]
@@ -145,7 +145,7 @@ def process_single_clip(
                 "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
                 "-i", cropped_file,
                 "-vf", f"subtitles=filename='{subtitle_file}'{fontsdir_arg}",
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+            ] + _get_video_codec_args() + [
                 "-c:a", "copy",
                 subbed_file
             ]
@@ -207,7 +207,7 @@ def process_single_clip(
             ] + inputs + [
                 "-filter_complex", filter_complex,
                 "-map", "[outv]", "-map", "[outa]",
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+            ] + _get_video_codec_args() + [
                 "-c:a", "aac", "-b:a", "128k",
                 output_file
             ]
@@ -250,7 +250,7 @@ def _build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w
             return [
                 "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
                 "-i", temp_file,
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+            ] + _get_video_codec_args() + [
                 "-c:a", "aac", "-b:a", "128k",
                 cropped_file
             ]
@@ -260,7 +260,7 @@ def _build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w
                 "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
                 "-i", temp_file,
                 "-vf", vf,
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+            ] + _get_video_codec_args() + [
                 "-c:a", "aac", "-b:a", "128k",
                 cropped_file
             ]
@@ -274,8 +274,8 @@ def _build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w
             ]
             if vf:
                 cmd.extend(["-vf", vf])
+            cmd.extend(_get_video_codec_args())
             cmd.extend([
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
                 "-c:a", "aac", "-b:a", "128k",
                 cropped_file
             ])
@@ -298,13 +298,56 @@ def _build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w
                 "-i", temp_file,
                 "-filter_complex", vf,
                 "-map", "[out]", "-map", "0:a?",
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+            ] + _get_video_codec_args() + [
                 "-c:a", "aac", "-b:a", "128k",
                 cropped_file
             ]
             
+    elif crop_mode == "full":
+        if config.output_ratio == "original" or not out_w or not out_h:
+            return [
+                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
+                "-i", temp_file,
+            ] + _get_video_codec_args() + [
+                "-c:a", "aac", "-b:a", "128k",
+                cropped_file
+            ]
+        else:
+            vf = (
+                f"[0:v]scale={out_w}:{out_h}:force_original_aspect_ratio=increase,crop={out_w}:{out_h},boxblur=20:20[bg];"
+                f"[0:v]scale={out_w}:{out_h}:force_original_aspect_ratio=decrease[fg];"
+                f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1[out]"
+            )
+            return [
+                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
+                "-i", temp_file,
+                "-filter_complex", vf,
+                "-map", "[out]", "-map", "0:a?",
+            ] + _get_video_codec_args() + [
+                "-c:a", "aac", "-b:a", "128k",
+                cropped_file
+            ]
+
     raise ValueError(f"Unknown crop mode: {crop_mode}")
 
+
+def _get_video_codec_args() -> list:
+    import sys
+    hw = getattr(config, "hw_accel", "cpu").lower()
+    
+    # Auto-redirect all hardware acceleration to VideoToolbox on macOS
+    if sys.platform == "darwin" and hw in ["mac", "videotoolbox", "amd", "amf", "intel", "qsv", "nvidia", "nvenc"]:
+        return ["-c:v", "h264_videotoolbox", "-b:v", "5M"]
+
+    if hw in ["mac", "videotoolbox"]:
+        return ["-c:v", "h264_videotoolbox", "-b:v", "5M"]
+    elif hw in ["nvidia", "nvenc"]:
+        return ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "26"]
+    elif hw in ["amd", "amf"]:
+        return ["-c:v", "h264_amf", "-rc", "cqp", "-qp_p", "26", "-qp_i", "26"]
+    elif hw in ["intel", "qsv"]:
+        return ["-c:v", "h264_qsv", "-global_quality", "26"]
+    return ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "26"]
 
 def _run_command_with_logging(cmd: list, event_hook: Optional[Callable], prefix: str = "") -> bool:
     """Helper to run a subprocess and stream its output line by line."""

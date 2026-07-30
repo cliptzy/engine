@@ -1,4 +1,5 @@
 import os
+import subprocess
 from typing import Callable, Any, Optional
 from core.logger import log
 
@@ -34,6 +35,25 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
     from core.config import config
 
     def load_and_transcribe():
+        audio_wav = video_file + ".wav"
+        if callable(event_hook):
+            try:
+                event_hook("log", "[ffmpeg] Mengekstrak audio PCM murni (.wav) untuk memastikan subtitle sinkron 100%...")
+            except Exception: pass
+            
+        cmd_extract = [
+            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+            "-i", video_file,
+            "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
+            audio_wav
+        ]
+        
+        try:
+            subprocess.run(cmd_extract, check=True)
+        except Exception as e:
+            log.warning(f"Gagal mengekstrak .wav, fallback ke original video: {e}")
+            audio_wav = video_file
+            
         if callable(event_hook):
             try:
                 event_hook("stage", {"stage": "subtitle_model_load"})
@@ -51,7 +71,7 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
                 log.debug(f"Event hook error: {e}")
                 
         segments_gen, info = model.transcribe(
-            video_file, 
+            audio_wav, 
             language="id",
             initial_prompt="Berikut adalah cuplikan video dengan ucapan bahasa Indonesia santai dan gaul yang diucapkan dengan cepat:",
             condition_on_previous_text=False,
@@ -69,6 +89,12 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
                     pass
             segments.append(s)
             
+        if audio_wav != video_file and os.path.exists(audio_wav):
+            try:
+                os.remove(audio_wav)
+            except Exception:
+                pass
+                
         return segments
 
     try:
@@ -105,7 +131,7 @@ PlayResY: 1280
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{config.subtitle_font},60,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,{alignment},10,10,{margin_v},1
+Style: Default,{config.subtitle_font},{config.subtitle_font_size},{config.subtitle_color},&H000000FF,&H00000000,{config.subtitle_bg_color},-1,0,0,0,100,100,0,0,{config.subtitle_border_style},3,0,{alignment},10,10,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -115,12 +141,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             for segment in segments:
                 if not segment.words:
                     continue
-                for word_obj in segment.words:
-                    word_start = max(0.0, word_obj.start + config.subtitle_delay)
-                    word_end = max(0.0, word_obj.end + config.subtitle_delay)
+                words = segment.words
+                chunks = []
+                for i in range(0, len(words), max(1, config.subtitle_max_words)):
+                    chunks.append(words[i:i + config.subtitle_max_words])
+                
+                for chunk in chunks:
+                    word_start = max(0.0, chunk[0].start + config.subtitle_delay)
+                    word_end = max(0.0, chunk[-1].end + config.subtitle_delay)
                     start_time = format_ass_time(word_start)
                     end_time = format_ass_time(word_end)
-                    text = word_obj.word.strip()
+                    text = " ".join([w.word.strip() for w in chunk if w.word.strip()])
                     if not text:
                         continue
                     
@@ -130,8 +161,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         except Exception:
                             pass
 
-                    # \fscx50\fscy50 starts size at 50%, \t(0,150,\fscx100\fscy100) animates to 100% over 150ms
-                    ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{{\\fscx50\\fscy50\\t(0,150,\\fscx100\\fscy100)}}{text}\n"
+                    if config.subtitle_animation == "scale":
+                        ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{{\\fscx50\\fscy50\\t(0,150,\\fscx100\\fscy100)}}{text}\n"
+                    else:
+                        ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{text}\n"
                     f.write(ass_line)
                     
     except Exception as e:

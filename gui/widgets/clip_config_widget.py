@@ -39,6 +39,7 @@ class ClipConfigWidget(QFrame):
         self.crop_combo.addItem("Default (Center Crop)", "default")
         self.crop_combo.addItem("Split Left (Top: Center, Bottom: Left Facecam)", "split_left")
         self.crop_combo.addItem("Split Right (Top: Center, Bottom: Right Facecam)", "split_right")
+        self.crop_combo.addItem("Full (Fit Screen & Blurred BG)", "full")
         grid.addWidget(self.crop_combo, 0, 1)
 
         grid.addWidget(QLabel("Rasio Output:"), 0, 2)
@@ -82,18 +83,11 @@ class ClipConfigWidget(QFrame):
         self.delay_spin.setRange(-5000, 5000)
         self.delay_spin.setSingleStep(100)
 
-        self.btn_lock_delay = QPushButton("🔓")
-        self.btn_lock_delay.setToolTip("Kunci/Buka Kunci nilai Subtitle Delay agar tidak berubah secara tidak disengaja")
-        self.btn_lock_delay.setCheckable(True)
-        self.btn_lock_delay.setFixedWidth(36)
-        self.btn_lock_delay.toggled.connect(self.on_lock_delay_toggled)
-
         self.btn_test_sub = QPushButton("👁️ Test Delay")
         self.btn_test_sub.setToolTip("Hasilkan sampel video 10 detik untuk menguji sinkronisasi subtitle delay")
         self.btn_test_sub.clicked.connect(self.test_subtitle_requested.emit)
 
         delay_layout.addWidget(self.delay_spin, 1)
-        delay_layout.addWidget(self.btn_lock_delay)
         delay_layout.addWidget(self.btn_test_sub)
         grid.addLayout(delay_layout, 3, 1)
 
@@ -103,6 +97,51 @@ class ClipConfigWidget(QFrame):
         self.padding_spin.setRange(0, 30)
         self.padding_spin.setValue(10)
         grid.addWidget(self.padding_spin, 3, 3)
+        
+        # Row 4: Font Size & Color
+        grid.addWidget(QLabel("Ukuran Font:"), 4, 0)
+        self.font_size_spin = QSpinBox()
+        self.font_size_spin.setRange(20, 150)
+        self.font_size_spin.setValue(60)
+        grid.addWidget(self.font_size_spin, 4, 1)
+
+        grid.addWidget(QLabel("Warna Teks:"), 4, 2)
+        self.color_combo = QComboBox()
+        self.color_combo.addItem("Kuning", "&H0000FFFF")
+        self.color_combo.addItem("Putih", "&H00FFFFFF")
+        self.color_combo.addItem("Hijau", "&H0000FF00")
+        self.color_combo.addItem("Merah", "&H000000FF")
+        self.color_combo.addItem("Biru", "&H00FF0000")
+        grid.addWidget(self.color_combo, 4, 3)
+
+        # Row 5: Background & Animation
+        grid.addWidget(QLabel("Background:"), 5, 0)
+        self.bg_combo = QComboBox()
+        self.bg_combo.addItem("Kotak Hitam", 3)
+        self.bg_combo.addItem("Outline Hitam", 1)
+        grid.addWidget(self.bg_combo, 5, 1)
+
+        grid.addWidget(QLabel("Efek Animasi:"), 5, 2)
+        self.anim_combo = QComboBox()
+        self.anim_combo.addItem("Tanpa Animasi", "none")
+        self.anim_combo.addItem("Scale Up", "scale")
+        grid.addWidget(self.anim_combo, 5, 3)
+
+        # Row 6: Max Words per Subtitle & Hardware Acceleration
+        grid.addWidget(QLabel("Maks Kata / Muncul:"), 6, 0)
+        self.max_words_spin = QSpinBox()
+        self.max_words_spin.setRange(1, 15)
+        self.max_words_spin.setValue(3)
+        grid.addWidget(self.max_words_spin, 6, 1)
+
+        grid.addWidget(QLabel("Akselerasi Hardware:"), 6, 2)
+        self.hw_combo = QComboBox()
+        self.hw_combo.addItem("CPU (Lambat, Stabil)", "cpu")
+        self.hw_combo.addItem("Mac (VideoToolbox)", "mac")
+        self.hw_combo.addItem("AMD (AMF)", "amd")
+        self.hw_combo.addItem("NVIDIA (NVENC)", "nvidia")
+        self.hw_combo.addItem("Intel (QuickSync)", "intel")
+        grid.addWidget(self.hw_combo, 6, 3)
 
         layout.addLayout(grid)
 
@@ -124,11 +163,18 @@ class ClipConfigWidget(QFrame):
         assets_layout.addWidget(self.btn_outro)
         layout.addLayout(assets_layout)
 
+        # Global Lock and Save
+        self.btn_lock_all = QPushButton("🔒 Kunci dan Simpan Pengaturan")
+        self.btn_lock_all.setProperty("class", "primary")
+        self.btn_lock_all.setCheckable(True)
+        self.btn_lock_all.toggled.connect(self.on_lock_all_toggled)
+        layout.addWidget(self.btn_lock_all)
+
 
 
     def load_from_config(self):
         # Crop combo
-        crop_idx = self.crop_combo.findData(config.output_ratio)
+        crop_idx = self.crop_combo.findData(config.crop_mode)
         if crop_idx >= 0:
             self.crop_combo.setCurrentIndex(crop_idx)
 
@@ -153,8 +199,30 @@ class ClipConfigWidget(QFrame):
 
         self.delay_spin.setValue(int(config.subtitle_delay * 1000))
         self.padding_spin.setValue(config.padding)
+        
+        self.font_size_spin.setValue(config.subtitle_font_size)
+        color_idx = self.color_combo.findData(config.subtitle_color)
+        if color_idx >= 0:
+            self.color_combo.setCurrentIndex(color_idx)
+            
+        bg_idx = self.bg_combo.findData(config.subtitle_border_style)
+        if bg_idx >= 0:
+            self.bg_combo.setCurrentIndex(bg_idx)
+            
+        anim_idx = self.anim_combo.findData(config.subtitle_animation)
+        if anim_idx >= 0:
+            self.anim_combo.setCurrentIndex(anim_idx)
+            
+        self.max_words_spin.setValue(config.subtitle_max_words)
+
+        hw_idx = self.hw_combo.findData(config.hw_accel)
+        if hw_idx >= 0:
+            self.hw_combo.setCurrentIndex(hw_idx)
 
         self.on_subtitle_toggled(config.use_subtitle)
+        
+        if config.ui_locked:
+            self.btn_lock_all.setChecked(True)
         
 
 
@@ -162,18 +230,67 @@ class ClipConfigWidget(QFrame):
         self.whisper_combo.setEnabled(checked)
         self.font_combo.setEnabled(checked)
         self.location_combo.setEnabled(checked)
-        self.btn_lock_delay.setEnabled(checked)
-        if not self.btn_lock_delay.isChecked():
-            self.delay_spin.setEnabled(checked)
+        self.font_size_spin.setEnabled(checked)
+        self.color_combo.setEnabled(checked)
+        self.bg_combo.setEnabled(checked)
+        self.anim_combo.setEnabled(checked)
+        self.max_words_spin.setEnabled(checked)
+        self.delay_spin.setEnabled(checked)
+        self.btn_test_sub.setEnabled(checked)
 
-    def on_lock_delay_toggled(self, locked: bool):
-        self.delay_spin.setEnabled(not locked and self.subtitle_check.isChecked())
-        if locked:
-            self.btn_lock_delay.setText("🔒")
-            self.btn_lock_delay.setStyleSheet("background-color: #312e81; color: #a5b4fc;")
+    def on_lock_all_toggled(self, locked: bool):
+        self.crop_combo.setEnabled(not locked)
+        self.ratio_combo.setEnabled(not locked)
+        self.subtitle_check.setEnabled(not locked)
+        self.padding_spin.setEnabled(not locked)
+        self.hw_combo.setEnabled(not locked)
+        
+        if not locked:
+            self.on_subtitle_toggled(self.subtitle_check.isChecked())
+            self.btn_lock_all.setText("🔒 Kunci dan Simpan Pengaturan")
+            self.btn_lock_all.setStyleSheet("")
         else:
-            self.btn_lock_delay.setText("🔓")
-            self.btn_lock_delay.setStyleSheet("")
+            self.whisper_combo.setEnabled(False)
+            self.font_combo.setEnabled(False)
+            self.location_combo.setEnabled(False)
+            self.font_size_spin.setEnabled(False)
+            self.color_combo.setEnabled(False)
+            self.bg_combo.setEnabled(False)
+            self.anim_combo.setEnabled(False)
+            self.max_words_spin.setEnabled(False)
+            self.delay_spin.setEnabled(False)
+            self.btn_test_sub.setEnabled(False)
+            
+            self.btn_lock_all.setText("🔓 Buka Kunci Pengaturan")
+            self.btn_lock_all.setStyleSheet("background-color: #312e81; color: #a5b4fc;")
+            
+        payload = self.get_settings_payload()
+        config_data = {
+            "crop_mode": payload["crop"],
+            "output_ratio": payload["ratio"],
+            "use_subtitle": payload["subtitle"],
+            "whisper_model": payload["whisper_model"],
+            "subtitle_font": payload["subtitle_font"],
+            "subtitle_location": payload["subtitle_location"],
+            "subtitle_delay": payload["subtitle_delay"] / 1000.0,
+            "subtitle_font_size": payload["subtitle_font_size"],
+            "subtitle_color": payload["subtitle_color"],
+            "subtitle_bg_color": payload["subtitle_bg_color"],
+            "subtitle_border_style": payload["subtitle_border_style"],
+            "subtitle_animation": payload["subtitle_animation"],
+            "subtitle_max_words": payload["subtitle_max_words"],
+            "padding": payload["padding"],
+            "hw_accel": payload["hw_accel"],
+            "ui_locked": locked
+        }
+        config.update_from_dict(config_data)
+        if config.save_to_file():
+            from gui.globals import signals
+            state = "terkunci" if locked else "terbuka"
+            signals.log_message.emit(f"[INFO] Pengaturan berhasil disimpan secara permanen (Status: {state}).")
+        else:
+            from gui.globals import signals
+            signals.log_message.emit("[ERROR] Gagal menyimpan pengaturan ke config.json.")
 
 
 
@@ -187,7 +304,14 @@ class ClipConfigWidget(QFrame):
             "subtitle_font": self.font_combo.currentData(),
             "subtitle_location": self.location_combo.currentData(),
             "subtitle_delay": self.delay_spin.value(),
+            "subtitle_font_size": self.font_size_spin.value(),
+            "subtitle_color": self.color_combo.currentData(),
+            "subtitle_bg_color": "&H80000000",
+            "subtitle_border_style": self.bg_combo.currentData(),
+            "subtitle_animation": self.anim_combo.currentData(),
+            "subtitle_max_words": self.max_words_spin.value(),
             "padding": self.padding_spin.value(),
+            "hw_accel": self.hw_combo.currentData(),
         }
 
     def on_upload_cookies(self):

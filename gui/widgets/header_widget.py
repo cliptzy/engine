@@ -13,6 +13,57 @@ try:
 except ImportError:
     psutil = None
 
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
+
+class StatsWorker(QThread):
+    stats_updated = pyqtSignal(list)
+
+    def run(self):
+        import sys
+        import re
+        import subprocess
+
+        stats_text = []
+        if psutil:
+            try:
+                cpu = psutil.cpu_percent()
+                mem = psutil.virtual_memory()
+                mem_used = mem.used / (1024**3)
+                mem_total = mem.total / (1024**3)
+                stats_text.append(f"CPU: {cpu}%")
+                stats_text.append(f"RAM: {mem_used:.1f}/{mem_total:.1f}GB")
+            except Exception:
+                stats_text.append("CPU/RAM: N/A")
+        else:
+            stats_text.append("CPU/RAM: N/A")
+
+        gpu_found = False
+        if sys.platform == "darwin":
+            try:
+                # Use class filter to be faster
+                res = subprocess.run(["ioreg", "-l", "-c", "IOAccelerator"], capture_output=True, text=True)
+                if res.returncode == 0:
+                    match = re.search(r'"GPU Activity\(%\)"=(\d+)', res.stdout)
+                    if not match:
+                        match = re.search(r'"Device Utilization %"=(\d+)', res.stdout)
+                    if match:
+                        stats_text.append(f"GPU: {match.group(1)}%")
+                        gpu_found = True
+            except Exception:
+                pass
+                
+        if not gpu_found:
+            try:
+                res = subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"], capture_output=True, text=True)
+                if res.returncode == 0:
+                    gpu_util = res.stdout.strip().split('\n')[0]
+                    stats_text.append(f"GPU: {gpu_util}%")
+            except Exception:
+                pass
+                
+        self.stats_updated.emit(stats_text)
+
+
 class HeaderWidget(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -68,34 +119,22 @@ class HeaderWidget(QFrame):
         self.update_ffmpeg_status()
         self.update_deno_status()
         self.update_cookie_status()
-        self.update_system_stats()
 
         # Timer for stats update
+        self.stats_worker = StatsWorker(self)
+        self.stats_worker.stats_updated.connect(self.on_stats_updated)
+        
         self.stats_timer = QTimer(self)
-        self.stats_timer.timeout.connect(self.update_system_stats)
-        self.stats_timer.start(2000)  # Update every 2 seconds
+        self.stats_timer.timeout.connect(self.request_system_stats)
+        self.stats_timer.start(2500)  # Update every 2.5 seconds
+        
+        self.request_system_stats()
 
-    def update_system_stats(self):
-        stats_text = []
-        if psutil:
-            cpu = psutil.cpu_percent()
-            mem = psutil.virtual_memory()
-            mem_used = mem.used / (1024**3)
-            mem_total = mem.total / (1024**3)
-            stats_text.append(f"CPU: {cpu}%")
-            stats_text.append(f"RAM: {mem_used:.1f}/{mem_total:.1f}GB")
-        else:
-            stats_text.append("CPU/RAM: N/A")
-
-        # Try rudimentary GPU check
-        try:
-            res = subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"], capture_output=True, text=True)
-            if res.returncode == 0:
-                gpu_util = res.stdout.strip().split('\n')[0]
-                stats_text.append(f"GPU: {gpu_util}%")
-        except FileNotFoundError:
-            pass
-
+    def request_system_stats(self):
+        if not self.stats_worker.isRunning():
+            self.stats_worker.start()
+            
+    def on_stats_updated(self, stats_text):
         self.stats_badge.setText(" | ".join(stats_text))
 
     def update_deno_status(self):

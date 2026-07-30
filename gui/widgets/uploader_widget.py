@@ -6,8 +6,10 @@ import os
 import json
 from PyQt6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-    QPushButton, QCheckBox, QMessageBox, QWidget, QLineEdit, QTextEdit, QGridLayout
+    QPushButton, QCheckBox, QMessageBox, QWidget, QLineEdit, QTextEdit, QGridLayout,
+    QProgressBar, QComboBox, QDoubleSpinBox
 )
+import time
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from core.ai_detector import ai_detector
 from core import config
@@ -16,9 +18,10 @@ class AIGenerateMetadataWorker(QThread):
     log_signal = pyqtSignal(str)
     finished_signal = pyqtSignal(dict)
     
-    def __init__(self, clip_path: str):
+    def __init__(self, clip_path: str, user_context: str = ""):
         super().__init__()
         self.clip_path = clip_path
+        self.user_context = user_context
         
     def run(self):
         try:
@@ -55,12 +58,14 @@ class AIGenerateMetadataWorker(QThread):
             preview_file = os.path.join(job_dir, "preview.json")
             youtube_title = "Unknown Video"
             channel_name = "Unknown Channel"
+            youtube_url = ""
             if os.path.exists(preview_file):
                 try:
                     with open(preview_file, "r", encoding="utf-8") as f:
                         preview_data = json.load(f)
                         youtube_title = preview_data.get("title", "Unknown Video")
                         channel_name = preview_data.get("uploader", "Unknown Channel")
+                        youtube_url = preview_data.get("webpage_url", "")
                 except Exception as e:
                     self.log_signal.emit(f"[WARNING] Gagal membaca preview.json: {e}")
                 
@@ -85,7 +90,9 @@ class AIGenerateMetadataWorker(QThread):
                 clip_text=clip_text,
                 youtube_title=youtube_title,
                 channel_name=channel_name,
+                youtube_url=youtube_url,
                 ai_config=ai_config,
+                user_context=self.user_context,
                 event_hook=event_hook
             )
             self.finished_signal.emit(metadata)
@@ -94,12 +101,88 @@ class AIGenerateMetadataWorker(QThread):
             self.log_signal.emit(f"[ERROR] Exception saat generate metadata: {e}")
             self.finished_signal.emit({})
 
+class UploadWorker(QThread):
+    progress_signal = pyqtSignal(int)
+    status_signal = pyqtSignal(str)
+    log_signal = pyqtSignal(str)
+    finished_signal = pyqtSignal(bool)
+    
+    def __init__(self, clips: list, platforms: list, metadata_dict: dict):
+        super().__init__()
+        self.clips = clips
+        self.platforms = platforms
+        self.metadata_dict = metadata_dict
+        self.is_cancelled = False
+        
+    def run(self):
+        from core.uploader import DummyUploader, YouTubeUploader
+        from datetime import datetime, timedelta, timezone
+        
+        total_tasks = len(self.clips) * len(self.platforms)
+        completed = 0
+        
+        # Instantiate uploaders
+        uploaders = []
+        for p in self.platforms:
+            if p == "YouTube Shorts":
+                uploaders.append(YouTubeUploader())
+            else:
+                uploaders.append(DummyUploader(p))
+                
+        from core.config import config
+        interval_hours = getattr(config, "upload_interval", 0.0)
+        
+        # Base time for scheduling: current time + 1 hour (as minimum future offset)
+        base_time = datetime.now(timezone.utc) + timedelta(hours=1)
+            
+        for idx, clip in enumerate(self.clips):
+            if self.is_cancelled:
+                break
+                
+            clip_meta = self.metadata_dict.get(clip, {})
+            clip_name = os.path.basename(clip)
+            
+            if interval_hours > 0:
+                # Add interval for each subsequent clip
+                publish_time = base_time + timedelta(hours=interval_hours * idx)
+                clip_meta["publish_at"] = publish_time.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            
+            for uploader in uploaders:
+                if self.is_cancelled:
+                    break
+                    
+                self.status_signal.emit(f"🚀 Mengunggah {clip_name} ke {uploader.platform_name}...")
+                self.log_signal.emit(f"[UPLOAD] Memulai upload {clip_name} ke {uploader.platform_name}...")
+                
+                try:
+                    result = uploader.upload(clip, clip_meta)
+                    if result.success:
+                        self.log_signal.emit(f"[UPLOAD] ✅ Sukses upload ke {uploader.platform_name}: {result.url}")
+                    else:
+                        self.log_signal.emit(f"[UPLOAD] ❌ Gagal upload ke {uploader.platform_name}: {result.error_msg}")
+                except Exception as e:
+                    self.log_signal.emit(f"[UPLOAD] ❌ Error Exception ke {uploader.platform_name}: {e}")
+                    
+                completed += 1
+                progress = int((completed / total_tasks) * 100)
+                self.progress_signal.emit(progress)
+                
+                # Sleep delay between uploads to avoid rate limiting
+                time.sleep(2.0)
+                
+        if self.is_cancelled:
+            self.status_signal.emit("⚠️ Dibatalkan")
+        else:
+            self.status_signal.emit("✅ Selesai")
+        self.finished_signal.emit(True)
+
 class UploaderWidget(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setProperty("class", "card")
         self.output_dir = "clips"
         self.worker = None
+        self.upload_worker = None
         # clip_path -> dict of metadata
         self.clip_metadata = {}
         self.init_ui()
@@ -116,6 +199,26 @@ class UploaderWidget(QFrame):
         header_layout.addWidget(title_label)
         header_layout.addStretch()
         layout.addLayout(header_layout)
+
+        # Top Bar: Project Selector
+        project_layout = QHBoxLayout()
+        project_layout.addWidget(QLabel("📂 Pilih Project / Klip Tersimpan:"))
+        
+        self.project_combo = QComboBox()
+        self.project_combo.setMinimumWidth(300)
+        project_layout.addWidget(self.project_combo)
+        
+        self.btn_refresh_projects = QPushButton("🔄 Muat Ulang")
+        self.btn_refresh_projects.clicked.connect(self.load_projects)
+        project_layout.addWidget(self.btn_refresh_projects)
+        
+        self.btn_load_project = QPushButton("📥 Buka Project")
+        self.btn_load_project.setProperty("class", "primary")
+        self.btn_load_project.clicked.connect(self.on_open_project)
+        project_layout.addWidget(self.btn_load_project)
+        
+        project_layout.addStretch()
+        layout.addLayout(project_layout)
 
         content_layout = QHBoxLayout()
 
@@ -152,6 +255,11 @@ class UploaderWidget(QFrame):
         self.tags_input = QLineEdit()
         grid.addWidget(self.tags_input, 2, 1)
         
+        grid.addWidget(QLabel("Konteks Tambahan (AI):"), 3, 0)
+        self.context_input = QLineEdit()
+        self.context_input.setPlaceholderText("Contoh: Windah basudara mengagetkan penonton tapi malah kaget sendiri.")
+        grid.addWidget(self.context_input, 3, 1)
+        
         details_layout.addLayout(grid)
         
         # Button Generate
@@ -183,6 +291,14 @@ class UploaderWidget(QFrame):
         self.chk_tiktok = QCheckBox("TikTok")
         self.chk_instagram = QCheckBox("Instagram Reels")
         
+        self.chk_youtube.setChecked(config.upload_youtube)
+        self.chk_tiktok.setChecked(config.upload_tiktok)
+        self.chk_instagram.setChecked(config.upload_instagram)
+        
+        self.chk_youtube.toggled.connect(self.on_upload_config_changed)
+        self.chk_tiktok.toggled.connect(self.on_upload_config_changed)
+        self.chk_instagram.toggled.connect(self.on_upload_config_changed)
+        
         chk_layout.addWidget(self.chk_youtube)
         chk_layout.addWidget(self.chk_tiktok)
         chk_layout.addWidget(self.chk_instagram)
@@ -190,11 +306,34 @@ class UploaderWidget(QFrame):
         
         upload_layout.addLayout(chk_layout)
         
+        # Interval setting
+        interval_layout = QHBoxLayout()
+        interval_layout.addWidget(QLabel("Interval Jadwal Publish (Jam):"))
+        self.interval_spin = QDoubleSpinBox()
+        self.interval_spin.setRange(0, 720) # 0 to 30 days
+        self.interval_spin.setSingleStep(0.5)
+        self.interval_spin.setDecimals(1)
+        self.interval_spin.setValue(config.upload_interval)
+        self.interval_spin.valueChanged.connect(self.on_upload_config_changed)
+        interval_layout.addWidget(self.interval_spin)
+        interval_layout.addStretch()
+        upload_layout.addLayout(interval_layout)
+        
         self.btn_upload = QPushButton("📤 Upload Video Tercentang")
         self.btn_upload.setProperty("class", "primary")
         self.btn_upload.setStyleSheet("padding: 10px; font-weight: bold;")
         self.btn_upload.clicked.connect(self.on_upload_clicked)
         upload_layout.addWidget(self.btn_upload)
+        
+        self.upload_progress = QProgressBar()
+        self.upload_progress.setValue(0)
+        self.upload_progress.setVisible(False)
+        upload_layout.addWidget(self.upload_progress)
+        
+        self.upload_status_label = QLabel("")
+        self.upload_status_label.setStyleSheet("color: #94a3b8; font-size: 12px;")
+        self.upload_status_label.setVisible(False)
+        upload_layout.addWidget(self.upload_status_label)
         
         right_layout.addWidget(upload_group)
         
@@ -203,6 +342,64 @@ class UploaderWidget(QFrame):
         
         self.details_panel.setEnabled(False)
         self.current_clip_path = None
+        
+        self.load_projects()
+
+    def load_projects(self):
+        self.project_combo.clear()
+        if not os.path.exists(config.output_dir):
+            return
+            
+        projects = []
+        for item in os.listdir(config.output_dir):
+            item_path = os.path.join(config.output_dir, item)
+            if os.path.isdir(item_path):
+                preview_file = os.path.join(item_path, "preview.json")
+                if os.path.exists(preview_file):
+                    projects.append(item)
+                    
+        # Sort newest first based on directory modification time
+        projects.sort(key=lambda x: os.path.getmtime(os.path.join(config.output_dir, x)), reverse=True)
+        
+        for p in projects:
+            self.project_combo.addItem(p, os.path.join(config.output_dir, p))
+
+    def on_open_project(self):
+        project_dir = self.project_combo.currentData()
+        if not project_dir:
+            QMessageBox.warning(self, "Pilih Project", "Tidak ada project yang dipilih.")
+            return
+            
+        import glob
+        import re
+        clip_files = glob.glob(os.path.join(project_dir, "clip_*.mp4"))
+        
+        # Filter to only match exactly clip_<number>.mp4
+        clip_files = [f for f in clip_files if re.match(r'^clip_\d+\.mp4$', os.path.basename(f))]
+        
+        def natural_sort_key(s):
+            return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+            
+        clip_files.sort(key=natural_sort_key)
+        
+        outputs = []
+        for cf in clip_files:
+            outputs.append({
+                "name": os.path.basename(cf),
+                "path": cf,
+                "size": os.path.getsize(cf)
+            })
+            
+        self.update_outputs(outputs, project_dir)
+        from gui.globals import signals
+        signals.log_message.emit(f"[INFO] Membuka project: {os.path.basename(project_dir)} ({len(outputs)} klip).")
+
+    def on_upload_config_changed(self):
+        config.upload_youtube = self.chk_youtube.isChecked()
+        config.upload_tiktok = self.chk_tiktok.isChecked()
+        config.upload_instagram = self.chk_instagram.isChecked()
+        config.upload_interval = self.interval_spin.value()
+        config.save_to_file()
 
     def update_outputs(self, outputs: list, output_dir: str):
         self.output_dir = output_dir
@@ -258,7 +455,8 @@ class UploaderWidget(QFrame):
         self.btn_generate.setEnabled(False)
         self.btn_generate.setText("⏳ Sedang Generate...")
         
-        self.worker = AIGenerateMetadataWorker(self.current_clip_path)
+        user_context = self.context_input.text().strip()
+        self.worker = AIGenerateMetadataWorker(self.current_clip_path, user_context)
         from gui.globals import signals
         self.worker.log_signal.connect(signals.log_message.emit)
         self.worker.finished_signal.connect(self.on_generate_finished)
@@ -277,7 +475,10 @@ class UploaderWidget(QFrame):
         if "description" in metadata:
             self.desc_input.setPlainText(metadata["description"])
         if "tags" in metadata:
-            self.tags_input.setText(metadata["tags"])
+            combined_tags = metadata["tags"]
+            if config.yt_tags:
+                combined_tags = f"{config.yt_tags} {combined_tags}".strip()
+            self.tags_input.setText(combined_tags)
             
         self.on_save_metadata()
         QMessageBox.information(self, "Berhasil", "Metadata sukses di-generate oleh AI!")
@@ -308,5 +509,19 @@ class UploaderWidget(QFrame):
         from gui.globals import signals
         signals.log_message.emit(f"[UPLOAD] Mempersiapkan {len(selected_clips)} video ke {', '.join(platforms)}...")
         
-        msg = f"Mempersiapkan {len(selected_clips)} video untuk di-upload ke {', '.join(platforms)}.\nFitur integrasi upload riil sedang dikembangkan."
-        QMessageBox.information(self, "Upload Simulasi", msg)
+        self.btn_upload.setEnabled(False)
+        self.upload_progress.setVisible(True)
+        self.upload_progress.setValue(0)
+        self.upload_status_label.setVisible(True)
+        self.upload_status_label.setText("⏳ Memulai antrean upload...")
+        
+        self.upload_worker = UploadWorker(selected_clips, platforms, self.clip_metadata)
+        self.upload_worker.progress_signal.connect(self.upload_progress.setValue)
+        self.upload_worker.status_signal.connect(self.upload_status_label.setText)
+        self.upload_worker.log_signal.connect(signals.log_message.emit)
+        self.upload_worker.finished_signal.connect(self.on_upload_finished)
+        self.upload_worker.start()
+
+    def on_upload_finished(self, success: bool):
+        self.btn_upload.setEnabled(True)
+        QMessageBox.information(self, "Upload Selesai", "Proses Auto Upload telah selesai. Cek log untuk melihat hasil per platform.")

@@ -13,6 +13,7 @@ class AutoUploadWidget(QFrame):
         super().__init__(parent)
         self.setProperty("class", "card")
         self.init_ui()
+        self.load_from_config()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -43,25 +44,27 @@ class AutoUploadWidget(QFrame):
         yt_grid = QGridLayout(yt_box)
 
         yt_grid.addWidget(QLabel("Client ID (OAuth 2.0):"), 0, 0)
-        yt_grid.addWidget(QLineEdit(), 0, 1)
+        self.yt_client_id_input = QLineEdit()
+        yt_grid.addWidget(self.yt_client_id_input, 0, 1)
 
         yt_grid.addWidget(QLabel("Client Secret:"), 1, 0)
-        yt_grid.addWidget(QLineEdit(), 1, 1)
+        self.yt_client_secret_input = QLineEdit()
+        yt_grid.addWidget(self.yt_client_secret_input, 1, 1)
 
         yt_grid.addWidget(QLabel("Default Visibility:"), 2, 0)
-        yt_vis = QComboBox()
-        yt_vis.addItems(["Public", "Unlisted", "Private"])
-        yt_grid.addWidget(yt_vis, 2, 1)
+        self.yt_visibility_combo = QComboBox()
+        self.yt_visibility_combo.addItems(["Public", "Unlisted", "Private"])
+        yt_grid.addWidget(self.yt_visibility_combo, 2, 1)
 
         yt_grid.addWidget(QLabel("Default Hashtags:"), 3, 0)
-        yt_tags = QLineEdit()
-        yt_tags.setPlaceholderText("#Shorts #Viral #Cliptzy")
-        yt_grid.addWidget(yt_tags, 3, 1)
+        self.yt_tags_input = QLineEdit()
+        self.yt_tags_input.setPlaceholderText("#Shorts #Viral #Cliptzy")
+        yt_grid.addWidget(self.yt_tags_input, 3, 1)
 
         yt_layout.addWidget(yt_box)
         
-        yt_auto_check = QCheckBox("Otomatis Upload ke YouTube Shorts begitu klip selesai diproses")
-        yt_layout.addWidget(yt_auto_check)
+        self.yt_auto_check = QCheckBox("Otomatis Upload ke YouTube Shorts begitu klip selesai diproses")
+        yt_layout.addWidget(self.yt_auto_check)
         yt_layout.addStretch()
 
         tabs.addTab(yt_tab, "🔴 YouTube Shorts")
@@ -75,22 +78,23 @@ class AutoUploadWidget(QFrame):
         tt_grid = QGridLayout(tt_box)
 
         tt_grid.addWidget(QLabel("Open API Access Token / Session:"), 0, 0)
-        tt_grid.addWidget(QLineEdit(), 0, 1)
+        self.tt_session_input = QLineEdit()
+        tt_grid.addWidget(self.tt_session_input, 0, 1)
 
         tt_grid.addWidget(QLabel("Privasi Posting:"), 1, 0)
-        tt_priv = QComboBox()
-        tt_priv.addItems(["Public (Semua Orang)", "Friends (Teman)", "Private (Hanya Saya)"])
-        tt_grid.addWidget(tt_priv, 1, 1)
+        self.tt_privacy_combo = QComboBox()
+        self.tt_privacy_combo.addItems(["Public (Semua Orang)", "Friends (Teman)", "Private (Hanya Saya)"])
+        tt_grid.addWidget(self.tt_privacy_combo, 1, 1)
 
         tt_grid.addWidget(QLabel("Default Caption:"), 2, 0)
-        tt_caption = QLineEdit()
-        tt_caption.setPlaceholderText("Cuplikan seru hari ini! #fyp #viral")
-        tt_grid.addWidget(tt_caption, 2, 1)
+        self.tt_caption_input = QLineEdit()
+        self.tt_caption_input.setPlaceholderText("Cuplikan seru hari ini! #fyp #viral")
+        tt_grid.addWidget(self.tt_caption_input, 2, 1)
 
         tt_layout.addWidget(tt_box)
 
-        tt_auto_check = QCheckBox("Otomatis Upload ke TikTok begitu klip selesai diproses")
-        tt_layout.addWidget(tt_auto_check)
+        self.tt_auto_check = QCheckBox("Otomatis Upload ke TikTok begitu klip selesai diproses")
+        tt_layout.addWidget(self.tt_auto_check)
         tt_layout.addStretch()
 
         tabs.addTab(tt_tab, "🎵 TikTok")
@@ -104,20 +108,22 @@ class AutoUploadWidget(QFrame):
         ig_grid = QGridLayout(ig_box)
 
         ig_grid.addWidget(QLabel("Instagram Business Account ID:"), 0, 0)
-        ig_grid.addWidget(QLineEdit(), 0, 1)
+        self.ig_business_id_input = QLineEdit()
+        ig_grid.addWidget(self.ig_business_id_input, 0, 1)
 
         ig_grid.addWidget(QLabel("User Access Token:"), 1, 0)
-        ig_grid.addWidget(QLineEdit(), 1, 1)
+        self.ig_access_token_input = QLineEdit()
+        ig_grid.addWidget(self.ig_access_token_input, 1, 1)
 
         ig_grid.addWidget(QLabel("Default Caption:"), 2, 0)
-        ig_caption = QLineEdit()
-        ig_caption.setPlaceholderText("Best moment clip #reels #instagram")
-        ig_grid.addWidget(ig_caption, 2, 1)
+        self.ig_caption_input = QLineEdit()
+        self.ig_caption_input.setPlaceholderText("Best moment clip #reels #instagram")
+        ig_grid.addWidget(self.ig_caption_input, 2, 1)
 
         ig_layout.addWidget(ig_box)
 
-        ig_auto_check = QCheckBox("Otomatis Upload ke Instagram Reels begitu klip selesai diproses")
-        ig_layout.addWidget(ig_auto_check)
+        self.ig_auto_check = QCheckBox("Otomatis Upload ke Instagram Reels begitu klip selesai diproses")
+        ig_layout.addWidget(self.ig_auto_check)
         ig_layout.addStretch()
 
         tabs.addTab(ig_tab, "📸 Instagram Reels")
@@ -127,4 +133,49 @@ class AutoUploadWidget(QFrame):
         # Save Settings Button
         save_btn = QPushButton("💾 Simpan Pengaturan Distribution")
         save_btn.setProperty("class", "primary")
+        save_btn.clicked.connect(self.on_save_settings)
         layout.addWidget(save_btn)
+
+    def load_from_config(self):
+        from core.config import config
+        self.yt_client_id_input.setText(config.yt_client_id)
+        self.yt_client_secret_input.setText(config.yt_client_secret)
+        self.yt_visibility_combo.setCurrentText(config.yt_visibility)
+        self.yt_tags_input.setText(config.yt_tags)
+        self.yt_auto_check.setChecked(config.yt_auto_upload)
+        
+        self.tt_session_input.setText(config.tt_session)
+        self.tt_privacy_combo.setCurrentText(config.tt_privacy)
+        self.tt_caption_input.setText(config.tt_caption)
+        self.tt_auto_check.setChecked(config.tt_auto_upload)
+        
+        self.ig_business_id_input.setText(config.ig_business_id)
+        self.ig_access_token_input.setText(config.ig_access_token)
+        self.ig_caption_input.setText(config.ig_caption)
+        self.ig_auto_check.setChecked(config.ig_auto_upload)
+
+    def on_save_settings(self):
+        from core.config import config
+        from gui.globals import signals
+        
+        config.yt_client_id = self.yt_client_id_input.text()
+        config.yt_client_secret = self.yt_client_secret_input.text()
+        config.yt_visibility = self.yt_visibility_combo.currentText()
+        config.yt_tags = self.yt_tags_input.text()
+        config.yt_auto_upload = self.yt_auto_check.isChecked()
+        
+        config.tt_session = self.tt_session_input.text()
+        config.tt_privacy = self.tt_privacy_combo.currentText()
+        config.tt_caption = self.tt_caption_input.text()
+        config.tt_auto_upload = self.tt_auto_check.isChecked()
+        
+        config.ig_business_id = self.ig_business_id_input.text()
+        config.ig_access_token = self.ig_access_token_input.text()
+        config.ig_caption = self.ig_caption_input.text()
+        config.ig_auto_upload = self.ig_auto_check.isChecked()
+        
+        if config.save_to_file():
+            signals.log_message.emit("[INFO] Pengaturan distribusi Auto Upload berhasil disimpan!")
+        else:
+            signals.log_message.emit("[ERROR] Gagal menyimpan pengaturan Auto Upload.")
+

@@ -65,3 +65,5 @@ debug_*.py
 cookies*
 bin/
 config.json
+*.json
+test*

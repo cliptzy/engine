@@ -2,14 +2,37 @@
 Widget for displaying video metadata preview, segment selection (Heatmap, Custom, AI Highlights), and AI provider settings.
 """
 
+import urllib.request
+import ssl
 from PyQt6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QListWidget, QListWidgetItem,
     QCheckBox, QRadioButton, QButtonGroup, QLineEdit, QPushButton, QStackedWidget, QWidget, QComboBox
 )
 from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtCore import Qt, pyqtSignal
-import urllib.request
+from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from core import config
+
+class ThumbnailLoaderWorker(QThread):
+    finished = pyqtSignal(QPixmap)
+    error = pyqtSignal()
+    
+    def __init__(self, url: str, parent=None):
+        super().__init__(parent)
+        self.url = url
+        
+    def run(self):
+        try:
+            req = urllib.request.Request(self.url, headers={'User-Agent': 'Mozilla/5.0'})
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            data = urllib.request.urlopen(req, context=ctx).read()
+            image = QImage()
+            image.loadFromData(data)
+            pixmap = QPixmap.fromImage(image)
+            self.finished.emit(pixmap)
+        except Exception:
+            self.error.emit()
 
 class PreviewWidget(QFrame):
     selection_changed = pyqtSignal()
@@ -188,15 +211,17 @@ class PreviewWidget(QFrame):
         # Load Thumbnail asynchronously
         thumb_url = preview.get("thumbnail")
         if thumb_url:
-            try:
-                data = urllib.request.urlopen(thumb_url).read()
-                image = QImage()
-                image.loadFromData(data)
-                pixmap = QPixmap.fromImage(image)
-                scaled = pixmap.scaled(160, 90, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                self.thumbnail_label.setPixmap(scaled)
-            except Exception:
-                self.thumbnail_label.setText("Thumbnail N/A")
+            self.thumbnail_label.setText("Memuat Thumbnail...")
+            self.thumb_worker = ThumbnailLoaderWorker(thumb_url, self)
+            self.thumb_worker.finished.connect(self._on_thumbnail_loaded)
+            self.thumb_worker.error.connect(lambda: self.thumbnail_label.setText("Thumbnail N/A"))
+            self.thumb_worker.start()
+        else:
+            self.thumbnail_label.setText("Thumbnail N/A")
+
+    def _on_thumbnail_loaded(self, pixmap: QPixmap):
+        scaled = pixmap.scaled(160, 90, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        self.thumbnail_label.setPixmap(scaled)
 
     def set_scan_data(self, scan_result: dict):
         self.segments_data = scan_result.get("segments", [])

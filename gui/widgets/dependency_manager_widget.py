@@ -17,6 +17,13 @@ class DependencyWorker(QThread):
     finished_signal = pyqtSignal(bool)
 
     def run(self):
+        import ssl
+        try:
+            # Bypass macOS SSL certificate verification errors globally for this thread
+            ssl._create_default_https_context = ssl._create_unverified_context
+        except Exception:
+            pass
+
         try:
             self.log_signal.emit("[INFO] Memulai proses instalasi dependensi secara otomatis...")
             app_root = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))

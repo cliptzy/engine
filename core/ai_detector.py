@@ -333,7 +333,9 @@ class AIHighlightDetector:
         clip_text: str,
         youtube_title: str,
         channel_name: str,
+        youtube_url: str,
         ai_config: Dict[str, Any],
+        user_context: str = "",
         event_hook: Optional[Any] = None
     ) -> Dict[str, Any]:
         if not clip_text or not clip_text.strip():
@@ -344,6 +346,8 @@ class AIHighlightDetector:
         if len(clip_text) > 10000:
             clip_text = clip_text[:10000] + "..."
 
+        context_str = f"- Konteks Tambahan dari Pengguna: {user_context}\n" if user_context else ""
+
         prompt = f"""
 Anda adalah seorang Social Media Manager spesialis konten viral (TikTok, YouTube Shorts, Reels).
 Berdasarkan teks subtitle spesifik dari klip video berikut, dan informasi konteks video aslinya, buatkan Title (Judul menarik), Description (Deskripsi ringkas yang memancing interaksi), dan Tags (Hashtags yang relevan).
@@ -352,6 +356,15 @@ Respons HANYA dalam bentuk JSON yang valid di dalam blok kode Markdown (```json 
 Konteks Video Asli:
 - Channel: {channel_name}
 - Judul Video: {youtube_title}
+- Link YouTube: {youtube_url}
+{context_str}
+
+WAJIB DITAATI: 
+1. Pada bagian `description`, HARUS cantumkan link YouTube asli di atas agar tetap mendukung kreator aslinya.
+2. Referensi / Contoh gaya bahasa pembuatan judul dan deskripsi:
+   Title: TABRAK HANTU MALAH KENA JUMPSCARE! Windah Basudara.
+   Description: Momen Bang Windah Lupa Disampingnya Ada Mamah Agnes
+   Tonton video aslinya di: {youtube_url} #shorts #windahbasudara #windah #mediashare
 
 Teks Subtitle Klip Ini:
 {clip_text}
@@ -360,7 +373,7 @@ Format JSON yang wajib:
 ```json
 {{
     "title": "Judul klip clickbait yang menarik",
-    "description": "Deskripsi klip yang interaktif",
+    "description": "Deskripsi klip yang interaktif beserta link youtube asli",
     "tags": "#foryou #viral #dsb"
 }}
 ```
