@@ -77,7 +77,7 @@ class AIHighlightDetector:
             template = DEFAULT_PROMPT_TEMPLATE
         
         prompt = template.replace("{transcript_text}", transcript_text)
-        provider = (ai_config.get("provider") or "ollama").lower()
+        provider = (ai_config.get("provider") or ai_config.get("ai_provider") or "ollama").lower()
 
         if callable(event_hook):
             event_hook("log", f"[AI] Mengirim transkrip ke AI Provider: {provider.upper()}...")
@@ -350,7 +350,7 @@ class AIHighlightDetector:
 
         prompt = f"""
 Anda adalah seorang Social Media Manager spesialis konten viral (TikTok, YouTube Shorts, Reels).
-Berdasarkan teks subtitle spesifik dari klip video berikut, dan informasi konteks video aslinya, buatkan Title (Judul menarik), Description (Deskripsi ringkas yang memancing interaksi), dan Tags (Hashtags yang relevan).
+Berdasarkan teks subtitle spesifik dari klip video berikut, dan informasi konteks video aslinya, buatkan Title (Judul menarik), Description (Deskripsi ringkas yang memancing interaksi), Tags (Hashtags yang relevan), dan Highlight (Teks lucu/menjual singkat maksimal 3 kata, misal: "gg gak ?", "kaget momen", atau "minus -1 kuping").
 Respons HANYA dalam bentuk JSON yang valid di dalam blok kode Markdown (```json ... ```) tanpa tambahan teks apapun.
 
 Konteks Video Asli:
@@ -365,6 +365,7 @@ WAJIB DITAATI:
    Title: TABRAK HANTU MALAH KENA JUMPSCARE! Windah Basudara.
    Description: Momen Bang Windah Lupa Disampingnya Ada Mamah Agnes
    Tonton video aslinya di: {youtube_url} #shorts #windahbasudara #windah #mediashare
+3. Highlight adalah teks yang sangat singkat (maksimal 3-4 kata) yang memancing rasa penasaran, lucu, atau bombastis.
 
 Teks Subtitle Klip Ini:
 {clip_text}
@@ -374,11 +375,12 @@ Format JSON yang wajib:
 {{
     "title": "Judul klip clickbait yang menarik",
     "description": "Deskripsi klip yang interaktif beserta link youtube asli",
-    "tags": "#foryou #viral #dsb"
+    "tags": "#foryou #viral #dsb",
+    "highlight": "Teks highlight lucu/singkat"
 }}
 ```
 """
-        provider = (ai_config.get("provider") or "ollama").lower()
+        provider = (ai_config.get("provider") or ai_config.get("ai_provider") or "ollama").lower()
         if callable(event_hook):
             event_hook("log", f"[AI] Mengirim permintaan metadata ke AI Provider: {provider.upper()}...")
 

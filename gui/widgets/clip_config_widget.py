@@ -53,7 +53,12 @@ class ClipConfigWidget(QFrame):
         # Row 1: Subtitle Enable & Whisper Model
         self.subtitle_check = QCheckBox("Aktifkan Auto Subtitle (Faster-Whisper)")
         self.subtitle_check.toggled.connect(self.on_subtitle_toggled)
-        grid.addWidget(self.subtitle_check, 1, 0, 1, 2)
+        self.highlight_check = QCheckBox("Burn Teks Highlight AI")
+        
+        row1_box = QHBoxLayout()
+        row1_box.addWidget(self.subtitle_check)
+        row1_box.addWidget(self.highlight_check)
+        grid.addLayout(row1_box, 1, 0, 1, 2)
 
         grid.addWidget(QLabel("Model Whisper:"), 1, 2)
         self.whisper_combo = QComboBox()
@@ -142,6 +147,8 @@ class ClipConfigWidget(QFrame):
         self.hw_combo.addItem("NVIDIA (NVENC)", "nvidia")
         self.hw_combo.addItem("Intel (QuickSync)", "intel")
         grid.addWidget(self.hw_combo, 6, 3)
+        
+        self._detect_hw_accel()
 
         layout.addLayout(grid)
 
@@ -170,7 +177,31 @@ class ClipConfigWidget(QFrame):
         self.btn_lock_all.toggled.connect(self.on_lock_all_toggled)
         layout.addWidget(self.btn_lock_all)
 
+    def _detect_hw_accel(self):
+        import subprocess
+        supported = ["cpu"]
+        try:
+            res = subprocess.run(["ffmpeg", "-encoders"], capture_output=True, text=True, timeout=5)
+            if res.returncode == 0:
+                out = res.stdout.lower()
+                if "h264_nvenc" in out:
+                    supported.append("nvidia")
+                if "h264_amf" in out:
+                    supported.append("amd")
+                if "h264_qsv" in out:
+                    supported.append("intel")
+                if "h264_videotoolbox" in out:
+                    supported.append("mac")
+        except Exception:
+            pass
 
+        i = 0
+        while i < self.hw_combo.count():
+            data = self.hw_combo.itemData(i)
+            if data not in supported:
+                self.hw_combo.removeItem(i)
+            else:
+                i += 1
 
     def load_from_config(self):
         # Crop combo
@@ -184,6 +215,7 @@ class ClipConfigWidget(QFrame):
             self.ratio_combo.setCurrentIndex(ratio_idx)
 
         self.subtitle_check.setChecked(config.use_subtitle)
+        self.highlight_check.setChecked(config.use_highlight)
         
         whisper_idx = self.whisper_combo.findData(config.whisper_model)
         if whisper_idx >= 0:
@@ -242,6 +274,7 @@ class ClipConfigWidget(QFrame):
         self.crop_combo.setEnabled(not locked)
         self.ratio_combo.setEnabled(not locked)
         self.subtitle_check.setEnabled(not locked)
+        self.highlight_check.setEnabled(not locked)
         self.padding_spin.setEnabled(not locked)
         self.hw_combo.setEnabled(not locked)
         
@@ -269,6 +302,7 @@ class ClipConfigWidget(QFrame):
             "crop_mode": payload["crop"],
             "output_ratio": payload["ratio"],
             "use_subtitle": payload["subtitle"],
+            "use_highlight": payload.get("use_highlight", False),
             "whisper_model": payload["whisper_model"],
             "subtitle_font": payload["subtitle_font"],
             "subtitle_location": payload["subtitle_location"],
@@ -300,6 +334,7 @@ class ClipConfigWidget(QFrame):
             "crop": self.crop_combo.currentData(),
             "ratio": self.ratio_combo.currentData(),
             "subtitle": self.subtitle_check.isChecked(),
+            "use_highlight": self.highlight_check.isChecked(),
             "whisper_model": self.whisper_combo.currentData(),
             "subtitle_font": self.font_combo.currentData(),
             "subtitle_location": self.location_combo.currentData(),

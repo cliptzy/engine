@@ -417,6 +417,18 @@ class UploaderWidget(QFrame):
             
             if path not in self.clip_metadata:
                 self.clip_metadata[path] = {"title": name, "description": "", "tags": ""}
+                try:
+                    import os, json
+                    basename = os.path.basename(path)
+                    idx = basename.replace("clip_", "").replace(".mp4", "")
+                    meta_path = os.path.join(output_dir, f"metadata_{idx}.json")
+                    if os.path.exists(meta_path):
+                        with open(meta_path, "r", encoding="utf-8") as f:
+                            saved_meta = json.load(f)
+                            if saved_meta:
+                                self.clip_metadata[path].update(saved_meta)
+                except Exception:
+                    pass
 
     def on_clip_selected(self, item: QListWidgetItem):
         path = item.data(Qt.ItemDataRole.UserRole)
@@ -435,12 +447,23 @@ class UploaderWidget(QFrame):
         if not self.current_clip_path:
             return
             
-        self.clip_metadata[self.current_clip_path] = {
+        self.clip_metadata[self.current_clip_path].update({
             "title": self.title_input.text(),
             "description": self.desc_input.toPlainText(),
             "tags": self.tags_input.text()
-        }
+        })
         
+        try:
+            import os, json
+            basename = os.path.basename(self.current_clip_path)
+            idx = basename.replace("clip_", "").replace(".mp4", "")
+            output_dir = os.path.dirname(self.current_clip_path)
+            meta_path = os.path.join(output_dir, f"metadata_{idx}.json")
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(self.clip_metadata[self.current_clip_path], f, indent=2)
+        except Exception:
+            pass
+            
         from gui.globals import signals
         signals.log_message.emit(f"[INFO] Metadata disimpan untuk: {os.path.basename(self.current_clip_path)}")
 
@@ -479,6 +502,9 @@ class UploaderWidget(QFrame):
             if config.yt_tags:
                 combined_tags = f"{config.yt_tags} {combined_tags}".strip()
             self.tags_input.setText(combined_tags)
+        
+        if "highlight" in metadata and self.current_clip_path:
+            self.clip_metadata[self.current_clip_path]["highlight"] = metadata["highlight"]
             
         self.on_save_metadata()
         QMessageBox.information(self, "Berhasil", "Metadata sukses di-generate oleh AI!")

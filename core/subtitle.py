@@ -21,16 +21,16 @@ def format_ass_time(seconds: float) -> str:
                 hours += 1
     return f"{hours}:{minutes:02d}:{secs:02d}.{centis:02d}"
 
-def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, event_hook: Optional[Callable[[str, Any], None]] = None) -> bool:
+def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, event_hook: Optional[Callable[[str, Any], None]] = None) -> tuple[bool, str]:
     """
     Generates an ASS subtitle file using Faster-Whisper for the given video.
-    Returns True if successful, False otherwise.
+    Returns (True, transcript_text) if successful, (False, "") otherwise.
     """
     try:
         from faster_whisper import WhisperModel
     except ImportError:
         log.error("faster_whisper module not found. Please install it.")
-        return False
+        return False, ""
         
     from core.config import config
 
@@ -108,10 +108,10 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
                 segments = load_and_transcribe()
             except Exception as e2:
                 log.error(f"Failed to generate subtitle after retry: {e2}")
-                return False
+                return False, ""
         else:
             log.error(f"Failed to generate subtitle: {msg}")
-            return False
+            return False, ""
 
     if callable(event_hook):
         try:
@@ -149,6 +149,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 for chunk in chunks:
                     word_start = max(0.0, chunk[0].start + config.subtitle_delay)
                     word_end = max(0.0, chunk[-1].end + config.subtitle_delay)
+                    
+                    # Prevent stuck subtitle if Whisper fails to detect proper end boundary
+                    if word_end - word_start > 2.0:
+                        word_end = word_start + 2.0
                     start_time = format_ass_time(word_start)
                     end_time = format_ass_time(word_end)
                     text = " ".join([w.word.strip() for w in chunk if w.word.strip()])
@@ -166,12 +170,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     else:
                         ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{text}\n"
                     f.write(ass_line)
+            
+            # Combine all text for AI metadata generation
+            full_transcript = " ".join([s.text.strip() for s in segments if s.text.strip()])
                     
     except Exception as e:
         log.error(f"Failed to write subtitle file: {e}")
-        return False
+        return False, ""
 
-    return True
+    return True, full_transcript
 
 def transcribe_audio_file(audio_file: str, whisper_model: str = "small", event_hook: Optional[Callable[[str, Any], None]] = None) -> list:
     """

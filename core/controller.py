@@ -195,6 +195,7 @@ class ClipController:
 
         # Update application global configuration
         config.whisper_model = whisper_model
+        config.use_highlight = bool(payload.get("use_highlight", False))
         config.subtitle_font = subtitle_font
         config.subtitle_fonts_dir = subtitle_fontsdir
         config.subtitle_location = subtitle_location

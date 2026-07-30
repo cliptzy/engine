@@ -125,18 +125,93 @@ def process_single_clip(
                 log.debug(f"Event hook error: {e}")
                 
         log.info(f"Generating subtitle for clip {index} (for metadata/burn)...")
-        subtitle_generated = generate_subtitle(cropped_file, subtitle_file, config.whisper_model, event_hook=event_hook)
+        subtitle_generated, transcript_text = generate_subtitle(cropped_file, subtitle_file, config.whisper_model, event_hook=event_hook)
         if not subtitle_generated:
             log.warning("Subtitle generation failed, continuing without subtitle...")
 
-        if use_subtitle and subtitle_generated:
+        # --- AI Metadata Generation ---
+        metadata = {}
+        if transcript_text:
+            if callable(event_hook):
+                try:
+                    event_hook("stage", {"stage": "ai_metadata", "clip_index": index})
+                    event_hook("log", f"Generating metadata (Title, Desc, Highlight) via AI for clip {index}...")
+                except Exception: pass
+                
+            preview_file = os.path.join(config.job_dir, "preview.json")
+            youtube_title = "Unknown"
+            channel_name = "Unknown"
+            youtube_url = f"https://youtu.be/{video_id}"
+            try:
+                import json
+                with open(preview_file, "r", encoding="utf-8") as f:
+                    preview_data = json.load(f)
+                    youtube_title = preview_data.get("title", "Unknown")
+                    channel_name = preview_data.get("uploader", "Unknown")
+                    youtube_url = preview_data.get("webpage_url", youtube_url)
+            except Exception: pass
+            
+            ai_config = config.to_dict()
+            from core.ai_detector import ai_detector
+            metadata = ai_detector.generate_metadata(
+                clip_text=transcript_text,
+                youtube_title=youtube_title,
+                channel_name=channel_name,
+                youtube_url=youtube_url,
+                ai_config=ai_config,
+                event_hook=event_hook
+            )
+            
+            if metadata:
+                metadata_file = os.path.join(config.job_dir, f"metadata_{index}.json")
+                try:
+                    import json
+                    with open(metadata_file, "w", encoding="utf-8") as f:
+                        json.dump(metadata, f, indent=2)
+                    if callable(event_hook):
+                        event_hook("log", f"Metadata saved to {metadata_file}")
+                except Exception as e:
+                    log.warning(f"Failed to save metadata for clip {index}: {e}")
+
+        # --- Subtitle & Highlight Burning Logic ---
+        has_highlight = config.use_highlight and metadata and metadata.get("highlight")
+        should_burn = (use_subtitle and subtitle_generated) or has_highlight
+        
+        if should_burn and os.path.exists(subtitle_file):
+            if has_highlight:
+                if callable(event_hook):
+                    try:
+                        event_hook("log", f"Adding Highlight text to subtitle file for clip {index}...")
+                    except Exception: pass
+                try:
+                    from core.subtitle import format_ass_time
+                    highlight_text = metadata.get("highlight").upper()
+                    end_ass = format_ass_time(end - start)
+                    
+                    # If subtitle is disabled but highlight is enabled, we need to remove the regular dialogue events
+                    if not use_subtitle:
+                        with open(subtitle_file, "r", encoding="utf-8") as f:
+                            lines = f.readlines()
+                        with open(subtitle_file, "w", encoding="utf-8") as f:
+                            for line in lines:
+                                if not line.startswith("Dialogue:"):
+                                    f.write(line)
+                                    
+                    # Append Highlight event
+                    # \an8 for top-center, \fs100 for large font, \c&H00FFFF& for yellow color, \b1 for bold
+                    highlight_event = f"Dialogue: 1,0:00:00.00,{end_ass},Default,,0,0,100,,{{\\an8\\fs90\\c&H00FFFF&\\b1\\3c&H000000&\\3a&H80&\\bord5}}{highlight_text}\n"
+                    with open(subtitle_file, "a", encoding="utf-8") as f:
+                        f.write(highlight_event)
+                except Exception as e:
+                    log.warning(f"Failed to append highlight to subtitle: {e}")
+
             if callable(event_hook):
                 try:
                     event_hook("stage", {"stage": "burn_subtitle", "clip_index": index})
                 except Exception as e:
                     log.debug(f"Event hook error: {e}")
                     
-            log.info(f"Burning subtitle to video for clip {index}...")
+            log.info(f"Burning subtitle/highlight to video for clip {index}...")
             fontsdir_arg = ""
             if config.subtitle_fonts_dir and os.path.isdir(config.subtitle_fonts_dir):
                 fontsdir_arg = f":fontsdir='{config.subtitle_fonts_dir}'"

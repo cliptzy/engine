@@ -52,7 +52,7 @@ jobs:
         run: |
           cd dist
           if [ "${{ runner.os }}" == "Windows" ]; then
-            7z a ../${{ matrix.artifact_name }}.zip cliptzy
+            7z a ../${{ matrix.artifact_name }}.zip cliptzy.exe
           else
             zip -r ../${{ matrix.artifact_name }}.zip cliptzy
           fi

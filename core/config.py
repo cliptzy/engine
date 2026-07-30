@@ -72,6 +72,7 @@ class AppConfig:
     openai_model: str = "gpt-4o-mini"
     
     ai_prompt: str = ""
+    use_highlight: bool = False
 
     def set_ratio_preset(self, preset: str) -> None:
         """Sets the output resolution based on the given ratio preset."""
@@ -98,6 +99,7 @@ class AppConfig:
             "top_height": self.top_height,
             "bottom_height": self.bottom_height,
             "use_subtitle": self.use_subtitle,
+            "use_highlight": self.use_highlight,
             "whisper_model": self.whisper_model,
             "subtitle_font": self.subtitle_font,
             "subtitle_fonts_dir": self.subtitle_fonts_dir,
@@ -158,6 +160,8 @@ class AppConfig:
             self.padding = int(data["padding"])
         if "use_subtitle" in data:
             self.use_subtitle = bool(data["use_subtitle"])
+        if "use_highlight" in data:
+            self.use_highlight = bool(data["use_highlight"])
         if "whisper_model" in data and data["whisper_model"]:
             self.whisper_model = data["whisper_model"]
         if "subtitle_font" in data and data["subtitle_font"]:
