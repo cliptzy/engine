@@ -277,6 +277,19 @@ class AppConfig:
         except Exception as e:
             return False
 
+    def get_files_to_sync(self) -> list:
+        """Returns a list of credential/session files to sync."""
+        files = ["cred/youtube_token.json"]
+        if self.tt_session: files.append(self.tt_session)
+        if self.yt_session: files.append(self.yt_session)
+        if self.ig_session: files.append(self.ig_session)
+        return files
+
+    def ensure_cred_dir(self) -> None:
+        """Ensures the credential directory exists."""
+        import os
+        os.makedirs("cred", exist_ok=True)
+
 # Global configuration instance
 config = AppConfig()
 

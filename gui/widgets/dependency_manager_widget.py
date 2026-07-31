@@ -67,7 +67,7 @@ class DependencyWorker(QThread):
             # 2. Install FFmpeg
             self.log_signal.emit("\n--- Instalasi FFmpeg ---")
             if is_windows:
-                ffmpeg_url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+                ffmpeg_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
                 ffmpeg_zip = os.path.join(bin_dir, "ffmpeg.zip")
                 self.log_signal.emit(f"Mengunduh FFmpeg dari {ffmpeg_url}...")
                 try:

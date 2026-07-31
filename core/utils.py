@@ -25,6 +25,17 @@ def is_ffmpeg_available() -> bool:
     """Checks if ffmpeg is accessible from PATH."""
     return bool(shutil.which("ffmpeg"))
 
+def is_ffmpeg_libass_supported() -> bool:
+    """Checks if the available FFmpeg supports the 'subtitles' filter (requires libass)."""
+    if not is_ffmpeg_available():
+        return False
+    try:
+        import re
+        res = subprocess.run(["ffmpeg", "-filters"], capture_output=True, text=True, timeout=3)
+        return bool(re.search(r'\bsubtitles\b', res.stdout))
+    except Exception:
+        return False
+
 def is_deno_available() -> bool:
     """Checks if deno is accessible from PATH."""
     return bool(shutil.which("deno"))

@@ -51,9 +51,9 @@ class ClipConfigWidget(QFrame):
         grid.addWidget(self.ratio_combo, 0, 3)
 
         # Row 1: Subtitle Enable & Whisper Model
-        self.subtitle_check = QCheckBox("Aktifkan Auto Subtitle (Faster-Whisper)")
+        self.subtitle_check = QCheckBox("Auto Subtitle")
         self.subtitle_check.toggled.connect(self.on_subtitle_toggled)
-        self.highlight_check = QCheckBox("Burn Teks Highlight AI")
+        self.highlight_check = QCheckBox("Highlight Text")
         self.generate_intro_check = QCheckBox("Generate Intro")
         self.generate_intro_check.toggled.connect(self.on_generate_intro_toggled)
         
@@ -256,6 +256,20 @@ class ClipConfigWidget(QFrame):
         
         if config.ui_locked:
             self.btn_lock_all.setChecked(True)
+            
+        self._detect_libass()
+
+    def _detect_libass(self):
+        from core.utils import is_ffmpeg_libass_supported
+        if not is_ffmpeg_libass_supported():
+            self.subtitle_check.setEnabled(False)
+            self.subtitle_check.setChecked(False)
+            self.subtitle_check.setText("Auto Subtitle (Missing libass)")
+            self.subtitle_check.setToolTip("FFmpeg di sistem ini tidak memiliki library libass. Perbarui lewat menu Pengaturan.")
+            self.on_subtitle_toggled(False)
+        else:
+            self.subtitle_check.setText("Auto Subtitle")
+            self.subtitle_check.setToolTip("")
         
 
 
@@ -284,6 +298,7 @@ class ClipConfigWidget(QFrame):
         self.hw_combo.setEnabled(not locked)
         
         if not locked:
+            self._detect_libass()
             self.on_subtitle_toggled(self.subtitle_check.isChecked())
             self.btn_lock_all.setText("🔒 Kunci dan Simpan Pengaturan")
             self.btn_lock_all.setStyleSheet("")

@@ -259,6 +259,7 @@ class AutoUploadWidget(QFrame):
 
     def on_import_ig_cookies(self):
         from PyQt6.QtWidgets import QFileDialog, QMessageBox
+        from core.config import config
         import shutil
         import os
         
@@ -273,7 +274,7 @@ class AutoUploadWidget(QFrame):
             return
             
         try:
-            os.makedirs("cred", exist_ok=True)
+            config.ensure_cred_dir()
             target_path = "cred/instagram_cookies.txt"
             shutil.copy(file_path, target_path)
             self.ig_session_input.setText(target_path)

@@ -68,31 +68,14 @@ def main():
         if login_dialog.exec() != 1:  # 1 is QDialog.DialogCode.Accepted
             sys.exit(0)
         
-    # Define files that should be synced when the app closes
-    import os
-    os.makedirs("cred", exist_ok=True)
-    files_to_sync = ["cred/youtube_token.json"]
-    if config.tt_session: files_to_sync.append(config.tt_session)
-    if config.yt_session: files_to_sync.append(config.yt_session)
-    if config.ig_session: files_to_sync.append(config.ig_session)
+    # Create cred directory if it doesn't exist
+    config.ensure_cred_dir()
     
     window = MainWindow()
     window.show()
     
     # Run the application event loop
     ret = app.exec()
-    
-    # Sync config up before completely exiting
-    log.info("Aplikasi ditutup, melakukan sync up konfigurasi terakhir ke database...")
-    config.load_from_file()
-    supabase_sync.sync_config_up(config.to_dict())
-    
-    # Sync storage files up
-    log.info("Melakukan sync up file kredensial ke storage...")
-    for f in set(files_to_sync):
-        if f and os.path.exists(f):
-            filename = os.path.basename(f)
-            supabase_sync.upload_file(f, filename)
     
     sys.exit(ret)
 

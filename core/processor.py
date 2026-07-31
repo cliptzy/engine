@@ -248,7 +248,16 @@ def process_single_clip(
                 
                 # 1. Generate TTS
                 from gtts import gTTS
-                tts = gTTS(text=highlight_text, lang='id')
+                import json
+                tts_lang = 'id'
+                preview_file = os.path.join(config.job_dir, "preview.json")
+                if os.path.exists(preview_file):
+                    try:
+                        with open(preview_file, "r", encoding="utf-8") as f:
+                            tts_lang = json.load(f).get("language") or 'id'
+                    except: pass
+                
+                tts = gTTS(text=highlight_text, lang=tts_lang)
                 audio_path = os.path.join(config.job_dir, f"intro_audio_{index}.mp3")
                 tts.save(audio_path)
                 

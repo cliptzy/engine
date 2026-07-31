@@ -16,7 +16,18 @@ except ImportError:
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
 
 class StatsWorker(QThread):
-    stats_updated = pyqtSignal(list)
+    stats_updated = pyqtSignal(list, str)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.last_net_io = None
+        self.last_time = None
+        if psutil:
+            try:
+                import time
+                self.last_net_io = psutil.net_io_counters()
+                self.last_time = time.time()
+            except: pass
 
     def run(self):
         import sys
@@ -61,7 +72,31 @@ class StatsWorker(QThread):
             except Exception:
                 pass
                 
-        self.stats_updated.emit(stats_text)
+        net_text = "⬇ 0 KB/s | ⬆ 0 KB/s"
+        if psutil:
+            try:
+                import time
+                current_time = time.time()
+                current_net_io = psutil.net_io_counters()
+                
+                if self.last_net_io and self.last_time and (current_time - self.last_time) > 0:
+                    dt = current_time - self.last_time
+                    dl_speed = (current_net_io.bytes_recv - self.last_net_io.bytes_recv) / dt
+                    ul_speed = (current_net_io.bytes_sent - self.last_net_io.bytes_sent) / dt
+                    
+                    def format_speed(speed):
+                        if speed > 1024 * 1024:
+                            return f"{speed / (1024*1024):.1f} MB/s"
+                        else:
+                            return f"{speed / 1024:.0f} KB/s"
+                            
+                    net_text = f"⬇ {format_speed(dl_speed)} | ⬆ {format_speed(ul_speed)}"
+                    
+                self.last_net_io = current_net_io
+                self.last_time = current_time
+            except: pass
+
+        self.stats_updated.emit(stats_text, net_text)
 
 
 class HeaderWidget(QFrame):
@@ -103,12 +138,16 @@ class HeaderWidget(QFrame):
         self.stats_badge = QLabel()
         self.stats_badge.setStyleSheet("background-color: #334155; color: #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold;")
         
+        self.net_badge = QLabel("⬇ 0 KB/s | ⬆ 0 KB/s")
+        self.net_badge.setStyleSheet("background-color: #1e3a8a; color: #bfdbfe; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold;")
+
         # Dependencies Status
         self.ffmpeg_badge = QLabel()
         self.deno_badge = QLabel()
         self.cookie_badge = QLabel()
 
         status_layout.addWidget(self.stats_badge)
+        status_layout.addWidget(self.net_badge)
         status_layout.addWidget(self.ffmpeg_badge)
         status_layout.addWidget(self.deno_badge)
         status_layout.addWidget(self.cookie_badge)
@@ -134,8 +173,9 @@ class HeaderWidget(QFrame):
         if not self.stats_worker.isRunning():
             self.stats_worker.start()
             
-    def on_stats_updated(self, stats_text):
+    def on_stats_updated(self, stats_text, net_text):
         self.stats_badge.setText(" | ".join(stats_text))
+        self.net_badge.setText(net_text)
 
     def update_deno_status(self):
         if is_deno_available():

@@ -126,7 +126,8 @@ class SupabaseSyncManager:
                     # Save session to file
                     import json
                     import os
-                    os.makedirs("cred", exist_ok=True)
+                    from core.config import config
+                    config.ensure_cred_dir()
                     session_data = {
                         "access_token": session_res.session.access_token,
                         "refresh_token": session_res.session.refresh_token

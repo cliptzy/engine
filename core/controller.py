@@ -86,6 +86,7 @@ class ClipController:
             "duration": item.get("duration", 0),
             "webpage_url": item.get("webpage_url") or url_clean,
             "id": item.get("id"),
+            "language": item.get("language")
         }
 
         with _preview_lock:

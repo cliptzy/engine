@@ -10,6 +10,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 class SidebarWidget(QFrame):
     page_changed = pyqtSignal(int)
     clear_cache_requested = pyqtSignal()
+    backup_config_requested = pyqtSignal()
     restore_config_requested = pyqtSignal()
     logout_requested = pyqtSignal()
 
@@ -102,22 +103,29 @@ class SidebarWidget(QFrame):
 
         layout.addStretch()
 
+        # Action: Backup Config
+        self.btn_backup_config = QPushButton("⬆️ Backup")
+        self.btn_backup_config.setProperty("class", "nav-btn")
+        self.btn_backup_config.setStyleSheet("color: #10b981;") # Emerald green
+        self.btn_backup_config.clicked.connect(self.backup_config_requested.emit)
+        layout.addWidget(self.btn_backup_config)
+
         # Action: Restore Config
-        self.btn_restore_config = QPushButton("☁️ Restore Config dari Cloud")
+        self.btn_restore_config = QPushButton("☁️ Restore")
         self.btn_restore_config.setProperty("class", "nav-btn")
         self.btn_restore_config.setStyleSheet("color: #38bdf8;") # Light blue for distinction
         self.btn_restore_config.clicked.connect(self.restore_config_requested.emit)
         layout.addWidget(self.btn_restore_config)
 
         # Action: Logout
-        self.btn_logout = QPushButton("🚪 Logout Akun")
+        self.btn_logout = QPushButton("🚪 Logout")
         self.btn_logout.setProperty("class", "nav-btn")
         self.btn_logout.setStyleSheet("color: #fbbf24;") # Yellow
         self.btn_logout.clicked.connect(self.logout_requested.emit)
         layout.addWidget(self.btn_logout)
 
         # Action: Clear Cache & Generated Clips
-        self.btn_clear_cache = QPushButton("🧹 Bersihkan Cache & Klip")
+        self.btn_clear_cache = QPushButton("🧹 Clear Cache")
         self.btn_clear_cache.setProperty("class", "danger-action")
         self.btn_clear_cache.clicked.connect(self.clear_cache_requested.emit)
         layout.addWidget(self.btn_clear_cache)

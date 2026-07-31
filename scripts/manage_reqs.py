@@ -29,13 +29,13 @@ def compile_requirements(upgrade=False):
     ensure_pip_tools()
     setup_files()
     
-    print("[Info] Meng-compile requirements.txt secara bersih dan rapi...")
+    print("[Info] Meng-compile requirements.txt...")
     cmd = [sys.executable, "-m", "piptools", "compile", "requirements.in"]
     if upgrade:
         cmd.append("--upgrade")
         
     subprocess.run(cmd, check=True)
-    print("\n✅ Berhasil! requirements.txt sekarang bersih, memuat versi yang terkunci, dan siap digunakan.")
+    print("\n✅ Berhasil!")
 
 def sync_environment():
     """Menghapus pustaka sampah (orphans) dan menyesuaikan venv dengan requirements.txt."""

@@ -67,6 +67,7 @@ class MainWindow(QMainWindow):
         self.sidebar_widget = SidebarWidget(central_widget)
         self.sidebar_widget.page_changed.connect(self.on_page_changed)
         self.sidebar_widget.clear_cache_requested.connect(self.on_clear_cache)
+        self.sidebar_widget.backup_config_requested.connect(self.on_backup_config)
         self.sidebar_widget.restore_config_requested.connect(self.on_restore_config)
         self.sidebar_widget.logout_requested.connect(self.on_logout)
         body_layout.addWidget(self.sidebar_widget)
@@ -245,6 +246,43 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, "Error Hapus Cache", f"Gagal membersihkan cache: {e}")
 
+    def on_backup_config(self):
+        from core.supabase_sync import supabase_sync
+        from core.config import config
+        import os
+        
+        reply = QMessageBox.question(
+            self,
+            "Konfirmasi Backup",
+            "Apakah Anda yakin ingin melakukan backup konfigurasi dan sesi kredensial saat ini ke Cloud (Supabase)?\nIni akan menimpa data backup sebelumnya.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                self.log_widget.append_log("[INFO] Memulai backup konfigurasi ke Cloud...")
+                config.load_from_file()
+                success_config = supabase_sync.sync_config_up(config.to_dict())
+                
+                self.log_widget.append_log("[INFO] Mengunggah file kredensial ke Cloud...")
+                uploaded_files = []
+                for f in set(config.get_files_to_sync()):
+                    if f and os.path.exists(f):
+                        filename = os.path.basename(f)
+                        if supabase_sync.upload_file(f, filename):
+                            uploaded_files.append(filename)
+                
+                if success_config or uploaded_files:
+                    msg = "Backup berhasil diselesaikan."
+                    if uploaded_files:
+                        msg += f"\nFile terunggah: {', '.join(uploaded_files)}"
+                    self.log_widget.append_log(f"[INFO] {msg}")
+                    QMessageBox.information(self, "Backup Berhasil", msg)
+                else:
+                    QMessageBox.warning(self, "Backup Gagal", "Gagal melakukan backup atau tidak ada data yang dapat diunggah.")
+            except Exception as e:
+                QMessageBox.critical(self, "Error Backup", f"Terjadi kesalahan saat backup: {e}")
+
     def on_restore_config(self):
         from core.supabase_sync import supabase_sync
         from core.config import config
@@ -263,13 +301,27 @@ class MainWindow(QMainWindow):
                     config.update_from_dict(cloud_config)
                     config.save_to_file()
                     
+                    # Restore credential files
+                    import os
+                    config.ensure_cred_dir()
+                    
+                    downloaded_files = []
+                    for f in set(config.get_files_to_sync()):
+                        if f:
+                            filename = os.path.basename(f)
+                            if supabase_sync.download_file(filename, f):
+                                downloaded_files.append(filename)
+                                
+                    if downloaded_files:
+                        self.log_widget.append_log(f"[INFO] File kredensial berhasil dipulihkan: {', '.join(downloaded_files)}")
+                    
                     # Update settings UI
                     self.page_ai_settings_widget.load_from_config()
                     self.clip_config_widget.load_from_config()
                     self.auto_upload_widget.load_from_config()
                     
                     self.log_widget.append_log("[INFO] Konfigurasi berhasil dipulihkan dari Cloud!")
-                    QMessageBox.information(self, "Restore Berhasil", "Konfigurasi berhasil dipulihkan dari Cloud!")
+                    QMessageBox.information(self, "Restore Berhasil", "Konfigurasi beserta file kredensial berhasil dipulihkan dari Cloud!")
                 else:
                     QMessageBox.warning(self, "Restore Gagal", "Tidak ada konfigurasi tersimpan di Cloud atau gagal menghubungi server.")
             except Exception as e:
