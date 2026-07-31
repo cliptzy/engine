@@ -50,6 +50,13 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
    - Pengunduhan model Faster-Whisper harus didukung secara terisolasi. Jika model belum ada di cache, tampilkan indikator unduhan di GUI sebelum proses clipping dimulai.
 3. **Struktur Pembatalan Paket Web**:
    - Modul Flask (`webapp.py`, `templates/`, `static/`) yang sudah tidak dipakai harus diisolasi atau dihapus secara aman setelah GUI Desktop murni selesai diimplementasikan.
+4. **Manajemen Pustaka (Dependency Management) yang Ketat**:
+   - DILARANG mengedit `requirements.txt` secara manual atau menggunakan perintah `pip freeze > requirements.txt` biasa karena akan mengotori daftar dependensi dengan *sub-dependencies*.
+   - Pustaka inti (Top-Level) HANYA boleh didaftarkan di dalam berkas `requirements.in`.
+   - AI Model dan Pengembang WAJIB menggunakan script `scripts/manage_reqs.py` (berbasis `pip-tools`) untuk segala aktivitas manajemen dependensi:
+     - **Penambahan**: Gunakan perintah `python scripts/manage_reqs.py add "nama-paket"` untuk menginstal pustaka baru (otomatis mengompilasi ulang dan melakukan sinkronisasi).
+     - **Kompilasi**: Gunakan `python scripts/manage_reqs.py compile` untuk merapikan dan mengunci versi paket (lock) ke dalam `requirements.txt`.
+     - **Sinkronisasi**: Gunakan `python scripts/manage_reqs.py sync` untuk memastikan *virtual environment* bebas dari pustaka yatim (*orphans*) dan paket sisa yang tak terpakai.
 
 ---
 

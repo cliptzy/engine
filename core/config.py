@@ -75,6 +75,7 @@ class AppConfig:
     
     ai_prompt: str = ""
     use_highlight: bool = False
+    use_generate_intro: bool = False
 
     def set_ratio_preset(self, preset: str) -> None:
         """Sets the output resolution based on the given ratio preset."""
@@ -102,6 +103,7 @@ class AppConfig:
             "bottom_height": self.bottom_height,
             "use_subtitle": self.use_subtitle,
             "use_highlight": self.use_highlight,
+            "use_generate_intro": self.use_generate_intro,
             "whisper_model": self.whisper_model,
             "subtitle_font": self.subtitle_font,
             "subtitle_fonts_dir": self.subtitle_fonts_dir,
@@ -165,6 +167,8 @@ class AppConfig:
             self.use_subtitle = bool(data["use_subtitle"])
         if "use_highlight" in data:
             self.use_highlight = bool(data["use_highlight"])
+        if "use_generate_intro" in data:
+            self.use_generate_intro = bool(data["use_generate_intro"])
         if "whisper_model" in data and data["whisper_model"]:
             self.whisper_model = data["whisper_model"]
         if "subtitle_font" in data and data["subtitle_font"]:

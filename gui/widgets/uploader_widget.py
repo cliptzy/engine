@@ -179,6 +179,14 @@ class UploadWorker(QThread):
                 # Sleep delay between uploads to avoid rate limiting
                 time.sleep(2.0)
                 
+        # Clean up uploaders
+        for uploader in uploaders:
+            if hasattr(uploader, 'close'):
+                try:
+                    uploader.close()
+                except Exception as e:
+                    self.log_signal.emit(f"[UPLOAD] Error closing {uploader.platform_name}: {e}")
+
         if self.is_cancelled:
             self.status_signal.emit("⚠️ Dibatalkan")
         else:

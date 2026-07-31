@@ -54,10 +54,13 @@ class ClipConfigWidget(QFrame):
         self.subtitle_check = QCheckBox("Aktifkan Auto Subtitle (Faster-Whisper)")
         self.subtitle_check.toggled.connect(self.on_subtitle_toggled)
         self.highlight_check = QCheckBox("Burn Teks Highlight AI")
+        self.generate_intro_check = QCheckBox("Generate Intro")
+        self.generate_intro_check.toggled.connect(self.on_generate_intro_toggled)
         
         row1_box = QHBoxLayout()
         row1_box.addWidget(self.subtitle_check)
         row1_box.addWidget(self.highlight_check)
+        row1_box.addWidget(self.generate_intro_check)
         grid.addLayout(row1_box, 1, 0, 1, 2)
 
         grid.addWidget(QLabel("Model Whisper:"), 1, 2)
@@ -212,6 +215,8 @@ class ClipConfigWidget(QFrame):
 
         self.subtitle_check.setChecked(config.use_subtitle)
         self.highlight_check.setChecked(config.use_highlight)
+        self.generate_intro_check.setChecked(config.use_generate_intro)
+        self.on_generate_intro_toggled(config.use_generate_intro)
         
         whisper_idx = self.whisper_combo.findData(config.whisper_model)
         if whisper_idx >= 0:
@@ -254,6 +259,9 @@ class ClipConfigWidget(QFrame):
         
 
 
+    def on_generate_intro_toggled(self, checked: bool):
+        self.btn_intro.setEnabled(not checked)
+
     def on_subtitle_toggled(self, checked: bool):
         self.whisper_combo.setEnabled(checked)
         self.font_combo.setEnabled(checked)
@@ -271,6 +279,7 @@ class ClipConfigWidget(QFrame):
         self.ratio_combo.setEnabled(not locked)
         self.subtitle_check.setEnabled(not locked)
         self.highlight_check.setEnabled(not locked)
+        self.generate_intro_check.setEnabled(not locked)
         self.padding_spin.setEnabled(not locked)
         self.hw_combo.setEnabled(not locked)
         
@@ -299,6 +308,7 @@ class ClipConfigWidget(QFrame):
             "output_ratio": payload["ratio"],
             "use_subtitle": payload["subtitle"],
             "use_highlight": payload.get("use_highlight", False),
+            "use_generate_intro": payload.get("use_generate_intro", False),
             "whisper_model": payload["whisper_model"],
             "subtitle_font": payload["subtitle_font"],
             "subtitle_location": payload["subtitle_location"],
@@ -331,6 +341,7 @@ class ClipConfigWidget(QFrame):
             "ratio": self.ratio_combo.currentData(),
             "subtitle": self.subtitle_check.isChecked(),
             "use_highlight": self.highlight_check.isChecked(),
+            "use_generate_intro": self.generate_intro_check.isChecked(),
             "whisper_model": self.whisper_combo.currentData(),
             "subtitle_font": self.font_combo.currentData(),
             "subtitle_location": self.location_combo.currentData(),

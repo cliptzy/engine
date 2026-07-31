@@ -237,7 +237,66 @@ def process_single_clip(
                         pass
 
         # Process Intro / Outro Concatenation
-        has_intro = config.intro_video and os.path.isfile(config.intro_video)
+        intro_to_use = config.intro_video if (config.intro_video and os.path.isfile(config.intro_video)) else None
+        
+        if config.use_generate_intro and metadata and metadata.get("highlight"):
+            try:
+                if callable(event_hook):
+                    event_hook("log", f"[intro] Generating AI Intro with TTS for clip {index}...")
+                
+                highlight_text = metadata.get("highlight")
+                
+                # 1. Generate TTS
+                from gtts import gTTS
+                tts = gTTS(text=highlight_text, lang='id')
+                audio_path = os.path.join(config.job_dir, f"intro_audio_{index}.mp3")
+                tts.save(audio_path)
+                
+                # 2. Get duration
+                try:
+                    res = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", audio_path], capture_output=True, text=True)
+                    duration_sec = float(res.stdout.strip())
+                except:
+                    duration_sec = 3.0
+                
+                # 3. Create ASS for centered highlight text
+                intro_ass = os.path.join(config.job_dir, f"intro_{index}.ass")
+                from core.subtitle import format_ass_time
+                end_ass = format_ass_time(duration_sec + 0.5) # add little padding
+                
+                with open(intro_ass, "w", encoding="utf-8") as f:
+                    f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 720\nPlayResY: 1280\n\n[V4+ Styles]\n")
+                    f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
+                    f.write(f"Style: Default,{config.subtitle_font},80,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,0,5,20,20,20,1\n\n")
+                    f.write("[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
+                    f.write(f"Dialogue: 0,0:00:00.00,{end_ass},Default,,0,0,0,,{{\\an5\\b1\\bord5\\3c&H000000&}}{highlight_text.upper()}\n")
+                
+                # 4. Generate black video with ASS and Audio
+                intro_video_path = os.path.join(config.job_dir, f"intro_video_{index}.mp4")
+                out_w, out_h = config.out_width or 720, config.out_height or 1280
+                fontsdir_arg = ""
+                if config.subtitle_fonts_dir and os.path.isdir(config.subtitle_fonts_dir):
+                    fontsdir_arg = f":fontsdir='{config.subtitle_fonts_dir}'"
+                    
+                cmd_intro = [
+                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                    "-f", "lavfi", "-i", f"color=c=black:s={out_w}x{out_h}:d={duration_sec + 0.5}",
+                    "-i", audio_path,
+                    "-vf", f"subtitles=filename='{intro_ass}'{fontsdir_arg}",
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+                    "-c:a", "aac", "-b:a", "128k",
+                    "-shortest",
+                    intro_video_path
+                ]
+                subprocess.run(cmd_intro, check=True)
+                intro_to_use = intro_video_path
+                
+            except Exception as e:
+                log.error(f"Failed to generate intro video: {e}")
+                if callable(event_hook):
+                    event_hook("log", f"[intro] ❌ Failed to generate intro: {e}")
+
+        has_intro = intro_to_use and os.path.isfile(intro_to_use)
         has_outro = config.outro_video and os.path.isfile(config.outro_video)
         
         if has_intro or has_outro:
@@ -257,7 +316,7 @@ def process_single_clip(
             scale_filter = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2,setsar=1"
             
             if has_intro:
-                inputs.extend(["-i", config.intro_video])
+                inputs.extend(["-i", intro_to_use])
                 filter_complex += f"[{input_idx}:v:0]{scale_filter}[v{input_idx}]; [{input_idx}:a:0]aresample=async=1[a{input_idx}]; "
                 input_idx += 1
                 

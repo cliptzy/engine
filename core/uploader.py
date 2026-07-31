@@ -24,6 +24,10 @@ class BaseUploader(ABC):
         """
         pass
 
+    def close(self):
+        """Clean up resources (like browsers) if needed."""
+        pass
+
 class DummyUploader(BaseUploader):
     """
     A dummy uploader for testing the GUI integration before real platform APIs are implemented.
@@ -156,6 +160,7 @@ class YouTubeUploader(BaseUploader):
 class TikTokUploader(BaseUploader):
     def __init__(self):
         super().__init__("TikTok")
+        self.tt_uploader = None
         
     def upload(self, file_path: str, metadata: Dict[str, Any], event_hook=None) -> UploadResult:
         from core.config import config
@@ -176,8 +181,11 @@ class TikTokUploader(BaseUploader):
             if event_hook: event_hook("log", f"[TikTok] Memulai upload menggunakan tiktok-uploader dari file {cookie_path}...")
             logger.info(f"Mengunggah ke TikTok: {file_path}, caption: {caption}")
             
-            # Use tiktok-uploader package
-            uploader = TTUploader(cookies=cookie_path, headless=True)
+            # Use tiktok-uploader package and reuse instance
+            if self.tt_uploader is None:
+                self.tt_uploader = TTUploader(cookies=cookie_path, headless=False)
+            
+            uploader = self.tt_uploader
             
             import datetime
             schedule = None
@@ -195,6 +203,8 @@ class TikTokUploader(BaseUploader):
                 success = uploader.upload_video(file_path, description=caption, schedule=schedule)
             else:
                 success = uploader.upload_video(file_path, description=caption)
+
+            time.sleep(3)
             
             if not success:
                 err_msg = f"Gagal upload video ke TikTok."
@@ -202,12 +212,29 @@ class TikTokUploader(BaseUploader):
                 logger.error(err_msg)
                 return UploadResult(False, self.platform_name, error_msg=err_msg)
             
+            # Save updated cookies
+            if hasattr(uploader, 'page') and uploader.page and hasattr(uploader.page, 'context'):
+                try:
+                    from tiktok_uploader.auth import save_cookies
+                    save_cookies(cookie_path, uploader.page.context.cookies())
+                    if event_hook: event_hook("log", "[TikTok] Cookie berhasil diperbarui secara otomatis.")
+                except Exception as e:
+                    logger.warning(f"Gagal memperbarui cookie TikTok: {e}")
+
             if event_hook: event_hook("log", "[TikTok] ✅ Upload berhasil!")
             return UploadResult(True, self.platform_name, url="https://www.tiktok.com/profile")
             
         except Exception as e:
             logger.error(f"TikTok Upload error: {str(e)}", exc_info=True)
             return UploadResult(False, self.platform_name, error_msg=f"Gagal upload ke TikTok: {str(e)}")
+
+    def close(self):
+        if self.tt_uploader is not None:
+            try:
+                self.tt_uploader.close()
+            except Exception:
+                pass
+            self.tt_uploader = None
 
 class InstagramUploader(BaseUploader):
     def __init__(self):
@@ -259,9 +286,21 @@ class InstagramUploader(BaseUploader):
             if event_hook: event_hook("log", f"[Instagram] Berhasil login. Memulai upload Reels...")
             logger.info(f"Mengunggah ke Instagram: {file_path}, caption: {caption}")
             
+            thumb_path = f"{file_path}.jpg"
+            if not os.path.exists(thumb_path):
+                import subprocess
+                try:
+                    subprocess.run(
+                        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-ss", "00:00:01", "-i", file_path, "-vframes", "1", "-q:v", "2", thumb_path],
+                        check=True
+                    )
+                except Exception as e:
+                    logger.warning(f"Gagal generate thumbnail dengan ffmpeg: {e}")
+
             media = cl.clip_upload(
                 file_path,
-                caption=caption
+                caption=caption,
+                thumbnail=thumb_path if os.path.exists(thumb_path) else None
             )
             
             if not media:
@@ -270,6 +309,22 @@ class InstagramUploader(BaseUploader):
                 logger.error(err_msg)
                 return UploadResult(False, self.platform_name, error_msg=err_msg)
             
+            # Save updated cookies using instagrapi format
+            try:
+                new_cookies = []
+                for name, value in cl.get_settings().get("cookies", {}).items():
+                    new_cookies.append({
+                        "name": name,
+                        "value": value,
+                        "domain": ".instagram.com",
+                        "path": "/"
+                    })
+                with open(config.ig_session, "w", encoding="utf-8") as f:
+                    json.dump(new_cookies, f, indent=2)
+                if event_hook: event_hook("log", "[Instagram] Cookie berhasil diperbarui secara otomatis.")
+            except Exception as e:
+                logger.warning(f"Gagal memperbarui cookie Instagram: {e}")
+
             media_url = f"https://www.instagram.com/reel/{media.code}/"
             if event_hook: event_hook("log", f"[Instagram] ✅ Upload berhasil! {media_url}")
             return UploadResult(True, self.platform_name, url=media_url)

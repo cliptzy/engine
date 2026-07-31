@@ -2,11 +2,19 @@
 
 Semua catatan pembaruan dari proyek Cliptzy akan didokumentasikan di dalam file ini.
 
-## [v2.0.1] - 2026-07-31
+## [v2.0.3] - 2026-07-31
 
-### Fix
+### Added
 
-- Memperbaiki aplikasi tidak bisa dibuka karena env gagal disuntikkan
+- **AI Highlight Text-to-Speech (TTS):** Menambahkan fitur baru berupa pembuatan otomatis video pembuka (Intro) yang berisi narasi suara (_text-to-speech_) menggunakan `gTTS` berdasarkan hasil deteksi sorotan AI. Video intro akan langsung digabungkan ke klip akhir secara otomatis.
+- **Auto-Refresh Cookies:** Cookies untuk akun TikTok dan Instagram sekarang akan ditarik ulang secara otomatis setelah sesi _upload_ selesai, memastikan masa aktif cookie tetap _fresh_ dan tidak mudah kedaluwarsa.
+- **Dependency Management Script:** Menambahkan perangkat manajemen dependensi canggih di `scripts/manage_reqs.py` (berbasis `pip-tools`) dan `requirements.in` demi memastikan _environment_ pengembangan selalu bersih tanpa sisa paket usang (_orphans_).
+
+### Fixed
+
+- **TikTok Asyncio Bug:** Memperbaiki permasalahan pengunggahan jamak ke TikTok (Playwright asyncio loop error) dengan menggunakan ulang satu instansi peramban (_reusable browser context_).
+- **Instagram Moviepy Crash:** Mengeliminasi ketergantungan pada pustaka `moviepy` (yang menyebabkan error `VideoFileClip`) dalam alur _instagrapi_. Pembuatan _thumbnail_ klip kini ditangani 100% oleh `ffmpeg` murni.
+- **Standalone Build Environment:** Memperbaiki sistem konfigurasi (_Supabase_) agar aplikasi versi kompilasi eksekutabel (_.exe/binary_) dapat diluncurkan mandiri secara instan tanpa membutuhkan ketersediaan berkas `.env` lokal lagi.
 
 ## [v2.0.1] - 2026-07-31
 

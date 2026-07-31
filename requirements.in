@@ -1,0 +1,15 @@
+PyQt6==6.11.0
+yt-dlp==2026.7.4
+faster-whisper==1.2.1
+tiktok-uploader==1.2.0
+instagrapi==2.18.12
+supabase==2.31.0
+python-dotenv==1.2.2
+google-genai==2.14.0
+google-api-python-client==2.198.0
+google-auth-oauthlib==1.4.0
+google-auth-httplib2==0.4.0
+gTTS==2.5.4
+psutil==7.2.2
+requests==2.34.2
+playwright==1.61.0
