@@ -10,6 +10,9 @@ datas = [
     ('fonts', 'fonts'),
 ]
 
+if os.path.isfile('.env'):
+    datas.append(('.env', '.'))
+
 if os.path.isdir('images'):
     datas.append(('images', 'images'))
 
