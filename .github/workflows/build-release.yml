@@ -27,7 +27,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Get dotenv
-        run: echo ${{ secrets.DOTENV }} | base64 --decode > .env
+        shell: bash
+        run: echo "${{ secrets.DOTENV }}" | base64 --decode > .env
 
       - name: Set up Python
         uses: actions/setup-python@v5
