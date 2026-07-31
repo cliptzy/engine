@@ -33,8 +33,8 @@ def main():
     app.setApplicationName("Cliptzy Desktop")
     
     # Load environment variables
+    import os
     try:
-        import os
         from dotenv import load_dotenv
         load_dotenv(os.path.join(app_dir, ".env"))
     except ImportError:
@@ -65,7 +65,8 @@ def main():
     os.makedirs("cred", exist_ok=True)
     files_to_sync = ["cred/youtube_token.json"]
     if config.tt_session: files_to_sync.append(config.tt_session)
-    if config.cookies_file: files_to_sync.append(config.cookies_file)
+    if config.yt_session: files_to_sync.append(config.yt_session)
+    if config.ig_session: files_to_sync.append(config.ig_session)
     
     window = MainWindow()
     window.show()

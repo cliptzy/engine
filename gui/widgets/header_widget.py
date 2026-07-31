@@ -153,9 +153,10 @@ class HeaderWidget(QFrame):
             self.ffmpeg_badge.setText("FFmpeg: Missing")
             self.ffmpeg_badge.setStyleSheet("background-color: #7f1d1d; color: #f87171; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold;")
 
+    # Need to periodically check session 
     def update_cookie_status(self):
         import os
-        if config.cookies_file and os.path.exists(config.cookies_file):
+        if config.yt_session and os.path.exists(config.yt_session):
             self.cookie_badge.setText("Cookies: Active")
             self.cookie_badge.setStyleSheet("background-color: #064e3b; color: #34d399; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold;")
         else:

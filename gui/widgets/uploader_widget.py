@@ -115,7 +115,7 @@ class UploadWorker(QThread):
         self.is_cancelled = False
         
     def run(self):
-        from core.uploader import DummyUploader, YouTubeUploader, TikTokUploader
+        from core.uploader import DummyUploader, YouTubeUploader, TikTokUploader, InstagramUploader
         from datetime import datetime, timedelta, timezone
         
         total_tasks = len(self.clips) * len(self.platforms)
@@ -128,14 +128,17 @@ class UploadWorker(QThread):
                 uploaders.append(YouTubeUploader())
             elif p == "TikTok":
                 uploaders.append(TikTokUploader())
+            elif p == "Instagram Reels":
+                uploaders.append(InstagramUploader())
             else:
                 uploaders.append(DummyUploader(p))
                 
         from core.config import config
         interval_hours = getattr(config, "upload_interval", 0.0)
         
-        # Base time for scheduling: current time + 1 hour (as minimum future offset)
-        base_time = datetime.now(timezone.utc) + timedelta(hours=1)
+        # Base time in utc+7 (gmt+7) for Asia/Jakarta (Based on my location :)
+        utc7_time = timezone(timedelta(hours=7))
+        base_time = datetime.now(utc7_time) + timedelta(minutes=30)
             
         for idx, clip in enumerate(self.clips):
             if self.is_cancelled:
@@ -459,8 +462,8 @@ class UploaderWidget(QFrame):
             "tags": self.tags_input.text()
         })
         
+        import os, json
         try:
-            import os, json
             basename = os.path.basename(self.current_clip_path)
             idx = basename.replace("clip_", "").replace(".mp4", "")
             output_dir = os.path.dirname(self.current_clip_path)

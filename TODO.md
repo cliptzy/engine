@@ -50,14 +50,26 @@ Dokumen ini berisi rencana pengembangan dan daftar tugas (TODO) untuk mengimplem
 
 ## 📸 4. Spesifik: Instagram Reels
 
-- [ ] **Instalasi Dependensi**
+- [x] **Instalasi Dependensi**
   - Evaluasi kebutuhan API. Jika targetnya akun Bisnis/Kreator, persiapkan library *requests* untuk berinteraksi dengan Instagram Graph API Meta. 
   - (Opsi Cadangan): Gunakan `instagrapi` untuk meniru perilaku *mobile client* jika Graph API ditolak atau tidak memadai.
-- [ ] **Sistem Autentikasi**
-  - Hubungkan *Access Token* (`config.ig_access_token`) dan *Business Account ID* (`config.ig_business_id`).
-- [ ] **Logika Upload Reels**
+- [x] **Sistem Autentikasi**
+  - Hubungkan *Access Token* (`config.ig_access_token`) dan *Business Account ID* (`config.ig_business_id`). (Diadaptasi untuk menggunakan `instagrapi` dengan username dan password).
+- [x] **Logika Upload Reels**
   - Susun mekanisme pengiriman *media container* ke server Meta dan peluncuran perintah *publishing*.
   - Sisipkan *caption* bawaan (`config.ig_caption`) bersama dengan *metadata* tambahan hasil *generate* AI.
+
+---
+
+## 📘 5. Spesifik: Facebook Pages
+
+- [ ] **Instalasi Dependensi**
+  - Persiapkan library *requests* atau *facebook-sdk* untuk interaksi dengan Meta Graph API (Facebook Pages).
+- [ ] **Sistem Autentikasi**
+  - Siapkan konfigurasi untuk *Page Access Token* dan *Page ID*.
+- [ ] **Logika Upload Video**
+  - Integrasikan mekanisme *upload* klip video ke endpoint Graph API Facebook Pages (`/page_id/videos`).
+  - Sisipkan *caption* dan metadata lain yang disesuaikan untuk format Reels atau video biasa di Facebook.
 
 ---
 

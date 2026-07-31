@@ -192,14 +192,11 @@ class TikTokUploader(BaseUploader):
             
             if schedule:
                 # `tiktok_uploader` upload_video function with schedule
-                failed = uploader.upload_video(file_path, description=caption, schedule=schedule)
+                success = uploader.upload_video(file_path, description=caption, schedule=schedule)
             else:
-                failed = uploader.upload_video(file_path, description=caption)
+                success = uploader.upload_video(file_path, description=caption)
             
-            # Note: upload_video returns True on failure in tiktok-uploader, or throws exception.
-            # We assume truthy value indicates failure as per typical fail boolean return,
-            # or it might raise Exception which is caught below.
-            if failed:
+            if not success:
                 err_msg = f"Gagal upload video ke TikTok."
                 if event_hook: event_hook("log", f"[TikTok] ❌ {err_msg}")
                 logger.error(err_msg)
@@ -211,3 +208,72 @@ class TikTokUploader(BaseUploader):
         except Exception as e:
             logger.error(f"TikTok Upload error: {str(e)}", exc_info=True)
             return UploadResult(False, self.platform_name, error_msg=f"Gagal upload ke TikTok: {str(e)}")
+
+class InstagramUploader(BaseUploader):
+    def __init__(self):
+        super().__init__("Instagram Reels")
+        
+    def upload(self, file_path: str, metadata: Dict[str, Any], event_hook=None) -> UploadResult:
+        from core.config import config
+        from core.logger import log as logger
+        import json
+        import os
+        try:
+            from instagrapi import Client
+        except ImportError:
+            return UploadResult(False, self.platform_name, error_msg="Modul instagrapi belum diinstal. Jalankan: pip install instagrapi")
+            
+        if not config.ig_session or not os.path.exists(config.ig_session):
+            return UploadResult(False, self.platform_name, error_msg="File cookie Instagram belum diisi atau tidak ditemukan.")
+            
+        try:
+            session_id = ""
+            with open(config.ig_session, 'r', encoding='utf-8') as f:
+                content = f.read()
+                
+            try:
+                cookies_json = json.loads(content)
+                for cookie in cookies_json:
+                    if cookie.get('name') == 'sessionid' and 'instagram' in cookie.get('domain', ''):
+                        session_id = cookie.get('value', '')
+                        break
+            except Exception:
+                for line in content.splitlines():
+                    if line.startswith('#') or not line.strip(): continue
+                    parts = line.split('\t')
+                    if len(parts) >= 7 and 'instagram.com' in parts[0] and parts[5] == 'sessionid':
+                        session_id = parts[6].strip()
+                        break
+
+            if not session_id:
+                return UploadResult(False, self.platform_name, error_msg="Tidak ditemukan cookie sessionid di dalam file tersebut.")
+                
+            title = metadata.get("title", "")
+            caption = f"{title} {config.ig_caption}".strip()
+                
+            if event_hook: event_hook("log", f"[Instagram] Memulai login via sessionid...")
+            
+            cl = Client()
+            cl.login_by_sessionid(session_id)
+            
+            if event_hook: event_hook("log", f"[Instagram] Berhasil login. Memulai upload Reels...")
+            logger.info(f"Mengunggah ke Instagram: {file_path}, caption: {caption}")
+            
+            media = cl.clip_upload(
+                file_path,
+                caption=caption
+            )
+            
+            if not media:
+                err_msg = f"Gagal upload video ke Instagram Reels."
+                if event_hook: event_hook("log", f"[Instagram] ❌ {err_msg}")
+                logger.error(err_msg)
+                return UploadResult(False, self.platform_name, error_msg=err_msg)
+            
+            media_url = f"https://www.instagram.com/reel/{media.code}/"
+            if event_hook: event_hook("log", f"[Instagram] ✅ Upload berhasil! {media_url}")
+            return UploadResult(True, self.platform_name, url=media_url)
+            
+        except Exception as e:
+            logger.error(f"Instagram Upload error: {str(e)}", exc_info=True)
+            return UploadResult(False, self.platform_name, error_msg=f"Gagal upload ke Instagram: {str(e)}")

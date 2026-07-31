@@ -67,8 +67,8 @@ class ClipController:
             "-J",
         ]
         
-        if config.cookies_file and os.path.exists(config.cookies_file):
-            cmd.extend(["--cookies", config.cookies_file])
+        if config.yt_session and os.path.exists(config.yt_session):
+            cmd.extend(["--cookies", config.yt_session])
             
         cmd.append(url_clean)
         res = subprocess.run(cmd, capture_output=True, text=True)
@@ -318,9 +318,9 @@ class ClipController:
         if "# Netscape HTTP Cookie File" not in content and ".youtube.com" not in content:
             raise ValueError("Format file cookie tidak valid. Harus format Netscape HTTP Cookie File.")
 
-        dest = "cred/cookies.txt"
+        dest = "cred/yt_cookies.txt" # hardcode yt_cookies
         shutil.copy2(file_path, dest)
-        config.cookies_file = dest
+        config.yt_session = dest
         config.save_to_file()
         return True
 
@@ -534,8 +534,8 @@ class ClipController:
                     "-o", audio_file,
                     f"https://youtu.be/{video_id}"
                 ]
-                if config.cookies_file and os.path.exists(config.cookies_file):
-                    cmd_audio.extend(["--cookies", config.cookies_file])
+                if config.yt_session and os.path.exists(config.yt_session):
+                    cmd_audio.extend(["--cookies", config.yt_session])
 
                 res = subprocess.run(cmd_audio)
                 if res.returncode != 0 or not os.path.exists(audio_file):

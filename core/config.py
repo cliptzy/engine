@@ -27,7 +27,6 @@ class AppConfig:
     subtitle_animation: str = "none"
     subtitle_max_words: int = 3
     
-    cookies_file: Optional[str] = "cred/cookies.txt"
     intro_video: Optional[str] = None
     outro_video: Optional[str] = None
     
@@ -46,8 +45,9 @@ class AppConfig:
     upload_interval: float = 0.0
     hw_accel: str = "cpu"
     
-    yt_client_id: str = ""
 
+    yt_session: Optional[str] = "cred/yt_cookies.txt"
+    yt_client_id: str = ""
     yt_client_secret: str = ""
     yt_visibility: str = "Public"
     yt_tags: str = "#Shorts #Viral #Cliptzy"
@@ -60,6 +60,7 @@ class AppConfig:
 
     ig_business_id: str = ""
     ig_access_token: str = ""
+    ig_session: str = "cred/instagram_cookies.txt"
     ig_caption: str = "Best moment clip #reels #instagram"
     ig_auto_upload: bool = False
 
@@ -112,7 +113,7 @@ class AppConfig:
             "subtitle_border_style": self.subtitle_border_style,
             "subtitle_animation": self.subtitle_animation,
             "subtitle_max_words": self.subtitle_max_words,
-            "cookies_file": self.cookies_file,
+            "yt_session": self.yt_session,
             "intro_video": self.intro_video,
             "outro_video": self.outro_video,
             "output_ratio": self.output_ratio,
@@ -132,6 +133,7 @@ class AppConfig:
             "tt_auto_upload": self.tt_auto_upload,
             "ig_business_id": self.ig_business_id,
             "ig_access_token": self.ig_access_token,
+            "ig_session": self.ig_session,
             "ig_caption": self.ig_caption,
             "ig_auto_upload": self.ig_auto_upload,
             "ai_provider": self.ai_provider,
@@ -185,8 +187,8 @@ class AppConfig:
             self.subtitle_animation = data["subtitle_animation"]
         if "subtitle_max_words" in data and data["subtitle_max_words"] is not None:
             self.subtitle_max_words = int(data["subtitle_max_words"])
-        if "cookies_file" in data:
-            self.cookies_file = data["cookies_file"]
+        if "yt_session" in data:
+            self.yt_session = data["yt_session"]
         if "intro_video" in data:
             self.intro_video = data["intro_video"]
         if "outro_video" in data:
@@ -217,6 +219,7 @@ class AppConfig:
 
         if "ig_business_id" in data: self.ig_business_id = data["ig_business_id"]
         if "ig_access_token" in data: self.ig_access_token = data["ig_access_token"]
+        if "ig_session" in data: self.ig_session = data["ig_session"]
         if "ig_caption" in data: self.ig_caption = data["ig_caption"]
         if "ig_auto_upload" in data: self.ig_auto_upload = bool(data["ig_auto_upload"])
         

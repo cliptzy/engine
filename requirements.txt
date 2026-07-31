@@ -14,6 +14,7 @@ colorama==0.4.6
 coloredlogs==15.0.1
 cryptography==49.0.0
 ctranslate2==4.8.1
+decorator==5.3.1
 deprecation==2.1.0
 distro==1.9.0
 exceptiongroup==1.3.1
@@ -41,11 +42,15 @@ huggingface_hub==1.25.1
 humanfriendly==10.0
 hyperframe==6.1.0
 idna==3.18
+ImageIO==2.37.4
+imageio-ffmpeg==0.6.0
+instagrapi==2.18.12
 itsdangerous==2.2.0
 Jinja2==3.1.6
 jinxed==2.1.0
 jurigged==0.6.1
 MarkupSafe==3.0.3
+moviepy==2.2.1
 mpmath==1.3.0
 multidict==6.7.1
 numpy==2.2.6
@@ -53,8 +58,10 @@ oauthlib==3.3.1
 onnxruntime==1.23.2
 ovld==0.5.17
 packaging==26.2
+pillow==12.3.0
 playwright==1.61.0
 postgrest==2.31.0
+proglog==0.1.12
 propcache==0.5.2
 proto-plus==1.28.2
 protobuf==7.35.1
@@ -62,6 +69,7 @@ psutil==7.2.2
 pyasn1==0.6.4
 pyasn1_modules==0.4.2
 pycparser==3.0
+pycryptodomex==3.23.0
 pydantic==2.13.4
 pydantic_core==2.46.4
 pyee==13.0.1
@@ -73,6 +81,7 @@ PyQt6==6.11.0
 PyQt6-Qt6==6.11.1
 PyQt6_sip==13.11.1
 pyreadline3==3.5.6
+PySocks==1.7.1
 pyt==1.4.0
 python-dotenv==1.2.2
 pytz==2026.3.post1

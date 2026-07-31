@@ -5,7 +5,7 @@ from core.config import config
 from core.logger import log as logger
 
 def check_youtube_auth() -> tuple[bool, str]:
-    token_file = "youtube_token.json"
+    token_file = "cred/youtube_token.json"
     if not os.path.exists(token_file):
         return False, "Token file tidak ditemukan. Silakan lakukan upload sekali untuk memicu login browser."
         
@@ -81,21 +81,36 @@ def check_tiktok_auth() -> tuple[bool, str]:
         return False, f"Gagal menghubungi server TikTok: {str(e)}"
 
 def check_instagram_auth() -> tuple[bool, str]:
-    if not config.ig_access_token or not config.ig_business_id:
-        return False, "Access Token atau Business ID belum diisi."
+    if not config.ig_session or not os.path.exists(config.ig_session):
+        return False, "File cookie Instagram belum diisi atau tidak ditemukan."
         
     try:
-        url = f"https://graph.facebook.com/v18.0/{config.ig_business_id}?access_token={config.ig_access_token}"
-        resp = requests.get(url, timeout=15)
-        data = resp.json()
-        
-        if "id" in data:
-            return True, f"Instagram Graph API terhubung dengan baik. ID: {data['id']}"
-        elif "error" in data:
-            err_msg = data["error"].get("message", "Unknown error")
-            return False, f"Token tidak valid: {err_msg}"
+        session_id = ""
+        with open(config.ig_session, 'r', encoding='utf-8') as f:
+            content = f.read()
             
-        return False, "Respons API tidak dikenali."
+        try:
+            cookies_json = json.loads(content)
+            for cookie in cookies_json:
+                if cookie.get('name') == 'sessionid' and 'instagram' in cookie.get('domain', ''):
+                    session_id = cookie.get('value', '')
+                    break
+        except Exception:
+            for line in content.splitlines():
+                if line.startswith('#') or not line.strip(): continue
+                parts = line.split('\t')
+                if len(parts) >= 7 and 'instagram.com' in parts[0] and parts[5] == 'sessionid':
+                    session_id = parts[6].strip()
+                    break
+
+        if not session_id:
+            return False, "Tidak ditemukan cookie sessionid di dalam file tersebut."
+            
+        from instagrapi import Client
+        cl = Client()
+        if cl.login_by_sessionid(session_id):
+            return True, "Session ID Instagram valid dan aktif."
+        return False, "Session ID tidak valid atau sudah expired."
     except Exception as e:
         logger.error(f"Error check_instagram_auth: {e}")
-        return False, f"Gagal menghubungi Graph API: {str(e)}"
+        return False, f"Gagal login ke Instagram via sessionid: {str(e)}"

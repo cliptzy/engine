@@ -120,16 +120,20 @@ class AutoUploadWidget(QFrame):
         ig_layout = QVBoxLayout(ig_tab)
         ig_layout.setContentsMargins(12, 12, 12, 12)
 
-        ig_box = QGroupBox("Instagram Graph API Settings")
+        ig_box = QGroupBox("Instagram Account Settings (Instagrapi)")
         ig_grid = QGridLayout(ig_box)
 
-        ig_grid.addWidget(QLabel("Instagram Business Account ID:"), 0, 0)
-        self.ig_business_id_input = QLineEdit()
-        ig_grid.addWidget(self.ig_business_id_input, 0, 1)
-
-        ig_grid.addWidget(QLabel("User Access Token:"), 1, 0)
-        self.ig_access_token_input = QLineEdit()
-        ig_grid.addWidget(self.ig_access_token_input, 1, 1)
+        ig_grid.addWidget(QLabel("File Cookies Instagram (.txt/.json):"), 0, 0)
+        
+        ig_session_layout = QHBoxLayout()
+        self.ig_session_input = QLineEdit()
+        ig_session_layout.addWidget(self.ig_session_input)
+        
+        self.btn_import_ig_cookies = QPushButton("Import Cookies")
+        self.btn_import_ig_cookies.clicked.connect(self.on_import_ig_cookies)
+        ig_session_layout.addWidget(self.btn_import_ig_cookies)
+        
+        ig_grid.addLayout(ig_session_layout, 0, 1)
 
         ig_grid.addWidget(QLabel("Default Caption:"), 2, 0)
         self.ig_caption_input = QLineEdit()
@@ -169,8 +173,7 @@ class AutoUploadWidget(QFrame):
         self.tt_caption_input.setText(config.tt_caption)
         self.tt_auto_check.setChecked(config.tt_auto_upload)
         
-        self.ig_business_id_input.setText(config.ig_business_id)
-        self.ig_access_token_input.setText(config.ig_access_token)
+        self.ig_session_input.setText(config.ig_session)
         self.ig_caption_input.setText(config.ig_caption)
         self.ig_auto_check.setChecked(config.ig_auto_upload)
 
@@ -189,8 +192,7 @@ class AutoUploadWidget(QFrame):
         config.tt_caption = self.tt_caption_input.text()
         config.tt_auto_upload = self.tt_auto_check.isChecked()
         
-        config.ig_business_id = self.ig_business_id_input.text()
-        config.ig_access_token = self.ig_access_token_input.text()
+        config.ig_session = self.ig_session_input.text()
         config.ig_caption = self.ig_caption_input.text()
         config.ig_auto_upload = self.ig_auto_check.isChecked()
         
@@ -223,8 +225,7 @@ class AutoUploadWidget(QFrame):
         from core.config import config
         from core.auth_checker import check_instagram_auth
         from PyQt6.QtWidgets import QMessageBox
-        config.ig_business_id = self.ig_business_id_input.text()
-        config.ig_access_token = self.ig_access_token_input.text()
+        config.ig_session = self.ig_session_input.text()
         valid, msg = check_instagram_auth()
         if valid:
             QMessageBox.information(self, "Status Instagram", f"✅ {msg}")
@@ -255,3 +256,30 @@ class AutoUploadWidget(QFrame):
                 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Gagal membaca file cookies: {str(e)}")
+
+    def on_import_ig_cookies(self):
+        from PyQt6.QtWidgets import QFileDialog, QMessageBox
+        import shutil
+        import os
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Pilih File Cookies Instagram (JSON/TXT)",
+            "",
+            "Cookies Files (*.json *.txt);;All Files (*)"
+        )
+        
+        if not file_path:
+            return
+            
+        try:
+            os.makedirs("cred", exist_ok=True)
+            target_path = "cred/instagram_cookies.txt"
+            shutil.copy(file_path, target_path)
+            self.ig_session_input.setText(target_path)
+            self.on_save_settings()
+            QMessageBox.information(self, "Berhasil", f"File cookies berhasil di-copy ke '{target_path}' dan disimpan ke konfigurasi!")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Gagal membaca file cookies: {str(e)}")
+

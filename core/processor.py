@@ -80,9 +80,9 @@ def process_single_clip(
         "-f", "bv*+ba/b",
     ]
     
-    if config.cookies_file and os.path.exists(config.cookies_file):
-        cmd_download.extend(["--cookies", config.cookies_file])
-        cmd_download_fallback.extend(["--cookies", config.cookies_file])
+    if config.yt_session and os.path.exists(config.yt_session):
+        cmd_download.extend(["--cookies", config.yt_session])
+        cmd_download_fallback.extend(["--cookies", config.yt_session])
         
     cmd_download.extend(["-o", temp_file, f"https://youtu.be/{video_id}"])
     cmd_download_fallback.extend(["-o", temp_file, f"https://youtu.be/{video_id}"])
