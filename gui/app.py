@@ -45,7 +45,15 @@ def main():
     supabase_key = os.environ.get("SUPABASE_SECRET_KEY", "")
     
     if not supabase_url or not supabase_key:
-        QMessageBox.critical(None, "Error", "Konfigurasi Supabase tidak ditemukan (SUPABASE_URL dan SUPABASE_KEY). Periksa file .env Anda.")
+        try:
+            from core._build_env import SUPABASE_URL, SUPABASE_SECRET_KEY
+            supabase_url = supabase_url or SUPABASE_URL
+            supabase_key = supabase_key or SUPABASE_SECRET_KEY
+        except ImportError:
+            pass
+            
+    if not supabase_url or not supabase_key:
+        QMessageBox.critical(None, "Error", "Konfigurasi Supabase tidak ditemukan (SUPABASE_URL dan SUPABASE_KEY). Periksa file .env Anda atau kompilasi ulang.")
         sys.exit(1)
         
     supabase_sync.initialize(supabase_url, supabase_key)

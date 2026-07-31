@@ -4,16 +4,21 @@ Semua catatan pembaruan dari proyek Cliptzy akan didokumentasikan di dalam file 
 
 ## [v2.0.1] - 2026-07-31
 
+### Fix
+
+- Memperbaiki aplikasi tidak bisa dibuka karena env gagal disuntikkan
+
+## [v2.0.1] - 2026-07-31
+
 ### Added
 
-- **Instagram Reels Uploader:** Implementasi penuh fitur *auto-upload* klip video ke Instagram Reels terintegrasi dengan *library* `instagrapi`.
-- **Import Cookies UI:** Menambahkan tombol antarmuka "Import Cookies" untuk Instagram pada halaman Auto Upload. Fitur ini menyederhanakan proses *login* Instagram dan TikTok menggunakan file *cookies* (berbasis format JSON atau Netscape TXT).
+- **Instagram Reels Uploader:** Implementasi penuh fitur _auto-upload_ klip video ke Instagram Reels terintegrasi dengan _library_ `instagrapi`.
+- **Import Cookies UI:** Menambahkan tombol antarmuka "Import Cookies" untuk Instagram pada halaman Auto Upload. Fitur ini menyederhanakan proses _login_ Instagram dan TikTok menggunakan file _cookies_ (berbasis format JSON atau Netscape TXT).
 
 ### Changed
 
-- **Instagram Authentication:** Mengubah metode autentikasi Instagram dari penggunaan Graph API (Business ID & Access Token) ataupun *Username/Password* mentah menjadi autentikasi aman berbasis *session cookie* (`sessionid`). File sesi kini tersimpan secara otomatis di direktori `cred/`.
-- Pembaruan *roadmap* proyek (`TODO.md`) dengan menambahkan target implementasi fase selanjutnya untuk publikasi otomatis ke Facebook Pages.
-
+- **Instagram Authentication:** Mengubah metode autentikasi Instagram dari penggunaan Graph API (Business ID & Access Token) ataupun _Username/Password_ mentah menjadi autentikasi aman berbasis _session cookie_ (`sessionid`). File sesi kini tersimpan secara otomatis di direktori `cred/`.
+- Pembaruan _roadmap_ proyek (`TODO.md`) dengan menambahkan target implementasi fase selanjutnya untuk publikasi otomatis ke Facebook Pages.
 
 ## [v2.0.0] - 2026-07-29
 
