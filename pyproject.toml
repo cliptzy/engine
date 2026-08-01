@@ -1,17 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "cliptzy"
 version = "2.0.6"
-description = "Add your description here"
+description = "Cliptzy Desktop Standalone"
 readme = "README.md"
 authors = [
     { name = "Dicky Mulia Fiqri", email = "santrialanwari@gmail.com" }
 ]
-requires-python = "==3.13.13"
-dependencies = []
+requires-python = ">=3.13"
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.in"]}
 
 [project.scripts]
-cliptzy = "cliptzy:main"
-
-[build-system]
-requires = ["uv_build>=0.12.0,<0.13.0"]
-build-backend = "uv_build"
+cliptzy = "run:main"
