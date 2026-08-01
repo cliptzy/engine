@@ -296,6 +296,96 @@ class ClipController:
             if callable(event_hook):
                 event_hook("stage", {"stage": "done_clip", "clip_index": idx, "success": success_count, "outputs": outputs})
 
+        if config.merge_clips and len(outputs) > 1 and not (is_cancelled and is_cancelled()):
+            if callable(event_hook):
+                event_hook("log", "Menggabungkan klip (Merge)...")
+                event_hook("stage", {"stage": "merging"})
+            
+            merged_filename = "merged.mp4"
+            merged_path = os.path.join(job_dir, merged_filename)
+            list_path = os.path.join(job_dir, "concat_list.txt")
+            
+            try:
+                with open(list_path, "w", encoding="utf-8") as f:
+                    for out in outputs:
+                        f.write(f"file '{out['name']}'\n")
+                
+                cmd = [
+                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                    "-f", "concat", "-safe", "0",
+                    "-i", "concat_list.txt",
+                    "-c", "copy",
+                    merged_filename
+                ]
+                import subprocess
+                res = subprocess.run(cmd, cwd=job_dir, capture_output=True, text=True)
+                if res.returncode != 0:
+                    raise RuntimeError(f"FFmpeg Error: {res.stderr}")
+                
+                outputs.append({
+                    "name": merged_filename,
+                    "path": os.path.abspath(merged_path),
+                    "size": os.path.getsize(merged_path)
+                })
+                
+                # --- Generate Metadata for Merged Video ---
+                try:
+                    from core.utils import read_json, get_preview_data, write_json
+                    combined_texts = []
+                    for out in outputs:
+                        if out['name'] == merged_filename: continue
+                        idx = out['name'].replace("clip_", "").replace(".mp4", "")
+                        meta_path = os.path.join(job_dir, f"metadata_{idx}.json")
+                        if os.path.exists(meta_path):
+                            m_data = read_json(meta_path)
+                            if m_data:
+                                t = m_data.get("title", "")
+                                d = m_data.get("description", "")
+                                combined_texts.append(f"Klip {idx}: Judul: {t}\nDeskripsi: {d}")
+                    
+                    if combined_texts:
+                        if callable(event_hook):
+                            event_hook("log", "Generating metadata for merged video via AI...")
+                            event_hook("stage", {"stage": "ai_metadata", "clip_index": success_count, "is_merge": True})
+                        
+                        preview_data = get_preview_data()
+                        youtube_title = preview_data.get("title", "Unknown")
+                        channel_name = preview_data.get("uploader", "Unknown")
+                        youtube_url = preview_data.get("webpage_url", f"https://youtu.be/{video_id}")
+                        
+                        clip_text = "Ini adalah kompilasi video panjang dari beberapa momen. Berikut ringkasannya:\n" + "\n\n".join(combined_texts)
+                        
+                        from core.ai_detector import ai_detector
+                        ai_config = config.to_dict()
+                        merged_metadata = ai_detector.generate_metadata(
+                            clip_text=clip_text,
+                            youtube_title=youtube_title,
+                            channel_name=channel_name,
+                            youtube_url=youtube_url,
+                            ai_config=ai_config,
+                            event_hook=event_hook,
+                            language=preview_data.get("language", "Indonesia")
+                        )
+                        
+                        if merged_metadata:
+                            meta_file = os.path.join(job_dir, "metadata_merge.json")
+                            write_json(meta_file, merged_metadata, indent=2)
+                            if callable(event_hook):
+                                event_hook("log", f"Metadata kompilasi disimpan ke {meta_file}")
+                except Exception as e:
+                    log.warning(f"Gagal men-generate metadata kompilasi: {e}")
+                
+                if callable(event_hook):
+                    event_hook("log", "Berhasil menggabungkan klip.")
+                    event_hook("stage", {"stage": "done_clip", "clip_index": success_count, "is_merge": True, "success": success_count, "outputs": outputs})
+            except Exception as e:
+                log.error(f"Gagal menggabungkan klip: {e}")
+                if callable(event_hook):
+                    event_hook("log", f"Gagal menggabungkan klip: {e}")
+            finally:
+                if os.path.exists(list_path):
+                    os.remove(list_path)
+
         return {
             "video_id": video_id,
             "total": len(targets),

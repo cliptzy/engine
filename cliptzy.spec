@@ -32,7 +32,7 @@ hiddenimports = [
 ]
 
 # Collect all binaries & datas for ctranslate2, faster_whisper, and av if available
-for pkg in ['ctranslate2', 'faster_whisper', 'av', 'yt_dlp']:
+for pkg in ['ctranslate2', 'faster_whisper', 'av', 'yt_dlp', 'cv2']:
     try:
         tmp_datas, tmp_binaries, tmp_hidden = collect_all(pkg)
         datas.extend(tmp_datas)

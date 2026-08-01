@@ -39,7 +39,9 @@ class ClipConfigWidget(QFrame):
         self.crop_combo.addItem("Default (Center Crop)", "default")
         self.crop_combo.addItem("Split Left (Top: Center, Bottom: Left Facecam)", "split_left")
         self.crop_combo.addItem("Split Right (Top: Center, Bottom: Right Facecam)", "split_right")
+        self.crop_combo.addItem("Split Face Track (Top: Center, Bottom: Dynamic Face)", "split_face")
         self.crop_combo.addItem("Full (Fit Screen & Blurred BG)", "full")
+        self.crop_combo.addItem("Full + Face Track (Dynamic Face)", "full_face")
         grid.addWidget(self.crop_combo, 0, 1)
 
         grid.addWidget(QLabel("Rasio Output:"), 0, 2)
@@ -56,11 +58,14 @@ class ClipConfigWidget(QFrame):
         self.highlight_check = QCheckBox("Highlight Text")
         self.generate_intro_check = QCheckBox("Generate Intro")
         self.generate_intro_check.toggled.connect(self.on_generate_intro_toggled)
+        self.merge_clips_check = QCheckBox("Merge Clips")
+        self.merge_clips_check.setToolTip("Gabungkan semua klip (split) menjadi satu video kompilasi panjang")
         
         row1_box = QHBoxLayout()
         row1_box.addWidget(self.subtitle_check)
         row1_box.addWidget(self.highlight_check)
         row1_box.addWidget(self.generate_intro_check)
+        row1_box.addWidget(self.merge_clips_check)
         grid.addLayout(row1_box, 1, 0, 1, 2)
 
         grid.addWidget(QLabel("Model Whisper:"), 1, 2)
@@ -102,8 +107,8 @@ class ClipConfigWidget(QFrame):
 
         grid.addWidget(QLabel("Padding Klip (Detik):"), 3, 2)
         self.padding_spin = QSpinBox()
-        self.padding_spin.setRange(0, 30)
-        self.padding_spin.setValue(10)
+        self.padding_spin.setRange(-30, 30)
+        self.padding_spin.setValue(0)
         grid.addWidget(self.padding_spin, 3, 3)
         
         # Row 4: Font Size & Color
@@ -152,6 +157,24 @@ class ClipConfigWidget(QFrame):
         grid.addWidget(self.hw_combo, 6, 3)
         
         self._detect_hw_accel()
+
+        # Row 7: TTS Configuration
+        grid.addWidget(QLabel("Bahasa TTS AI:"), 7, 0)
+        self.tts_lang_combo = QComboBox()
+        self.tts_lang_combo.addItem("Default (Otomatis)", "default")
+        self.tts_lang_combo.addItem("Indonesia (ID)", "id")
+        self.tts_lang_combo.addItem("English (EN)", "en")
+        self.tts_lang_combo.addItem("Espanol (ES)", "es")
+        self.tts_lang_combo.addItem("Japanese (JA)", "ja")
+        self.tts_lang_combo.addItem("Korean (KO)", "ko")
+        self.tts_lang_combo.addItem("Melayu (MS)", "ms")
+        grid.addWidget(self.tts_lang_combo, 7, 1)
+
+        grid.addWidget(QLabel("Suara TTS:"), 7, 2)
+        self.tts_voice_combo = QComboBox()
+        self.tts_voice_combo.addItem("Wanita (Female)", "female")
+        self.tts_voice_combo.addItem("Pria (Male)", "male")
+        grid.addWidget(self.tts_voice_combo, 7, 3)
 
         layout.addLayout(grid)
 
@@ -216,6 +239,7 @@ class ClipConfigWidget(QFrame):
         self.subtitle_check.setChecked(config.use_subtitle)
         self.highlight_check.setChecked(config.use_highlight)
         self.generate_intro_check.setChecked(config.use_generate_intro)
+        self.merge_clips_check.setChecked(config.merge_clips)
         self.on_generate_intro_toggled(config.use_generate_intro)
         
         whisper_idx = self.whisper_combo.findData(config.whisper_model)
@@ -251,6 +275,14 @@ class ClipConfigWidget(QFrame):
         hw_idx = self.hw_combo.findData(config.hw_accel)
         if hw_idx >= 0:
             self.hw_combo.setCurrentIndex(hw_idx)
+
+        tts_lang_idx = self.tts_lang_combo.findData(config.tts_language)
+        if tts_lang_idx >= 0:
+            self.tts_lang_combo.setCurrentIndex(tts_lang_idx)
+            
+        tts_voice_idx = self.tts_voice_combo.findData(config.tts_voice)
+        if tts_voice_idx >= 0:
+            self.tts_voice_combo.setCurrentIndex(tts_voice_idx)
 
         self.on_subtitle_toggled(config.use_subtitle)
         
@@ -294,8 +326,11 @@ class ClipConfigWidget(QFrame):
         self.subtitle_check.setEnabled(not locked)
         self.highlight_check.setEnabled(not locked)
         self.generate_intro_check.setEnabled(not locked)
+        self.merge_clips_check.setEnabled(not locked)
         self.padding_spin.setEnabled(not locked)
         self.hw_combo.setEnabled(not locked)
+        self.tts_lang_combo.setEnabled(not locked)
+        self.tts_voice_combo.setEnabled(not locked)
         
         if not locked:
             self._detect_libass()
@@ -313,6 +348,8 @@ class ClipConfigWidget(QFrame):
             self.max_words_spin.setEnabled(False)
             self.delay_spin.setEnabled(False)
             self.btn_test_sub.setEnabled(False)
+            self.tts_lang_combo.setEnabled(False)
+            self.tts_voice_combo.setEnabled(False)
             
             self.btn_lock_all.setText("🔓 Buka Kunci Pengaturan")
             self.btn_lock_all.setStyleSheet("background-color: #312e81; color: #a5b4fc;")
@@ -324,6 +361,7 @@ class ClipConfigWidget(QFrame):
             "use_subtitle": payload["subtitle"],
             "use_highlight": payload.get("use_highlight", False),
             "use_generate_intro": payload.get("use_generate_intro", False),
+            "merge_clips": payload.get("merge_clips", False),
             "whisper_model": payload["whisper_model"],
             "subtitle_font": payload["subtitle_font"],
             "subtitle_location": payload["subtitle_location"],
@@ -335,6 +373,8 @@ class ClipConfigWidget(QFrame):
             "subtitle_animation": payload["subtitle_animation"],
             "subtitle_max_words": payload["subtitle_max_words"],
             "padding": payload["padding"],
+            "tts_language": payload["tts_language"],
+            "tts_voice": payload["tts_voice"],
             "hw_accel": payload["hw_accel"],
             "ui_locked": locked
         }
@@ -357,6 +397,7 @@ class ClipConfigWidget(QFrame):
             "subtitle": self.subtitle_check.isChecked(),
             "use_highlight": self.highlight_check.isChecked(),
             "use_generate_intro": self.generate_intro_check.isChecked(),
+            "merge_clips": self.merge_clips_check.isChecked(),
             "whisper_model": self.whisper_combo.currentData(),
             "subtitle_font": self.font_combo.currentData(),
             "subtitle_location": self.location_combo.currentData(),
@@ -368,6 +409,8 @@ class ClipConfigWidget(QFrame):
             "subtitle_animation": self.anim_combo.currentData(),
             "subtitle_max_words": self.max_words_spin.value(),
             "padding": self.padding_spin.value(),
+            "tts_language": self.tts_lang_combo.currentData(),
+            "tts_voice": self.tts_voice_combo.currentData(),
             "hw_accel": self.hw_combo.currentData(),
         }
 

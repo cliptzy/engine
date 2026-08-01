@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument("--url", help="YouTube URL (watch/shorts/youtu.be)")
     parser.add_argument(
         "--crop",
-        choices=["default", "split_left", "split_right"],
+        choices=["default", "split_left", "split_right", "split_face", "full_face"],
         help="Crop mode",
     )
     parser.add_argument(
@@ -46,6 +46,8 @@ def parse_args():
         choices=["center", "bottom"],
         help="Subtitle placement: center or bottom",
     )
+    parser.add_argument("--hw-accel", choices=["cpu", "mac", "amd", "nvidia", "intel"], default="cpu", help="Hardware acceleration")
+    parser.add_argument("--merge", action="store_true", help="Merge all split clips into a single compilation video.")
     parser.add_argument("--ratio", choices=["9:16", "1:1", "16:9", "original"], help="Output ratio preset")
     parser.add_argument("--check", action="store_true", help="Check dependencies then exit")
     parser.add_argument("--no-update-ytdlp", action="store_true", help="Skip auto-update yt-dlp")
@@ -73,6 +75,8 @@ def main():
         config.subtitle_location = args.subtitle_location
     if args.ratio:
         config.set_ratio_preset(args.ratio)
+    if args.merge:
+        config.merge_clips = True
 
     if args.check:
         check_dependencies(install_whisper=False, skip_update_ytdlp=args.no_update_ytdlp)
@@ -104,9 +108,12 @@ def main():
         print("1. Default (center crop)")
         print("2. Split 1 (top: center, bottom: bottom-left (facecam))")
         print("3. Split 2 (top: center, bottom: bottom-right (facecam))")
+        print("4. Split Face Track (top: center, bottom: dynamic face crop)")
+        print("5. Full (fit screen with blurred background)")
+        print("6. Full + Face Track (top: full scaled, bottom: dynamic face crop)")
 
         while crop_mode is None:
-            choice = input("\nSelect crop mode (1-3): ").strip()
+            choice = input("\nSelect crop mode (1-6): ").strip()
             if choice == "1":
                 crop_mode = "default"
                 crop_desc = "Default center crop"
@@ -119,7 +126,19 @@ def main():
                 crop_mode = "split_right"
                 crop_desc = "Split crop (bottom-right facecam)"
                 break
-            print("Invalid choice. Please enter 1, 2, or 3.")
+            elif choice == "4":
+                crop_mode = "split_face"
+                crop_desc = "Split crop (dynamic face tracking)"
+                break
+            elif choice == "5":
+                crop_mode = "full"
+                crop_desc = "Full (blurred background)"
+                break
+            elif choice == "6":
+                crop_mode = "full_face"
+                crop_desc = "Full + Face Track"
+                break
+            print("Invalid choice. Please enter a number between 1 and 6.")
 
         print(f"Selected: {crop_desc}")
         print("\n=== Auto Subtitle ===")

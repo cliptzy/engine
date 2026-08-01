@@ -27,33 +27,51 @@ class AIGenerateMetadataWorker(QThread):
         try:
             job_dir = os.path.dirname(self.clip_path)
             clip_filename = os.path.basename(self.clip_path)
-            idx = clip_filename.replace("clip_", "").replace(".mp4", "")
-            
-            import glob, re
-            ass_files = glob.glob(os.path.join(job_dir, f"clip_{idx}_*.ass"))
-            
             clip_text = ""
-            if ass_files:
-                ass_file = ass_files[0]
-                try:
-                    with open(ass_file, "r", encoding="utf-8") as f:
-                        for line in f:
-                            if line.startswith("Dialogue:"):
-                                parts = line.split(",", 9)
-                                if len(parts) >= 10:
-                                    raw_text = parts[9].strip()
-                                    clean_text = re.sub(r'\{.*?\}', '', raw_text)
-                                    clip_text += clean_text + " "
-                except Exception as e:
-                    self.log_signal.emit(f"[WARNING] Gagal membaca {ass_file}: {e}")
             
-            if not clip_text.strip():
-                self.log_signal.emit(f"[WARNING] Teks subtitle klip kosong atau file .ass tidak ditemukan untuk {clip_filename}. Mencoba fallback ke transkrip utama...")
-                transcript_file = os.path.join(job_dir, "transcript.json")
-                if os.path.exists(transcript_file):
-                    from core.utils import read_json
-                    transcript_segments = read_json(transcript_file, default=[])
-                    clip_text = " ".join([seg.get("text", "") for seg in transcript_segments])
+            if clip_filename == "merged.mp4":
+                # For merged.mp4, combine metadata from all other clips
+                from core.utils import read_json
+                import glob
+                combined_texts = []
+                for meta_path in glob.glob(os.path.join(job_dir, "metadata_[0-9]*.json")):
+                    idx = os.path.basename(meta_path).replace("metadata_", "").replace(".json", "")
+                    m_data = read_json(meta_path)
+                    if m_data:
+                        t = m_data.get("title", "")
+                        d = m_data.get("description", "")
+                        combined_texts.append(f"Klip {idx}: Judul: {t}\nDeskripsi: {d}")
+                if combined_texts:
+                    clip_text = "Ini adalah kompilasi video panjang dari beberapa momen. Berikut ringkasannya:\n" + "\n\n".join(combined_texts)
+                else:
+                    self.log_signal.emit("[WARNING] Tidak ada metadata individu yang ditemukan untuk membangun konteks merged.mp4.")
+            else:
+                idx = clip_filename.replace("clip_", "").replace(".mp4", "")
+                
+                import glob, re
+                ass_files = glob.glob(os.path.join(job_dir, f"clip_{idx}_*.ass"))
+                
+                if ass_files:
+                    ass_file = ass_files[0]
+                    try:
+                        with open(ass_file, "r", encoding="utf-8") as f:
+                            for line in f:
+                                if line.startswith("Dialogue:"):
+                                    parts = line.split(",", 9)
+                                    if len(parts) >= 10:
+                                        raw_text = parts[9].strip()
+                                        clean_text = re.sub(r'\{.*?\}', '', raw_text)
+                                        clip_text += clean_text + " "
+                    except Exception as e:
+                        self.log_signal.emit(f"[WARNING] Gagal membaca {ass_file}: {e}")
+                
+                if not clip_text.strip():
+                    self.log_signal.emit(f"[WARNING] Teks subtitle klip kosong atau file .ass tidak ditemukan untuk {clip_filename}. Mencoba fallback ke transkrip utama...")
+                    transcript_file = os.path.join(job_dir, "transcript.json")
+                    if os.path.exists(transcript_file):
+                        from core.utils import read_json
+                        transcript_segments = read_json(transcript_file, default=[])
+                        clip_text = " ".join([seg.get("text", "") for seg in transcript_segments])
             
             from core.utils import get_preview_data
             preview_data = get_preview_data(job_dir=job_dir)
@@ -85,10 +103,10 @@ class AIGenerateMetadataWorker(QThread):
                 youtube_title=youtube_title,
                 channel_name=channel_name,
                 youtube_url=youtube_url,
-                ai_config=ai_config,
+                ai_config=config.to_dict(),
                 user_context=self.user_context,
                 event_hook=event_hook,
-                language=language
+                language=preview_data.get("language", "Indonesia")
             )
             self.finished_signal.emit(metadata)
             
@@ -384,10 +402,10 @@ class UploaderWidget(QFrame):
             
         import glob
         import re
-        clip_files = glob.glob(os.path.join(project_dir, "clip_*.mp4"))
+        clip_files = glob.glob(os.path.join(project_dir, "*.mp4"))
         
         # Filter to only match exactly clip_<number>.mp4
-        clip_files = [f for f in clip_files if re.match(r'^clip_\d+\.mp4$', os.path.basename(f))]
+        clip_files = [f for f in clip_files if re.match(r'^(clip_\d+|merged)\.mp4$', os.path.basename(f))]
         
         def natural_sort_key(s):
             return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]

@@ -100,7 +100,32 @@ def process_single_clip(
                 return False
 
             out_w, out_h = config.out_width, config.out_height
-            cmd_crop = _build_crop_command(temp_file, cropped_file, crop_mode, out_w, out_h)
+            
+            cx_norm, cy_norm = 0.5, 0.5
+            if crop_mode in ["split_face", "full_face"]:
+                if callable(event_hook):
+                    try:
+                        event_hook("stage", {"stage": "face_track", "clip_index": index})
+                        event_hook("log", f"Detecting face position for dynamic crop in clip {index}...")
+                    except Exception as e:
+                        pass
+                try:
+                    from core.face_tracker import get_dominant_face_normalized_center
+                    res_cx, res_cy = get_dominant_face_normalized_center(temp_file)
+                    if res_cx is None or res_cy is None:
+                        log.info(f"Clip {index}: No face detected, falling back to full mode.")
+                        if callable(event_hook):
+                            try:
+                                event_hook("log", f"Wajah tidak terdeteksi pada klip {index}, beralih ke mode Full (fallback).")
+                            except Exception: pass
+                        crop_mode = "full"
+                    else:
+                        cx_norm, cy_norm = res_cx, res_cy
+                except Exception as e:
+                    log.warning(f"Face tracking module error: {e}")
+                    crop_mode = "full"
+                    
+            cmd_crop = _build_crop_command(temp_file, cropped_file, crop_mode, out_w, out_h, cx_norm, cy_norm)
 
             if callable(event_hook):
                 try:
@@ -237,18 +262,49 @@ def process_single_clip(
                 if callable(event_hook):
                     event_hook("log", f"[intro] Generating AI Intro with TTS for clip {index}...")
                 
-                highlight_text = metadata.get("highlight")
+                highlight_text = str(metadata.get("highlight", ""))
                 
-                # 1. Generate TTS
-                from gtts import gTTS
-                import json
-                tts_lang = 'id'
+                # 1. Generate TTS using edge-tts
+                tts_lang_config = getattr(config, "tts_language", "default")
+                tts_gender = getattr(config, "tts_voice", "female")
+                
                 from core.utils import get_preview_data
-                tts_lang = get_preview_data().get("language") or 'id'
+                if tts_lang_config == "default":
+                    tts_lang = get_preview_data().get("language") or 'id'
+                else:
+                    tts_lang = tts_lang_config
                 
-                tts = gTTS(text=highlight_text, lang=tts_lang)
+                voice_map = {
+                    "id": {"female": "id-ID-GadisNeural", "male": "id-ID-ArdiNeural"},
+                    "en": {"female": "en-US-JennyNeural", "male": "en-US-ChristopherNeural"},
+                    "es": {"female": "es-ES-ElviraNeural", "male": "es-MX-JorgeNeural"},
+                    "ja": {"female": "ja-JP-NanamiNeural", "male": "ja-JP-KeitaNeural"},
+                    "ko": {"female": "ko-KR-SunHiNeural", "male": "ko-KR-InJoonNeural"},
+                    "ms": {"female": "ms-MY-YasminNeural", "male": "ms-MY-OsmanNeural"}
+                }
+                
+                base_lang = tts_lang.split("-")[0].lower() if tts_lang else "id"
+                if base_lang not in voice_map:
+                    base_lang = "en"  # fallback
+                    
+                voice = voice_map[base_lang].get(tts_gender.lower(), voice_map[base_lang]["female"])
                 audio_path = os.path.join(config.job_dir, f"intro_audio_{index}.mp3")
-                tts.save(audio_path)
+                
+                python_exe = sys.executable or "python"
+                try:
+                    res = subprocess.run([
+                        python_exe, "-m", "edge_tts", 
+                        "--voice", voice,
+                        "--rate=-15%",
+                        "--text", highlight_text,
+                        "--write-media", audio_path
+                    ], capture_output=True, text=True, check=True)
+                except Exception as e:
+                    log.error(f"edge-tts failed: {e}")
+                    # Fallback to gTTS if edge-tts fails
+                    from gtts import gTTS
+                    tts = gTTS(text=highlight_text, lang=base_lang)
+                    tts.save(audio_path)
                 
                 # 2. Get duration
                 try:
@@ -375,7 +431,7 @@ def process_single_clip(
         return False
 
 
-def _build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w: Optional[int], out_h: Optional[int]) -> list:
+def _build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w: Optional[int], out_h: Optional[int], cx_norm: float = 0.5, cy_norm: float = 0.5) -> list:
     """Helper function to build FFmpeg crop/split command."""
     if crop_mode == "default":
         if config.output_ratio == "original":
@@ -397,7 +453,7 @@ def _build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w
                 cropped_file
             ]
             
-    elif crop_mode in ["split_left", "split_right"]:
+    elif crop_mode in ["split_left", "split_right", "split_face", "full_face"]:
         if config.output_ratio == "original" or not out_w or not out_h or out_h < out_w:
             vf = build_cover_scale_crop_vf(out_w or 720, out_h or 1280) if config.output_ratio != "original" else None
             cmd = [
@@ -416,15 +472,35 @@ def _build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w
             top_h, bottom_h = get_split_heights(out_h, config.bottom_height)
             scaled = build_cover_scale_vf(out_w, out_h)
             
-            x_offset_bottom = "0" if crop_mode == "split_left" else f"iw-{out_w}"
+            if crop_mode in ["split_face", "full_face"]:
+                x_offset_bottom = f"max(0\\,min(iw*{cx_norm}-({out_w}/2)\\,iw-{out_w}))"
+                y_offset_bottom = f"max(0\\,min(ih*{cy_norm}-({bottom_h}/2)\\,ih-{bottom_h}))"
+            else:
+                x_offset_bottom = "0" if crop_mode == "split_left" else f"iw-{out_w}"
+                y_offset_bottom = f"ih-{bottom_h}"
             
-            vf = (
-                f"{scaled}[scaled];"
-                f"[scaled]split=2[s1][s2];"
-                f"[s1]crop={out_w}:{top_h}:(iw-{out_w})/2:(ih-{out_h})/2[top];"
-                f"[s2]crop={out_w}:{bottom_h}:{x_offset_bottom}:ih-{bottom_h}[bottom];"
-                f"[top][bottom]vstack[out]"
-            )
+            if crop_mode == "full_face":
+                vf = (
+                    f"[0:v]split=2[orig1][orig2];"
+                    # Scale the top video to fit the output width while maintaining aspect ratio
+                    f"[orig1]scale={out_w}:-2[top_vid];"
+                    # Crop the facecam from the cover-scaled video for the bottom part
+                    f"[orig2]{scaled}[scaled];"
+                    f"[scaled]crop={out_w}:{bottom_h}:{x_offset_bottom}:{y_offset_bottom}[bottom_vid];"
+                    # Stack them vertically so they touch each other directly (no gap)
+                    f"[top_vid][bottom_vid]vstack[stacked];"
+                    # Pad the stacked result to the full canvas size and center it vertically with black background
+                    f"[stacked]pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black[out]"
+                )
+            else:
+                vf = (
+                    f"[0:v]{scaled}[scaled];"
+                    f"[scaled]split=2[s1][s2];"
+                    f"[s1]crop={out_w}:{top_h}:(iw-{out_w})/2:(ih-{out_h})/2[top];"
+                    f"[s2]crop={out_w}:{bottom_h}:{x_offset_bottom}:{y_offset_bottom}[bottom];"
+                    f"[top][bottom]vstack[out]"
+                )
+                
             return [
                 "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
                 "-i", temp_file,
@@ -464,7 +540,6 @@ def _build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w
 
 
 def _get_video_codec_args() -> list:
-    import sys
     hw = getattr(config, "hw_accel", "cpu").lower()
     
     # Auto-redirect all hardware acceleration to VideoToolbox on macOS

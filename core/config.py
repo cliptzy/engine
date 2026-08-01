@@ -37,6 +37,7 @@ class AppConfig:
     job_dir: str = ""
 
     crop_mode: str = "default"
+    merge_clips: bool = False
     ui_locked: bool = False
 
     upload_youtube: bool = False
@@ -77,6 +78,9 @@ class AppConfig:
     ai_prompt: str = ""
     use_highlight: bool = False
     use_generate_intro: bool = False
+    
+    tts_language: str = "default"
+    tts_voice: str = "female"
 
     def set_ratio_preset(self, preset: str) -> None:
         """Sets the output resolution based on the given ratio preset."""
@@ -121,6 +125,7 @@ class AppConfig:
             "outro_video": self.outro_video,
             "output_ratio": self.output_ratio,
             "crop_mode": self.crop_mode,
+            "merge_clips": self.merge_clips,
             "ui_locked": self.ui_locked,
             "upload_youtube": self.upload_youtube,
             "upload_tiktok": self.upload_tiktok,
@@ -148,6 +153,8 @@ class AppConfig:
             "openai_model": self.openai_model,
             "openai_base_url": self.openai_base_url,
             "ai_prompt": self.ai_prompt,
+            "tts_language": self.tts_language,
+            "tts_voice": self.tts_voice,
             "upload_interval": self.upload_interval,
             "hw_accel": self.hw_accel,
         }
@@ -203,6 +210,8 @@ class AppConfig:
             self.set_ratio_preset(data["output_ratio"])
         if "crop_mode" in data and data["crop_mode"]:
             self.crop_mode = data["crop_mode"]
+        if "merge_clips" in data:
+            self.merge_clips = bool(data["merge_clips"])
         if "ui_locked" in data:
             self.ui_locked = bool(data["ui_locked"])
         if "upload_youtube" in data:
@@ -251,6 +260,10 @@ class AppConfig:
             self.openai_base_url = data["openai_base_url"]
         if "ai_prompt" in data and data["ai_prompt"]:
             self.ai_prompt = data["ai_prompt"]
+        if "tts_language" in data:
+            self.tts_language = data["tts_language"]
+        if "tts_voice" in data:
+            self.tts_voice = data["tts_voice"]
         if "upload_interval" in data:
             self.upload_interval = float(data["upload_interval"])
         if "hw_accel" in data and data["hw_accel"]:

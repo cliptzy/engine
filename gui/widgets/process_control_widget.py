@@ -89,7 +89,11 @@ class ProcessControlWidget(QFrame):
         self.stage_badge.setStyleSheet("background-color: #312e81; color: #a5b4fc; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 11px;")
 
         if stage_name == "done_clip":
-            done_count = data.get("clip_index", 0)
+            try:
+                done_count = int(data.get("clip_index", 0))
+            except (ValueError, TypeError):
+                done_count = self.total_clips
+
             if self.total_clips > 0:
                 pct = int((done_count / self.total_clips) * 100)
                 self.progress_bar.setValue(pct)

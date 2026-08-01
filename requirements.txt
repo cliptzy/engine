@@ -4,6 +4,12 @@
 #
 #    pip-compile requirements.in
 #
+aiohappyeyeballs
+    # via aiohttp
+aiohttp
+    # via edge-tts
+aiosignal
+    # via aiohttp
 annotated-doc
     # via typer
 annotated-types
@@ -13,10 +19,13 @@ anyio
     #   google-genai
     #   httpx
     #   openai
+attrs
+    # via aiohttp
 av
     # via faster-whisper
 certifi
     # via
+    #   edge-tts
     #   httpcore
     #   httpx
     #   requests
@@ -40,12 +49,18 @@ distro
     # via
     #   google-genai
     #   openai
+edge-tts
+    # via -r requirements.in
 faster-whisper
     # via -r requirements.in
 filelock
     # via huggingface-hub
 flatbuffers
     # via onnxruntime
+frozenlist
+    # via
+    #   aiohttp
+    #   aiosignal
 fsspec
     # via huggingface-hub
 google-api-core
@@ -118,16 +133,21 @@ markdown-it-py
 mdurl
     # via markdown-it-py
 multidict
-    # via yarl
+    # via
+    #   aiohttp
+    #   yarl
 numpy
     # via
     #   ctranslate2
     #   onnxruntime
+    #   opencv-python-headless
 oauthlib
     # via requests-oauthlib
 onnxruntime
     # via faster-whisper
 openai
+    # via -r requirements.in
+opencv-python-headless
     # via -r requirements.in
 packaging
     # via
@@ -143,7 +163,9 @@ playwright
 postgrest
     # via supabase
 propcache
-    # via yarl
+    # via
+    #   aiohttp
+    #   yarl
 proto-plus
     # via google-api-core
 protobuf
@@ -229,6 +251,8 @@ supabase-auth
     # via supabase
 supabase-functions
     # via supabase
+tabulate
+    # via edge-tts
 tenacity
     # via google-genai
 tiktok-uploader
@@ -246,7 +270,10 @@ typer
     # via huggingface-hub
 typing-extensions
     # via
+    #   aiohttp
+    #   aiosignal
     #   anyio
+    #   edge-tts
     #   google-genai
     #   huggingface-hub
     #   openai
@@ -267,6 +294,7 @@ websockets
     #   realtime
 yarl
     # via
+    #   aiohttp
     #   postgrest
     #   storage3
     #   supabase
