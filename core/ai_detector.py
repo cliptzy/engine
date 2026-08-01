@@ -24,6 +24,7 @@ Kriteria Pemilihan Momen (Wajib Dipenuhi):
 
 Aturan Output:
 Karena output Anda akan dibaca oleh sistem, Anda HANYA boleh merespons dengan JSON Object yang valid di dalam blok kode Markdown (```json ... ```). Jangan menambahkan teks pengantar atau penutup di luar blok JSON tersebut.
+Gunakan bahasa sesuai dengan output yang diminta
 
 Struktur JSON yang wajib digunakan:
 ```json
@@ -40,6 +41,8 @@ Struktur JSON yang wajib digunakan:
   ]
 }
 
+Output Bahasa: {language}
+
 Transkrip Video:
 {transcript_text}
 """
@@ -49,7 +52,8 @@ class AIHighlightDetector:
         self,
         transcript_segments: List[Dict[str, Any]],
         ai_config: Dict[str, Any],
-        event_hook: Optional[Any] = None
+        event_hook: Optional[Any] = None,
+        video_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Sends transcript to configured AI model provider and returns structured highlight segments.
@@ -67,35 +71,67 @@ class AIHighlightDetector:
             if text:
                 formatted_lines.append(f"[{start_s:.1f}s - {end_s:.1f}s]: {text}")
 
-        transcript_text = "\n".join(formatted_lines)
-        if len(transcript_text) > 25000:
-            # Trim if transcript exceeds context budget
-            transcript_text = transcript_text[:25000] + "\n...[transkrip dipotong]"
-
-        template = ai_config.get("ai_prompt")
-        if not template or not template.strip():
-            template = DEFAULT_PROMPT_TEMPLATE
+        # Memecah transkrip jika terlalu panjang (maksimal ~25000 karakter per bagian)
+        chunks = []
+        current_chunk = []
+        current_len = 0
+        for line in formatted_lines:
+            line_len = len(line) + 1  # +1 untuk newline
+            if current_len + line_len > 25000 and current_chunk:
+                chunks.append("\n".join(current_chunk))
+                current_chunk = [line]
+                current_len = line_len
+            else:
+                current_chunk.append(line)
+                current_len += line_len
         
-        prompt = template.replace("{transcript_text}", transcript_text)
+        if current_chunk:
+            chunks.append("\n".join(current_chunk))
+
+        # Mengambil bahasa dari preview.json (default: Indonesia)
+        language = "Indonesia"
+        if video_id:
+            from core.utils import get_preview_data
+            preview_data = get_preview_data(video_id=video_id)
+            if preview_data.get("language"):
+                language = preview_data["language"]
+
+        all_highlights = []
         provider = (ai_config.get("provider") or ai_config.get("ai_provider") or "ollama").lower()
 
+        for i, chunk_text in enumerate(chunks):
+            template = ai_config.get("ai_prompt")
+            if not template or not template.strip():
+                template = DEFAULT_PROMPT_TEMPLATE
+            
+            prompt = template.replace("{transcript_text}", chunk_text)
+            prompt = prompt.replace("{language}", language)
+            
+            if callable(event_hook):
+                if len(chunks) > 1:
+                    event_hook("log", f"[AI] Mengirim transkrip (Bagian {i+1}/{len(chunks)}) ke AI Provider: {provider.upper()}...")
+                else:
+                    event_hook("log", f"[AI] Mengirim transkrip ke AI Provider: {provider.upper()}...")
+
+            if provider == "ollama":
+                raw_response = self._call_ollama(prompt, ai_config, event_hook)
+            elif provider == "gemini":
+                raw_response = self._call_gemini(prompt, ai_config, event_hook)
+            elif provider == "openai":
+                raw_response = self._call_openai(prompt, ai_config, event_hook)
+            else:
+                raise ValueError(f"AI Provider tidak dikenal: {provider}")
+
+            highlights = self._parse_json_highlights(raw_response)
+            all_highlights.extend(highlights)
+
+        # Mengurutkan semua highlight berdasarkan waktu mulai
+        all_highlights.sort(key=lambda x: float(x.get("start", 0)))
+
         if callable(event_hook):
-            event_hook("log", f"[AI] Mengirim transkrip ke AI Provider: {provider.upper()}...")
+            event_hook("log", f"[AI] Berhasil mendeteksi total {len(all_highlights)} momen highlight dari AI!")
 
-        if provider == "ollama":
-            raw_response = self._call_ollama(prompt, ai_config, event_hook)
-        elif provider == "gemini":
-            raw_response = self._call_gemini(prompt, ai_config, event_hook)
-        elif provider == "openai":
-            raw_response = self._call_openai(prompt, ai_config, event_hook)
-        else:
-            raise ValueError(f"AI Provider tidak dikenal: {provider}")
-
-        highlights = self._parse_json_highlights(raw_response)
-        if callable(event_hook):
-            event_hook("log", f"[AI] Berhasil mendeteksi {len(highlights)} momen highlight dari AI!")
-
-        return highlights
+        return all_highlights
 
     def _call_ollama(self, prompt: str, ai_config: Dict[str, Any], event_hook: Optional[Any]) -> str:
         host = (ai_config.get("ollama_host") or "http://localhost:11434").rstrip("/")
@@ -322,7 +358,8 @@ class AIHighlightDetector:
         youtube_url: str,
         ai_config: Dict[str, Any],
         user_context: str = "",
-        event_hook: Optional[Any] = None
+        event_hook: Optional[Any] = None,
+        language: str = "Indonesia"
     ) -> Dict[str, Any]:
         if not clip_text or not clip_text.strip():
             log.warning("Teks subtitle klip kosong, tidak dapat men-generate metadata.")
@@ -338,6 +375,9 @@ class AIHighlightDetector:
 Anda adalah seorang Social Media Manager spesialis konten viral (TikTok, YouTube Shorts, Reels).
 Berdasarkan teks subtitle spesifik dari klip video berikut, dan informasi konteks video aslinya, buatkan Title (Judul menarik), Description (Deskripsi ringkas yang memancing interaksi), Tags (Hashtags yang relevan), dan Highlight (Teks lucu/menjual singkat maksimal 3 kata, misal: "gg gak ?", "kaget momen", atau "minus -1 kuping").
 Respons HANYA dalam bentuk JSON yang valid di dalam blok kode Markdown (```json ... ```) tanpa tambahan teks apapun.
+Gunakan bahasa sesuai dengan output yang diminta.
+
+Output Bahasa: {language}
 
 Konteks Video Asli:
 - Channel: {channel_name}

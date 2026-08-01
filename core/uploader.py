@@ -319,9 +319,9 @@ class InstagramUploader(BaseUploader):
                         "domain": ".instagram.com",
                         "path": "/"
                     })
-                with open(config.ig_session, "w", encoding="utf-8") as f:
-                    json.dump(new_cookies, f, indent=2)
-                if event_hook: event_hook("log", "[Instagram] Cookie berhasil diperbarui secara otomatis.")
+                from core.utils import write_json
+                if write_json(config.ig_session, new_cookies, indent=2):
+                    if event_hook: event_hook("log", "[Instagram] Cookie berhasil diperbarui secara otomatis.")
             except Exception as e:
                 logger.warning(f"Gagal memperbarui cookie Instagram: {e}")
 

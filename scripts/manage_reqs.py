@@ -35,6 +35,29 @@ def compile_requirements(upgrade=False):
         cmd.append("--upgrade")
         
     subprocess.run(cmd, check=True)
+    
+    try:
+        with open("requirements.txt", "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        
+        cleaned = []
+        for line in lines:
+            if "==" in line and not line.strip().startswith("#"):
+                pkg = line.split("==")[0]
+                if " #" in line:
+                    comment = line[line.index(" #"):]
+                    cleaned.append(f"{pkg}{comment}")
+                else:
+                    cleaned.append(f"{pkg}\n")
+            else:
+                cleaned.append(line)
+                
+        with open("requirements.txt", "w", encoding="utf-8") as f:
+            f.writelines(cleaned)
+        print("[Info] Berhasil menghapus pin versi dari requirements.txt")
+    except Exception as e:
+        print(f"[Peringatan] Gagal memodifikasi requirements.txt: {e}")
+        
     print("\n✅ Berhasil!")
 
 def sync_environment():

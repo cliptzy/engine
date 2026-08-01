@@ -124,16 +124,14 @@ class SupabaseSyncManager:
                     # The bucket 'user_files' must be created manually or via SQL migration beforehand.
                     
                     # Save session to file
-                    import json
-                    import os
                     from core.config import config
+                    from core.utils import write_json
                     config.ensure_cred_dir()
                     session_data = {
                         "access_token": session_res.session.access_token,
                         "refresh_token": session_res.session.refresh_token
                     }
-                    with open("cred/supabase_session.json", "w") as f:
-                        json.dump(session_data, f)
+                    write_json("cred/supabase_session.json", session_data)
                     
                     return True
                 else:
@@ -148,22 +146,22 @@ class SupabaseSyncManager:
             return False
 
     def load_session(self):
-        import os, json
+        import os
+        from core.utils import read_json
         session_file = "cred/supabase_session.json"
         if os.path.exists(session_file):
-            try:
-                with open(session_file, "r") as f:
-                    data = json.load(f)
-                    access_token = data.get("access_token")
-                    refresh_token = data.get("refresh_token")
-                    if access_token and refresh_token:
-                        res = self.client.auth.set_session(access_token, refresh_token)
-                        if res and res.user:
-                            self.user = res.user
-                            log.info(f"Session restored for user: {self.user.id}")
-                            return True
-            except Exception as e:
-                log.warning(f"Gagal memuat sesi sebelumnya: {e}")
+            data = read_json(session_file)
+            access_token = data.get("access_token")
+            refresh_token = data.get("refresh_token")
+            if access_token and refresh_token:
+                try:
+                    res = self.client.auth.set_session(access_token, refresh_token)
+                    if res and res.user:
+                        self.user = res.user
+                        log.info(f"Session restored for user: {self.user.id}")
+                        return True
+                except Exception as e:
+                    log.warning(f"Gagal memuat sesi sebelumnya: {e}")
         return False
 
     def logout(self):

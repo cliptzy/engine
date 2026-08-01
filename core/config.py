@@ -259,27 +259,20 @@ class AppConfig:
 
     def save_to_file(self, filepath: str = "config.json") -> bool:
         """Saves configuration to JSON file."""
-        import json
-        try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(self.to_dict(), f, indent=2)
-            return True
-        except Exception as e:
-            return False
+        from core.utils import write_json
+        return write_json(filepath, self.to_dict(), indent=2)
 
     def load_from_file(self, filepath: str = "config.json") -> bool:
         """Loads configuration from JSON file."""
-        import json
         import os
+        from core.utils import read_json
         if not os.path.exists(filepath):
             return False
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                self.update_from_dict(data)
+        data = read_json(filepath)
+        if data:
+            self.update_from_dict(data)
             return True
-        except Exception as e:
-            return False
+        return False
 
     def get_files_to_sync(self) -> list:
         """Returns a list of credential/session files to sync."""

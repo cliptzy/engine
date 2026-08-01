@@ -2,6 +2,7 @@ import os
 import sys
 import shutil
 import subprocess
+from typing import Any
 from core.logger import log
 
 def inject_local_bin_to_path():
@@ -136,3 +137,51 @@ def check_dependencies(install_whisper: bool = False, skip_update_ytdlp: bool = 
         return False
         
     return True
+
+def read_json(file_path: str, default: Any = None) -> Any:
+    """Reads a JSON file safely. Returns 'default' if it fails or file doesn't exist."""
+    import os, json
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            log.warning(f"Gagal membaca {file_path}: {e}")
+    return default if default is not None else {}
+
+def write_json(file_path: str, data: Any, indent: int = 2) -> bool:
+    """Writes a JSON file safely."""
+    import os, json
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(file_path)), exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=indent)
+        return True
+    except Exception as e:
+        log.warning(f"Gagal menulis ke {file_path}: {e}")
+        return False
+
+def get_preview_data(job_dir: str = None, video_id: str = None) -> dict:
+    """
+    Reads and returns the content of preview.json.
+    Priority:
+    1. job_dir
+    2. video_id (resolves to clips/<video_id>)
+    3. config.job_dir
+    """
+    import os
+    if not job_dir and not video_id:
+        try:
+            from core.config import config
+            job_dir = config.job_dir
+        except ImportError:
+            pass
+
+    if not job_dir and video_id:
+        job_dir = os.path.join("clips", video_id)
+
+    if not job_dir:
+        return {}
+
+    preview_path = os.path.join(job_dir, "preview.json")
+    return read_json(preview_path, default={})

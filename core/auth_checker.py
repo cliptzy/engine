@@ -12,23 +12,23 @@ def check_youtube_auth() -> tuple[bool, str]:
     try:
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request
-        
-        with open(token_file, "r", encoding="utf-8") as f:
-            creds_data = json.load(f)
-            
-        creds = Credentials.from_authorized_user_info(creds_data)
-        if not creds.valid:
-            if creds.expired and creds.refresh_token:
-                try:
-                    creds.refresh(Request())
-                    with open(token_file, 'w', encoding="utf-8") as f:
-                        f.write(creds.to_json())
-                    return True, "Token berhasil diperbarui (direfresh) dan aktif."
-                except Exception as e:
-                    return False, f"Gagal refresh token: {str(e)}"
-            else:
-                return False, "Token kadaluarsa dan tidak bisa direfresh."
-        return True, "Token valid dan aktif."
+        from core.utils import read_json
+
+        creds_data = read_json(token_file)
+        if creds_data:
+            creds = Credentials.from_authorized_user_info(creds_data)
+            if not creds.valid:
+                if creds.expired and creds.refresh_token:
+                    try:
+                        creds.refresh(Request())
+                        with open(token_file, 'w', encoding="utf-8") as f:
+                            f.write(creds.to_json())
+                        return True, "Token berhasil diperbarui (direfresh) dan aktif."
+                    except Exception as e:
+                        return False, f"Gagal refresh token: {str(e)}"
+                else:
+                    return False, "Token kadaluarsa dan tidak bisa direfresh."
+            return True, "Token valid dan aktif."
     except Exception as e:
         logger.error(f"Error check_youtube_auth: {e}")
         return False, f"Error validasi token: {str(e)}"

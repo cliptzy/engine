@@ -32,13 +32,9 @@ class ChannelManager:
         """Returns list of all saved YouTuber channels."""
         if not os.path.exists(CHANNELS_INDEX_FILE):
             return self._get_default_channels()
-        try:
-            with open(CHANNELS_INDEX_FILE, "r", encoding="utf-8") as f:
-                channels = json.load(f)
-                return channels if isinstance(channels, list) else []
-        except Exception as e:
-            log.warning(f"Gagal membaca channels index: {e}")
-            return self._get_default_channels()
+        from core.utils import read_json
+        channels = read_json(CHANNELS_INDEX_FILE)
+        return channels if isinstance(channels, list) and channels else self._get_default_channels()
 
     def _get_default_channels(self) -> List[Dict[str, Any]]:
         """Returns default preset channels with authentic fallback data."""
@@ -46,11 +42,8 @@ class ChannelManager:
 
     def save_channels(self, channels: List[Dict[str, Any]]):
         """Saves channels list to index file."""
-        try:
-            with open(CHANNELS_INDEX_FILE, "w", encoding="utf-8") as f:
-                json.dump(channels, f, indent=2)
-        except Exception as e:
-            log.error(f"Gagal menyimpan file channels.json: {e}")
+        from core.utils import write_json
+        write_json(CHANNELS_INDEX_FILE, channels, indent=2)
 
     def add_channel_by_url_or_handle(self, query: str) -> Dict[str, Any]:
         """
@@ -140,11 +133,8 @@ class ChannelManager:
 
         # Save channel catalog JSON file
         channel_file = os.path.join(CHANNELS_DIR, f"{channel_id}.json")
-        try:
-            with open(channel_file, "w", encoding="utf-8") as f:
-                json.dump({"channel": channel_data, "videos": videos}, f, indent=2)
-        except Exception as e:
-            log.warning(f"Gagal menyimpan katalog video channel {channel_id}: {e}")
+        from core.utils import write_json
+        write_json(channel_file, {"channel": channel_data, "videos": videos}, indent=2)
 
         # Update channels list
         all_channels = self.get_all_channels()
@@ -171,13 +161,10 @@ class ChannelManager:
         channel_meta = {}
 
         if os.path.exists(channel_file):
-            try:
-                with open(channel_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    videos = data.get("videos", [])
-                    channel_meta = data.get("channel", {})
-            except Exception:
-                pass
+            from core.utils import read_json
+            data = read_json(channel_file)
+            videos = data.get("videos", [])
+            channel_meta = data.get("channel", {})
 
         # Filter by Tab (Upload vs Live)
         if tab == "live":

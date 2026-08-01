@@ -23,22 +23,15 @@ def format_ass_time(seconds: float) -> str:
 
 def _transcribe_with_language_sync(model, audio_file: str, word_timestamps: bool):
     from core.config import config
-    import os, json
+    import os
     
-    target_lang = None
-    preview_file = ""
-    if config.job_dir:
-        preview_file = os.path.join(config.job_dir, "preview.json")
-        if os.path.exists(preview_file):
-            try:
-                with open(preview_file, "r", encoding="utf-8") as f:
-                    preview_data = json.load(f)
-                    target_lang = preview_data.get("language")
-            except: pass
+    from core.utils import get_preview_data
+    preview_data = get_preview_data()
+    target_lang = preview_data.get("language") if preview_data else None
 
     prompt = "Berikut adalah cuplikan video dengan ucapan santai dan gaul yang diucapkan dengan cepat:" if target_lang == "id" else None
     
-    segments_gen, info = model.transcribe(
+    segments_gen, _ = model.transcribe(
         audio_file,
         language=target_lang,
         initial_prompt=prompt,
@@ -48,15 +41,6 @@ def _transcribe_with_language_sync(model, audio_file: str, word_timestamps: bool
         vad_parameters=dict(min_silence_duration_ms=500)
     )
     
-    detected_lang = info.language
-    if detected_lang and detected_lang != target_lang and preview_file and os.path.exists(preview_file):
-        try:
-            with open(preview_file, "r", encoding="utf-8") as f:
-                preview_data = json.load(f)
-            preview_data["language"] = detected_lang
-            with open(preview_file, "w", encoding="utf-8") as f:
-                json.dump(preview_data, f)
-        except: pass
         
     return segments_gen
 

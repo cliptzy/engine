@@ -138,18 +138,11 @@ def process_single_clip(
                     event_hook("log", f"Generating metadata (Title, Desc, Highlight) via AI for clip {index}...")
                 except Exception: pass
                 
-            preview_file = os.path.join(config.job_dir, "preview.json")
-            youtube_title = "Unknown"
-            channel_name = "Unknown"
-            youtube_url = f"https://youtu.be/{video_id}"
-            try:
-                import json
-                with open(preview_file, "r", encoding="utf-8") as f:
-                    preview_data = json.load(f)
-                    youtube_title = preview_data.get("title", "Unknown")
-                    channel_name = preview_data.get("uploader", "Unknown")
-                    youtube_url = preview_data.get("webpage_url", youtube_url)
-            except Exception: pass
+            from core.utils import get_preview_data
+            preview_data = get_preview_data()
+            youtube_title = preview_data.get("title", "Unknown")
+            channel_name = preview_data.get("uploader", "Unknown")
+            youtube_url = preview_data.get("webpage_url", f"https://youtu.be/{video_id}")
             
             ai_config = config.to_dict()
             from core.ai_detector import ai_detector
@@ -159,15 +152,15 @@ def process_single_clip(
                 channel_name=channel_name,
                 youtube_url=youtube_url,
                 ai_config=ai_config,
-                event_hook=event_hook
+                event_hook=event_hook,
+                language=preview_data.get("language", "Indonesia")
             )
             
             if metadata:
                 metadata_file = os.path.join(config.job_dir, f"metadata_{index}.json")
                 try:
-                    import json
-                    with open(metadata_file, "w", encoding="utf-8") as f:
-                        json.dump(metadata, f, indent=2)
+                    from core.utils import write_json
+                    write_json(metadata_file, metadata, indent=2)
                     if callable(event_hook):
                         event_hook("log", f"Metadata saved to {metadata_file}")
                 except Exception as e:
@@ -250,12 +243,8 @@ def process_single_clip(
                 from gtts import gTTS
                 import json
                 tts_lang = 'id'
-                preview_file = os.path.join(config.job_dir, "preview.json")
-                if os.path.exists(preview_file):
-                    try:
-                        with open(preview_file, "r", encoding="utf-8") as f:
-                            tts_lang = json.load(f).get("language") or 'id'
-                    except: pass
+                from core.utils import get_preview_data
+                tts_lang = get_preview_data().get("language") or 'id'
                 
                 tts = gTTS(text=highlight_text, lang=tts_lang)
                 audio_path = os.path.join(config.job_dir, f"intro_audio_{index}.mp3")

@@ -79,6 +79,10 @@ class ClipController:
         raw = json.loads(res.stdout)
         item = raw["entries"][0] if isinstance(raw, dict) and "entries" in raw and raw.get("entries") else raw
 
+        lang = item.get("language")
+        if lang and "-" in lang:
+            lang = lang.split("-")[0]
+
         preview = {
             "title": item.get("title", "Unknown Title"),
             "thumbnail": item.get("thumbnail"),
@@ -86,7 +90,7 @@ class ClipController:
             "duration": item.get("duration", 0),
             "webpage_url": item.get("webpage_url") or url_clean,
             "id": item.get("id"),
-            "language": item.get("language")
+            "language": lang
         }
 
         with _preview_lock:
@@ -112,25 +116,20 @@ class ClipController:
         cache_file = os.path.join(job_dir, "segments.json")
         
         if os.path.exists(cache_file):
-            try:
-                with open(cache_file, "r", encoding="utf-8") as f:
-                    data_cache = json.load(f)
-                    return {
-                        "video_id": video_id,
-                        "duration": data_cache.get("duration", 0),
-                        "segments": data_cache.get("segments", [])
-                    }
-            except Exception:
-                pass
+            from core.utils import read_json
+            data_cache = read_json(cache_file)
+            if data_cache:
+                return {
+                    "video_id": video_id,
+                    "duration": data_cache.get("duration", 0),
+                    "segments": data_cache.get("segments", [])
+                }
 
         segments = fetch_most_replayed(video_id, config.min_score, config.max_duration)
         total_duration = get_video_duration(video_id)
         
-        try:
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump({"duration": total_duration, "segments": segments}, f)
-        except Exception as e:
-            log.warning(f"Gagal menyimpan cache segments.json: {e}")
+        from core.utils import write_json
+        write_json(cache_file, {"duration": total_duration, "segments": segments})
             
         return {"video_id": video_id, "duration": total_duration, "segments": segments}
 
@@ -140,13 +139,8 @@ class ClipController:
             return None
         job_dir = os.path.join("clips", video_id)
         ai_cache_file = os.path.join(job_dir, "ai_segments.json")
-        if os.path.exists(ai_cache_file):
-            try:
-                with open(ai_cache_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        return None
+        from core.utils import read_json
+        return read_json(ai_cache_file) if os.path.exists(ai_cache_file) else None
 
     def execute_clipping(
         self,
@@ -220,8 +214,8 @@ class ClipController:
             url = payload.get("url")
             if url:
                 preview = self.get_preview(url)
-                with open(os.path.join(job_dir, "preview.json"), "w", encoding="utf-8") as f:
-                    json.dump(preview, f)
+                from core.utils import write_json
+                write_json(os.path.join(job_dir, "preview.json"), preview)
         except Exception as e:
             if callable(event_hook):
                 event_hook("log", f"Gagal menyimpan preview.json: {e}")
@@ -513,13 +507,10 @@ class ClipController:
         transcript_segments = []
 
         if os.path.exists(transcript_cache_file):
-            try:
-                with open(transcript_cache_file, "r", encoding="utf-8") as f:
-                    transcript_segments = json.load(f)
-                    if callable(event_hook):
-                        event_hook("log", f"[AI] Menggunakan {len(transcript_segments)} klausa transkrip audio dari cache (skip download & Whisper transcribing).")
-            except Exception as e:
-                log.warning(f"Gagal membaca cache transkrip {transcript_cache_file}: {e}")
+            from core.utils import read_json
+            transcript_segments = read_json(transcript_cache_file, default=[])
+            if transcript_segments and callable(event_hook):
+                event_hook("log", f"[AI] Menggunakan {len(transcript_segments)} klausa transkrip audio dari cache (skip download & Whisper transcribing).")
 
         if not transcript_segments:
             audio_file = os.path.join(job_dir, "audio_full.m4a")
@@ -553,20 +544,17 @@ class ClipController:
                 raise RuntimeError("Gagal mengekstrak transkripsi audio.")
 
             # Save complete transcript to disk so future AI calls don't need re-transcribing!
-            try:
-                with open(transcript_cache_file, "w", encoding="utf-8") as f:
-                    json.dump(transcript_segments, f, indent=2)
+            from core.utils import write_json
+            if write_json(transcript_cache_file, transcript_segments, indent=2):
                 if callable(event_hook):
                     event_hook("log", f"[AI] Transkrip audio lengkap ({len(transcript_segments)} klausa) berhasil disimpan ke cache.")
-            except Exception as e:
-                log.warning(f"Gagal menyimpan cache transkrip: {e}")
 
         if callable(event_hook):
             event_hook("stage", {"stage": "ai_detect", "clip_index": 0})
             event_hook("log", f"[AI] Menganalisis {len(transcript_segments)} klausa ucapan dengan AI Model ({ai_config.get('provider', 'ollama').upper()})...")
 
         from core.ai_detector import ai_detector
-        highlights = ai_detector.detect_highlights(transcript_segments, ai_config, event_hook=event_hook)
+        highlights = ai_detector.detect_highlights(transcript_segments, ai_config, event_hook=event_hook, video_id=video_id)
 
         total_duration = get_video_duration(video_id)
         result = {
@@ -577,11 +565,8 @@ class ClipController:
         }
 
         ai_cache_file = os.path.join(job_dir, "ai_segments.json")
-        try:
-            with open(ai_cache_file, "w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
-        except Exception:
-            pass
+        from core.utils import write_json
+        write_json(ai_cache_file, result, indent=2)
 
         return result
 

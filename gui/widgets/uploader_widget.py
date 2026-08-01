@@ -51,23 +51,16 @@ class AIGenerateMetadataWorker(QThread):
                 self.log_signal.emit(f"[WARNING] Teks subtitle klip kosong atau file .ass tidak ditemukan untuk {clip_filename}. Mencoba fallback ke transkrip utama...")
                 transcript_file = os.path.join(job_dir, "transcript.json")
                 if os.path.exists(transcript_file):
-                    with open(transcript_file, "r", encoding="utf-8") as f:
-                        transcript_segments = json.load(f)
-                        clip_text = " ".join([seg.get("text", "") for seg in transcript_segments])
+                    from core.utils import read_json
+                    transcript_segments = read_json(transcript_file, default=[])
+                    clip_text = " ".join([seg.get("text", "") for seg in transcript_segments])
             
-            preview_file = os.path.join(job_dir, "preview.json")
-            youtube_title = "Unknown Video"
-            channel_name = "Unknown Channel"
-            youtube_url = ""
-            if os.path.exists(preview_file):
-                try:
-                    with open(preview_file, "r", encoding="utf-8") as f:
-                        preview_data = json.load(f)
-                        youtube_title = preview_data.get("title", "Unknown Video")
-                        channel_name = preview_data.get("uploader", "Unknown Channel")
-                        youtube_url = preview_data.get("webpage_url", "")
-                except Exception as e:
-                    self.log_signal.emit(f"[WARNING] Gagal membaca preview.json: {e}")
+            from core.utils import get_preview_data
+            preview_data = get_preview_data(job_dir=job_dir)
+            youtube_title = preview_data.get("title", "Unknown Video")
+            channel_name = preview_data.get("uploader", "Unknown Channel")
+            youtube_url = preview_data.get("webpage_url", "")
+            language = preview_data.get("language") or "Indonesia"
                 
             ai_config = {
                 "provider": getattr(config, "ai_provider", "ollama"),
@@ -94,7 +87,8 @@ class AIGenerateMetadataWorker(QThread):
                 youtube_url=youtube_url,
                 ai_config=ai_config,
                 user_context=self.user_context,
-                event_hook=event_hook
+                event_hook=event_hook,
+                language=language
             )
             self.finished_signal.emit(metadata)
             
@@ -435,18 +429,15 @@ class UploaderWidget(QFrame):
             
             if path not in self.clip_metadata:
                 self.clip_metadata[path] = {"title": name, "description": "", "tags": ""}
-                try:
-                    import os, json
-                    basename = os.path.basename(path)
-                    idx = basename.replace("clip_", "").replace(".mp4", "")
-                    meta_path = os.path.join(output_dir, f"metadata_{idx}.json")
-                    if os.path.exists(meta_path):
-                        with open(meta_path, "r", encoding="utf-8") as f:
-                            saved_meta = json.load(f)
-                            if saved_meta:
-                                self.clip_metadata[path].update(saved_meta)
-                except Exception:
-                    pass
+                import os
+                basename = os.path.basename(path)
+                idx = basename.replace("clip_", "").replace(".mp4", "")
+                meta_path = os.path.join(output_dir, f"metadata_{idx}.json")
+                if os.path.exists(meta_path):
+                    from core.utils import read_json
+                    saved_meta = read_json(meta_path)
+                    if saved_meta:
+                        self.clip_metadata[path].update(saved_meta)
 
     def on_clip_selected(self, item: QListWidgetItem):
         path = item.data(Qt.ItemDataRole.UserRole)
@@ -471,16 +462,13 @@ class UploaderWidget(QFrame):
             "tags": self.tags_input.text()
         })
         
-        import os, json
-        try:
-            basename = os.path.basename(self.current_clip_path)
-            idx = basename.replace("clip_", "").replace(".mp4", "")
-            output_dir = os.path.dirname(self.current_clip_path)
-            meta_path = os.path.join(output_dir, f"metadata_{idx}.json")
-            with open(meta_path, "w", encoding="utf-8") as f:
-                json.dump(self.clip_metadata[self.current_clip_path], f, indent=2)
-        except Exception:
-            pass
+        import os
+        from core.utils import write_json
+        basename = os.path.basename(self.current_clip_path)
+        idx = basename.replace("clip_", "").replace(".mp4", "")
+        output_dir = os.path.dirname(self.current_clip_path)
+        meta_path = os.path.join(output_dir, f"metadata_{idx}.json")
+        write_json(meta_path, self.clip_metadata[self.current_clip_path], indent=2)
             
         from gui.globals import signals
         signals.log_message.emit(f"[INFO] Metadata disimpan untuk: {os.path.basename(self.current_clip_path)}")
