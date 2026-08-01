@@ -2,6 +2,15 @@ import argparse
 import os
 import sys
 
+if len(sys.argv) >= 3 and sys.argv[1] == "-m" and sys.argv[2] == "yt_dlp":
+    import yt_dlp
+    sys.argv = [sys.argv[0]] + sys.argv[3:]
+    try:
+        sys.exit(yt_dlp.main())
+    except SystemExit as e:
+        sys.exit(e.code)
+
+
 from core import (
     config,
     log,

@@ -10,8 +10,7 @@ datas = [
     ('fonts', 'fonts'),
 ]
 
-if os.path.isfile('.env'):
-    datas.append(('.env', '.'))
+
 
 if os.path.isdir('images'):
     datas.append(('images', 'images'))
@@ -62,17 +61,13 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='cliptzy',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir='%TEMP%',
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -81,3 +76,15 @@ exe = EXE(
     entitlements_file=None,
     icon='images/icon.png' if os.path.exists('images/icon.png') else None,
 )
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='cliptzy',
+)
+

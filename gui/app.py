@@ -5,6 +5,15 @@ Desktop GUI Entry Point for Cliptzy application.
 import sys
 import os
 
+if len(sys.argv) >= 3 and sys.argv[1] == "-m" and sys.argv[2] == "yt_dlp":
+    import yt_dlp
+    sys.argv = [sys.argv[0]] + sys.argv[3:]
+    try:
+        sys.exit(yt_dlp.main())
+    except SystemExit as e:
+        sys.exit(e.code)
+
+
 # Ensure application root directory is in sys.path
 app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if app_dir not in sys.path:
