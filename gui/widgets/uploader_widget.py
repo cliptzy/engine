@@ -76,7 +76,8 @@ class AIGenerateMetadataWorker(QThread):
                 "gemini_key": getattr(config, "gemini_key", ""),
                 "gemini_model": getattr(config, "gemini_model", ""),
                 "openai_key": getattr(config, "openai_key", ""),
-                "openai_model": getattr(config, "openai_model", "")
+                "openai_model": getattr(config, "openai_model", ""),
+                "openai_base_url": getattr(config, "openai_base_url", "")
             }
             
             def event_hook(ev_type, data):

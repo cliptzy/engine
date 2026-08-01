@@ -72,6 +72,7 @@ class AppConfig:
 
     openai_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    openai_base_url: str = ""
     
     ai_prompt: str = ""
     use_highlight: bool = False
@@ -145,6 +146,7 @@ class AppConfig:
             "gemini_model": self.gemini_model,
             "openai_key": self.openai_key,
             "openai_model": self.openai_model,
+            "openai_base_url": self.openai_base_url,
             "ai_prompt": self.ai_prompt,
             "upload_interval": self.upload_interval,
             "hw_accel": self.hw_accel,
@@ -245,6 +247,8 @@ class AppConfig:
             self.openai_key = data["openai_key"]
         if "openai_model" in data and data["openai_model"]:
             self.openai_model = data["openai_model"]
+        if "openai_base_url" in data:
+            self.openai_base_url = data["openai_base_url"]
         if "ai_prompt" in data and data["ai_prompt"]:
             self.ai_prompt = data["ai_prompt"]
         if "upload_interval" in data:

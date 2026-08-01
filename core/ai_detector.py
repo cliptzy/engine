@@ -217,54 +217,40 @@ class AIHighlightDetector:
 
 
     def _call_openai(self, prompt: str, ai_config: Dict[str, Any], event_hook: Optional[Any]) -> str:
+        from openai import OpenAI
+        
         api_key = (ai_config.get("openai_key") or "").strip()
         if not api_key:
             raise ValueError("OpenAI API Key belum diisi. Masukkan API Key di form AI!")
 
         model_name = (ai_config.get("openai_model") or "gpt-4o-mini").strip()
-        url = "https://api.openai.com/v1/chat/completions"
-
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": model_name,
-            "messages": [
-                {"role": "system", "content": "You are a professional video editor and JSON highlight generator."},
-                {"role": "user", "content": prompt}
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.3,
-            "stream": True
-        }
+        base_url = (ai_config.get("openai_base_url") or "").strip()
+        
+        kwargs = {"api_key": api_key}
+        if base_url:
+            kwargs["base_url"] = base_url
+            
+        client = OpenAI(**kwargs)
 
         try:
-            res = requests.post(url, json=payload, headers=headers, timeout=120, stream=True)
-            if res.status_code != 200:
-                try:
-                    err_json = res.json()
-                    err_msg = err_json.get("error", {}).get("message", res.text[:200])
-                except Exception:
-                    err_msg = res.text[:200]
-                raise RuntimeError(f"HTTP {res.status_code} - {err_msg}")
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": "You are a professional video editor and JSON highlight generator."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.3,
+                stream=True
+            )
 
             full_response = ""
-            for line in res.iter_lines():
-                line = line.decode('utf-8').strip()
-                if line.startswith("data: ") and line != "data: [DONE]":
-                    try:
-                        data = json.loads(line[6:])
-                        choices = data.get("choices", [])
-                        if choices:
-                            delta = choices[0].get("delta", {})
-                            chunk = delta.get("content", "")
-                            if chunk:
-                                full_response += chunk
-                                if callable(event_hook):
-                                    event_hook("log_inline", chunk)
-                    except Exception:
-                        pass
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    content_chunk = chunk.choices[0].delta.content
+                    full_response += content_chunk
+                    if callable(event_hook):
+                        event_hook("log_inline", content_chunk)
                         
             if callable(event_hook):
                 event_hook("log", "")

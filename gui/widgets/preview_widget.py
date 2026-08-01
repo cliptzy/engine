@@ -195,6 +195,7 @@ class PreviewWidget(QFrame):
             "gemini_model": getattr(config, "gemini_model", "gemini-1.5-flash"),
             "openai_key": getattr(config, "openai_key", ""),
             "openai_model": getattr(config, "openai_model", "gpt-4o-mini"),
+            "openai_base_url": getattr(config, "openai_base_url", ""),
         }
         self.ai_scan_requested.emit(ai_config)
 
