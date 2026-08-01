@@ -2,6 +2,28 @@
 
 Semua catatan pembaruan dari proyek Cliptzy akan didokumentasikan di dalam file ini.
 
+## [v2.0.7] - 2026-08-01
+
+### Added
+
+- **Penggabungan Klip (Merge Clips):** Menambahkan mode baru "Merge Video". Jika diaktifkan, setelah pemotongan selesai, seluruh klip akan digabungkan secara otomatis menjadi satu file `merged.mp4`.
+- **Dukungan AI Metadata untuk Merged Video:** Fitur Auto Generate via AI kini mampu menangkap konteks keseluruhan dari gabungan semua klip pada file `merged.mp4` dan men-generate _metadata_ tunggal (Title, Deskripsi, Tags, Highlight) secara komprehensif.
+- **Kustomisasi TTS Mutakhir:** Menggantikan pustaka lawas `gTTS` dengan `edge-tts` (Microsoft Edge Neural Voices) berkualitas tinggi. Menambahkan konfigurasi GUI untuk memilih **Bahasa TTS AI** (EN, ID, ES, JA, KO, MS) dan **Gender Suara** (Pria/Wanita).
+- **Meme Voiceover (Loquendo Jorge):** Pemetaan spesifik untuk suara pria bahasa Spanyol (ES - Male) akan memanggil aktor suara meme legendaris `es-MX-JorgeNeural` ("numero uno").
+- **Pemotongan via Padding Negatif:** Kolom konfigurasi "Padding Klip" kini mendukung angka negatif (hingga -30 detik) yang berfungsi merampingkan (memotong) durasi klip langsung dari awal dan akhir batas klip.
+
+### Changed
+
+- **Engine Face Detection:** Meng-upgrade algoritma pencarian wajah _(face tracking)_ dari HAAR cascades (`cv2.CascadeClassifier`) lama menjadi model _Deep Neural Network (DNN)_ OpenCV YuNet (`cv2.FaceDetectorYN`) dengan sistem _auto-download_ otomatis (tanpa eror aset eksternal yang hilang).
+- **Penyesuaian Tempo TTS:** Memperlambat kecepatan pembacaan _voiceover_ TTS secara bawaan (`--rate=-15%`) agar terdengar lebih santai dan artikulatif.
+- **Isolasi Lingkungan Python (`edge-tts`):** Memastikan proses pemanggilan `edge-tts` dieksekusi secara aman menggunakan rute Python aktif saat ini (`sys.executable -m edge_tts`) untuk mencegah _fallback_ ke versi lawas.
+
+### Fixed
+
+- Mengatasi _crash_ aplikatif (`TypeError`) saat proses indikator antarmuka (_GUI progress bar_) mencoba memperbarui persentase dari tugas berlabel `"merge"`.
+- Memperbaiki peringatan linter/Pylance pada _overload type-checking_ di komponen `subprocess.run()`.
+- Menyelesaikan _UnboundLocalError_ (`sys` diakses sebelum inisialisasi) akibat isu ruang lingkup _(scope)_ variabel Python selama pemanggilan modul _download_.
+
 ## [v2.0.3] - 2026-07-31
 
 ### Added
