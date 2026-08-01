@@ -67,7 +67,7 @@ class DependencyWorker(QThread):
             # 2. Install FFmpeg
             self.log_signal.emit("\n--- Instalasi FFmpeg ---")
             if is_windows:
-                ffmpeg_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+                ffmpeg_url = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
                 ffmpeg_zip = os.path.join(bin_dir, "ffmpeg.zip")
                 self.log_signal.emit(f"Mengunduh FFmpeg dari {ffmpeg_url}...")
                 try:
@@ -83,7 +83,7 @@ class DependencyWorker(QThread):
                 except Exception as e:
                     self.log_signal.emit(f"[ERROR] Gagal mengunduh FFmpeg: {e}")
             elif is_linux:
-                ffmpeg_url = "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+                ffmpeg_url = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
                 ffmpeg_tar = os.path.join(bin_dir, "ffmpeg.tar.xz")
                 self.log_signal.emit(f"Mengunduh FFmpeg dari {ffmpeg_url}...")
                 try:

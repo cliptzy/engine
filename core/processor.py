@@ -232,12 +232,14 @@ def process_single_clip(
             log.info(f"Burning subtitle/highlight to video for clip {index}...")
             fontsdir_arg = ""
             if config.subtitle_fonts_dir and os.path.isdir(config.subtitle_fonts_dir):
-                fontsdir_arg = f":fontsdir='{config.subtitle_fonts_dir}'"
+                fontsdir_fwd = config.subtitle_fonts_dir.replace("\\", "/")
+                fontsdir_arg = f":fontsdir='{fontsdir_fwd}'"
             
+            subtitle_file_fwd = subtitle_file.replace("\\", "/")
             cmd_subtitle = [
                 "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
                 "-i", cropped_file,
-                "-vf", f"subtitles=filename='{subtitle_file}'{fontsdir_arg}",
+                "-vf", f"subtitles=filename='{subtitle_file_fwd}'{fontsdir_arg}",
             ] + _get_video_codec_args() + [
                 "-c:a", "copy",
                 subbed_file
@@ -330,13 +332,15 @@ def process_single_clip(
                 out_w, out_h = config.out_width or 720, config.out_height or 1280
                 fontsdir_arg = ""
                 if config.subtitle_fonts_dir and os.path.isdir(config.subtitle_fonts_dir):
-                    fontsdir_arg = f":fontsdir='{config.subtitle_fonts_dir}'"
+                    fontsdir_fwd = config.subtitle_fonts_dir.replace("\\", "/")
+                    fontsdir_arg = f":fontsdir='{fontsdir_fwd}'"
                     
+                intro_ass_fwd = intro_ass.replace("\\", "/")
                 cmd_intro = [
                     "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
                     "-f", "lavfi", "-i", f"color=c=black:s={out_w}x{out_h}:d={duration_sec + 0.5}",
                     "-i", audio_path,
-                    "-vf", f"subtitles=filename='{intro_ass}'{fontsdir_arg}",
+                    "-vf", f"subtitles=filename='{intro_ass_fwd}'{fontsdir_arg}",
                     "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
                     "-c:a", "aac", "-b:a", "128k",
                     "-shortest",
