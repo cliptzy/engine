@@ -25,7 +25,7 @@ jobs:
             target: windows
             artifact_name: cliptzy-windows
             file_extension: zip
-          - os: macos-latest
+          - os: macos-13
             target: macos
             artifact_name: cliptzy-macos
             file_extension: zip
