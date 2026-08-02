@@ -13,10 +13,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            target: apk
-            artifact_name: cliptzy-android
-            file_extension: apk
+          # - os: ubuntu-latest
+          #   target: apk
+          #   artifact_name: cliptzy-android
+          #   file_extension: apk
           - os: ubuntu-latest
             target: linux
             artifact_name: cliptzy-linux
