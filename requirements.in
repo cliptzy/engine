@@ -17,3 +17,9 @@ openai
 opencv-python-headless
 
 edge-tts
+
+# --- Flet Migration (GUI Framework) ---
+flet
+flet-video
+pystray
+desktop-notifier
