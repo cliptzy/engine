@@ -80,7 +80,7 @@ def main(page: ft.Page) -> None:
         cancel_btn.disabled = True
         page.update()
 
-    def on_start(e: ft.ControlEvent) -> None:
+    def on_start(e) -> None:
         nonlocal worker_thread
         cancel_event.clear()
         progress_bar.value = 0
@@ -96,7 +96,7 @@ def main(page: ft.Page) -> None:
         worker_thread.start()
         log(f"   Thread ID: {worker_thread.ident}, Name: {worker_thread.name}")
 
-    def on_cancel(e: ft.ControlEvent) -> None:
+    def on_cancel(e) -> None:
         log("⚠️ Cancellation requested...", "#FF7675")
         cancel_event.set()
         start_btn.disabled = False
@@ -109,7 +109,7 @@ def main(page: ft.Page) -> None:
     # --- Concurrent test: multiple workers ---
     concurrent_results = ft.Text("", size=12, selectable=True)
 
-    def run_concurrent_test(e: ft.ControlEvent) -> None:
+    def run_concurrent_test(e) -> None:
         """Test multiple concurrent background threads."""
         results: list[str] = []
         lock = threading.Lock()

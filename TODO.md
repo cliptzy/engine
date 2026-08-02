@@ -3,6 +3,7 @@
 Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dari **PyQt6** ke **[Flet](https://flet.dev)**, sekaligus melakukan refactoring arsitektur kode Python agar memenuhi standar _best practice_ internasional: **scalable**, **modular**, **DRY**, dan siap menampung penambahan fitur masif di masa depan (template editing, crop video, generate outro, dll).
 
 > **Catatan**: Seluruh proses harus tetap mematuhi aturan yang ditetapkan di [`AGENTS.md`](AGENTS.md) — terutama _Three-Tier Architecture_, _Non-Blocking UI Policy_, dan _Strict Prohibitions_.
+> **POC**: Gunakan file python di dalam folder `scripts` sebagai POC dan referensi kode untuk menyelesaikan TODO List
 
 ---
 
@@ -57,6 +58,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 - [ ] **Buat `core/interfaces.py` — Abstract Base Classes & Protocols**
   - Definisikan `Protocol` class untuk semua callback yang digunakan controller:
+
     ```python
     # core/interfaces.py
     from typing import Protocol, Any
@@ -67,6 +69,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
         def on_error(self, error: str) -> None: ...
         def on_finished(self, result: Any) -> None: ...
     ```
+
   - Definisikan `Protocol` untuk setiap operasi utama (scan, clip, preview, AI detect).
   - Ini menegaskan kontrak yang harus dipenuhi oleh layer UI manapun (PyQt6, Flet, CLI).
 
@@ -74,6 +77,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
   - Hapus semua _implicit coupling_ ke PyQt6.
   - Controller harus menerima _reporter/callback_ melalui constructor injection, bukan global state.
   - Terapkan pola _Command_ atau _UseCase_ untuk setiap operasi:
+
     ```python
     # core/use_cases/clip_video.py
     class ClipVideoUseCase:
@@ -124,6 +128,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 - [ ] **Buat `core/models.py` — Typed Data Models:**
   - Gunakan `dataclasses` atau `pydantic.BaseModel` untuk semua entitas:
+
     ```python
     @dataclass
     class VideoInfo:
@@ -147,6 +152,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
         success: bool
         error: str | None = None
     ```
+
   - Eliminasi penggunaan `dict` generik yang tidak terstruktur sebagai data carrier.
 
 - [ ] **Tambahkan Type Hints ke Seluruh Public API di `core/`**
@@ -166,12 +172,14 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
   class FFmpegError(ProcessingError): ...
   class CancellationError(CliptzyError): ...
   ```
+
   - Semua module di `core/` harus melempar _custom exceptions_, bukan `Exception` generik.
 
 ### 1.5 — Standarisasi Konfigurasi
 
 - [ ] **Refactor `core/config.py` (12 KB) — Typed Configuration:**
   - Gunakan `dataclass` atau `pydantic.BaseModel` untuk validasi konfigurasi:
+
     ```python
     @dataclass
     class AIConfig:
@@ -187,6 +195,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
         aspect_ratio: str = "9:16"
         ...
     ```
+
   - Sediakan method `from_json()`, `to_json()`, dan validasi otomatis.
 
 ---
@@ -231,6 +240,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 ### 2.2 — Event Bus (Pengganti `pyqtSignal`)
 
 - [ ] **Implementasi `gui/event_bus.py` — Pub/Sub Thread-Safe:**
+
   ```python
   import threading
   from collections import defaultdict
@@ -257,6 +267,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
           for callback in listeners:
               callback(**kwargs)
   ```
+
   - Event names sebagai konstanta di `gui/events.py`:
     ```python
     # gui/events.py
@@ -281,12 +292,14 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
       progress_value: float = 0.0
       log_messages: list[str] = field(default_factory=list)
   ```
+
   - State disimpan secara terpusat dan dimutasi melalui metode terkontrol.
   - Perubahan state memicu `page.update()` pada UI.
 
 ### 2.4 — Background Worker Abstraction
 
 - [ ] **Implementasi `gui/workers.py` — Generic Worker Menggunakan `threading.Thread`:**
+
   ```python
   class BackgroundWorker:
       """Generic background task runner with cancellation support."""
@@ -307,6 +320,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
       @property
       def is_cancelled(self) -> bool: ...
   ```
+
   - Callback dari worker harus memanggil `page.update()` setelah memutasi state.
   - **Flet Threading API**: Manfaatkan `page.run_thread(target)` untuk background tasks (thread-safe UI update bawaan) dan `page.run_task(coroutine)` untuk operasi async.
   - `core/controller.py` sudah 100% GUI-agnostic (menggunakan `event_hook` callback), jadi worker cukup menjembatani callback → state mutation → `page.update()`.
@@ -314,6 +328,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 ### 2.5 — Entry Point
 
 - [ ] **Buat `gui/app.py` Baru (Flet Entry Point):**
+
   ```python
   import flet as ft
   from gui.router import Router
@@ -499,6 +514,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 ### 6.2 — Linting & Type Checking
 
 - [ ] **Konfigurasi di `pyproject.toml`:**
+
   ```toml
   [tool.mypy]
   strict = true
@@ -508,6 +524,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
   target-version = "py310"
   select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
   ```
+
 - [ ] **Jalankan CI checks:** `ruff check .`, `mypy core/`, `pytest tests/`.
 
 ### 6.3 — Packaging Desktop Standalone
@@ -586,51 +603,51 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ## 📊 Appendix A — Mapping Widget PyQt6 → Flet
 
-| PyQt6 Widget | Flet Equivalent | Catatan |
-|---|---|---|
-| `QApplication` | `ft.app(target=main)` | Entry point lebih sederhana |
-| `QMainWindow` | `ft.Page` | Page = top-level container |
-| `QWidget` | `ft.Container` / `ft.Column` / `ft.Row` | Layout containers |
-| `QStackedWidget` | `page.views` + routing / manual swap | URL-based routing |
-| `QLabel` | `ft.Text`, `ft.Icon` | |
-| `QPushButton` | `ft.ElevatedButton` / `ft.FilledButton` / `ft.IconButton` | Varian Material |
-| `QLineEdit` | `ft.TextField` | |
-| `QComboBox` | `ft.Dropdown` | Single-select |
-| `QCheckBox` | `ft.Checkbox` | |
-| `QGroupBox` | `ft.Card` / `ft.Container` with border | |
-| `QScrollArea` | `ft.ListView` / `ft.Column(scroll=True)` | |
-| `QProgressBar` | `ft.ProgressBar` / `ft.ProgressRing` | Nilai 0.0–1.0 |
-| `QTextEdit` | `ft.TextField(multiline=True)` | |
-| `QSlider` | `ft.Slider` | |
-| `QSpinBox` | Custom component (TextField + IconButton) | ⚠️ Tidak ada built-in |
-| `QTabWidget` | `ft.Tabs` | |
-| `QSystemTrayIcon` | `pystray` (third-party) | ⚠️ Tidak built-in |
-| `QMediaPlayer` + `QVideoWidget` | `ft.Video` | Berbasis `libmpv` |
-| `QMessageBox` | `ft.AlertDialog` | |
-| `QFileDialog` | `ft.FilePicker` | Callback-based |
-| `QThread` | `threading.Thread` / `asyncio` | Standard Python |
-| `pyqtSignal` | Event Bus (pub/sub) / callbacks | Custom implementation |
-| `QTimer` | `threading.Timer` / `asyncio.sleep` | |
-| `QMenu` / `QAction` | `ft.PopupMenuButton` | |
-| Qt Style Sheets (QSS) | `ft.Theme` + Material Design | Paradigma berbeda |
-| `QHBoxLayout` | `ft.Row` | |
-| `QVBoxLayout` | `ft.Column` | |
-| `QGridLayout` | `ft.ResponsiveRow` / `ft.GridView` | |
-| `QPixmap` / `QImage` | `ft.Image` | |
-| Drag-and-Drop Events | `ft.Draggable` / `ft.DragTarget` / `page.on_drop` | |
+| PyQt6 Widget                    | Flet Equivalent                                           | Catatan                     |
+| ------------------------------- | --------------------------------------------------------- | --------------------------- |
+| `QApplication`                  | `ft.app(target=main)`                                     | Entry point lebih sederhana |
+| `QMainWindow`                   | `ft.Page`                                                 | Page = top-level container  |
+| `QWidget`                       | `ft.Container` / `ft.Column` / `ft.Row`                   | Layout containers           |
+| `QStackedWidget`                | `page.views` + routing / manual swap                      | URL-based routing           |
+| `QLabel`                        | `ft.Text`, `ft.Icon`                                      |                             |
+| `QPushButton`                   | `ft.ElevatedButton` / `ft.FilledButton` / `ft.IconButton` | Varian Material             |
+| `QLineEdit`                     | `ft.TextField`                                            |                             |
+| `QComboBox`                     | `ft.Dropdown`                                             | Single-select               |
+| `QCheckBox`                     | `ft.Checkbox`                                             |                             |
+| `QGroupBox`                     | `ft.Card` / `ft.Container` with border                    |                             |
+| `QScrollArea`                   | `ft.ListView` / `ft.Column(scroll=True)`                  |                             |
+| `QProgressBar`                  | `ft.ProgressBar` / `ft.ProgressRing`                      | Nilai 0.0–1.0               |
+| `QTextEdit`                     | `ft.TextField(multiline=True)`                            |                             |
+| `QSlider`                       | `ft.Slider`                                               |                             |
+| `QSpinBox`                      | Custom component (TextField + IconButton)                 | ⚠️ Tidak ada built-in       |
+| `QTabWidget`                    | `ft.Tabs`                                                 |                             |
+| `QSystemTrayIcon`               | `pystray` (third-party)                                   | ⚠️ Tidak built-in           |
+| `QMediaPlayer` + `QVideoWidget` | `ft.Video`                                                | Berbasis `libmpv`           |
+| `QMessageBox`                   | `ft.AlertDialog`                                          |                             |
+| `QFileDialog`                   | `ft.FilePicker`                                           | Callback-based              |
+| `QThread`                       | `threading.Thread` / `asyncio`                            | Standard Python             |
+| `pyqtSignal`                    | Event Bus (pub/sub) / callbacks                           | Custom implementation       |
+| `QTimer`                        | `threading.Timer` / `asyncio.sleep`                       |                             |
+| `QMenu` / `QAction`             | `ft.PopupMenuButton`                                      |                             |
+| Qt Style Sheets (QSS)           | `ft.Theme` + Material Design                              | Paradigma berbeda           |
+| `QHBoxLayout`                   | `ft.Row`                                                  |                             |
+| `QVBoxLayout`                   | `ft.Column`                                               |                             |
+| `QGridLayout`                   | `ft.ResponsiveRow` / `ft.GridView`                        |                             |
+| `QPixmap` / `QImage`            | `ft.Image`                                                |                             |
+| Drag-and-Drop Events            | `ft.Draggable` / `ft.DragTarget` / `page.on_drop`         |                             |
 
 ---
 
 ## ⚠️ Appendix B — Risiko & Mitigasi
 
-| # | Risiko | Dampak | Mitigasi |
-|---|---|---|---|
-| 1 | **Packaging native extensions** (`faster-whisper`, `opencv-python`) tidak kompatibel dengan `flet build` | 🔴 Kritis — Aplikasi tidak bisa di-bundle | PoC di Fase 0. Jika gagal, pertahankan PyInstaller sebagai fallback packaging. Flet tetap dipakai untuk development mode. |
-| 2 | **`ft.Video` tidak stabil** untuk playback file lokal | 🟡 Sedang — Fitur preview terdegradasi | Fallback: panggil `mpv` via subprocess, atau gunakan `ft.Image` + frame extraction. |
-| 3 | **System Tray & Desktop Notifications** tidak built-in | 🟢 Rendah — Fitur non-esensial | Gunakan `pystray` + `desktop-notifier`. In-app SnackBar sebagai fallback. |
-| 4 | **Performa rendering Flet** (Flutter engine) untuk UI-heavy | 🟡 Sedang | Flet berbasis Flutter yang sudah dioptimasi. Benchmark di Fase 0. |
-| 5 | **Kurva belajar** tim/kontributor terhadap Flet | 🟢 Rendah | Flet API sangat Pythonic. Dokumentasi lengkap. |
-| 6 | **Breaking changes** dari Flet yang masih relatif muda | 🟡 Sedang | Pin versi Flet di `requirements.in`. Pantau changelogs. |
+| #   | Risiko                                                                                                   | Dampak                                    | Mitigasi                                                                                                                  |
+| --- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Packaging native extensions** (`faster-whisper`, `opencv-python`) tidak kompatibel dengan `flet build` | 🔴 Kritis — Aplikasi tidak bisa di-bundle | PoC di Fase 0. Jika gagal, pertahankan PyInstaller sebagai fallback packaging. Flet tetap dipakai untuk development mode. |
+| 2   | **`ft.Video` tidak stabil** untuk playback file lokal                                                    | 🟡 Sedang — Fitur preview terdegradasi    | Fallback: panggil `mpv` via subprocess, atau gunakan `ft.Image` + frame extraction.                                       |
+| 3   | **System Tray & Desktop Notifications** tidak built-in                                                   | 🟢 Rendah — Fitur non-esensial            | Gunakan `pystray` + `desktop-notifier`. In-app SnackBar sebagai fallback.                                                 |
+| 4   | **Performa rendering Flet** (Flutter engine) untuk UI-heavy                                              | 🟡 Sedang                                 | Flet berbasis Flutter yang sudah dioptimasi. Benchmark di Fase 0.                                                         |
+| 5   | **Kurva belajar** tim/kontributor terhadap Flet                                                          | 🟢 Rendah                                 | Flet API sangat Pythonic. Dokumentasi lengkap.                                                                            |
+| 6   | **Breaking changes** dari Flet yang masih relatif muda                                                   | 🟡 Sedang                                 | Pin versi Flet di `requirements.in`. Pantau changelogs.                                                                   |
 
 ---
 
@@ -639,10 +656,12 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 Prinsip-prinsip berikut **WAJIB** diterapkan di seluruh kode pasca-refactoring:
 
 ### C.1 — DRY (Don't Repeat Yourself)
+
 - Eliminasi duplikasi kode. Ekstrak _common logic_ ke fungsi/kelas utilitas.
 - Gunakan _base class_ atau _mixin_ untuk perilaku yang di-share (contoh: `BaseUploader`).
 
 ### C.2 — SOLID Principles
+
 - **S**ingle Responsibility: Satu kelas/modul = satu tanggung jawab.
 - **O**pen/Closed: Terbuka untuk ekstensi, tertutup untuk modifikasi (Strategy & Factory pattern).
 - **L**iskov Substitution: Subclass harus bisa menggantikan parent tanpa breaking.
@@ -650,23 +669,27 @@ Prinsip-prinsip berikut **WAJIB** diterapkan di seluruh kode pasca-refactoring:
 - **D**ependency Inversion: Layer atas bergantung pada abstraksi, bukan implementasi konkret.
 
 ### C.3 — Clean Code Standards
+
 - **Naming**: Gunakan nama deskriptif berbahasa Inggris. `snake_case` untuk fungsi/variabel, `PascalCase` untuk kelas.
 - **Docstrings**: Setiap modul, kelas, dan fungsi publik harus memiliki docstring (Google-style).
 - **Max Line Length**: 100 karakter (konfigurasi di `ruff`).
 - **Imports**: Terorganisir (stdlib → third-party → local). Di-enforce oleh `isort` / `ruff`.
 
 ### C.4 — Separation of Concerns
+
 - UI Layer tidak boleh mengandung business logic.
 - Core/Engine Layer tidak boleh mengandung kode GUI.
 - Controller/Use Case sebagai penghubung.
 
 ### C.5 — Scalability Patterns
+
 - **Factory Pattern**: Untuk pembuatan objek dinamis (AI provider, uploader, template).
 - **Strategy Pattern**: Untuk algoritma yang bisa di-swap (crop mode, AI provider).
 - **Observer/Pub-Sub Pattern**: Untuk komunikasi antar-komponen (Event Bus).
 - **Repository Pattern**: Untuk akses data/config yang terabstraksi.
 
 ### C.6 — Dependency Injection
+
 - Hindari `import` langsung ke implementasi konkret dari layer luar.
 - Gunakan constructor injection untuk menyuntikkan dependensi.
 - Ini memudahkan testing (mocking) dan memungkinkan swap implementasi.

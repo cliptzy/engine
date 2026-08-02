@@ -47,7 +47,7 @@ def main(page: ft.Page) -> None:
     text_field = ft.TextField(
         label="Test Input",
         hint_text="Type something...",
-        on_change=lambda e: log_result(f"TextField on_change: '{e.control.value}'"),
+        on_change=lambda e: log_result(f"TextField on_change: '{e.control.value}'"),  # type: ignore
     )
     log_result("TextField created")
 
@@ -60,7 +60,7 @@ def main(page: ft.Page) -> None:
             ft.dropdown.Option("split_right", "Split Right"),
         ],
         value="default",
-        on_change=lambda e: log_result(f"Dropdown selected: {e.control.value}"),
+        on_select=lambda e: log_result(f"Dropdown selected: {e.control.value}"),  # type: ignore
     )
     log_result("Dropdown created")
 
@@ -68,7 +68,7 @@ def main(page: ft.Page) -> None:
     checkbox = ft.Checkbox(
         label="Enable Subtitles",
         value=True,
-        on_change=lambda e: log_result(f"Checkbox: {e.control.value}"),
+        on_change=lambda e: log_result(f"Checkbox: {e.control.value}"),  # type: ignore
     )
     log_result("Checkbox created")
 
@@ -83,64 +83,73 @@ def main(page: ft.Page) -> None:
         value=50,
         divisions=100,
         label="{value}%",
-        on_change=lambda e: log_result(f"Slider: {e.control.value:.0f}%"),
+        on_change=lambda e: log_result(f"Slider: {e.control.value:.0f}%"),  # type: ignore
     )
     log_result("Slider created")
 
     # --- Test 6: Tabs ---
     tabs = ft.Tabs(
+        length=3,
         selected_index=0,
-        tabs=[
-            ft.Tab(text="YouTube"),
-            ft.Tab(text="TikTok"),
-            ft.Tab(text="Instagram"),
-        ],
-        on_change=lambda e: log_result(f"Tab selected: {e.control.selected_index}"),
+        content=ft.TabBar(
+            tabs=[
+                ft.Tab(label="YouTube"),
+                ft.Tab(label="TikTok"),
+                ft.Tab(label="Instagram"),
+            ]
+        ),
+        on_change=lambda e: log_result(f"Tab selected: {e.control.selected_index}"),  # type: ignore
     )
     log_result("Tabs created")
 
     # --- Test 7: AlertDialog ---
-    def show_dialog(e: ft.ControlEvent) -> None:
+    def close_dlg(e):
+        dialog.open = False
+        page.update()
+
+    def show_dialog(e) -> None:
+        global dialog
         dialog = ft.AlertDialog(
             title=ft.Text("Confirmation"),
             content=ft.Text("Are you sure you want to proceed?"),
             actions=[
-                ft.TextButton("Cancel", on_click=lambda _: page.close(dialog)),
-                ft.ElevatedButton(
+                ft.TextButton("Cancel", on_click=close_dlg),
+                ft.Button(
                     "OK",
                     on_click=lambda _: (
                         log_result("AlertDialog: OK clicked"),
-                        page.close(dialog),
+                        close_dlg(None),
                     ),
                 ),
             ],
             modal=True,
         )
-        page.open(dialog)
+        page.show_dialog(dialog)
         log_result("AlertDialog opened")
 
-    dialog_btn = ft.ElevatedButton(
+    dialog_btn = ft.Button(
         "Test AlertDialog", icon=ft.Icons.WARNING, on_click=show_dialog
     )
 
     # --- Test 8: FilePicker ---
-    def on_file_pick(e: ft.FilePickerResultEvent) -> None:
-        if e.files:
-            for f in e.files:
+    file_picker = ft.FilePicker()
+    page.services.append(file_picker)
+
+    async def open_picker(e) -> None:
+        files = await file_picker.pick_files(
+            allow_multiple=False,
+            allowed_extensions=["mp4", "mkv", "txt"],
+        )
+        if files:
+            for f in files:
                 log_result(f"FilePicker: {f.name} ({f.size} bytes)")
         else:
             log_result("FilePicker: cancelled")
 
-    file_picker = ft.FilePicker(on_result=on_file_pick)
-    page.overlay.append(file_picker)
-
-    pick_btn = ft.ElevatedButton(
+    pick_btn = ft.Button(
         "Test FilePicker",
         icon=ft.Icons.UPLOAD_FILE,
-        on_click=lambda _: file_picker.pick_files(
-            allow_multiple=False,
-            allowed_extensions=["mp4", "mkv", "txt"],
-        ),
+        on_click=open_picker,
     )
 
     # --- Test 9: Custom SpinBox (proof of concept) ---
@@ -174,8 +183,8 @@ def main(page: ft.Page) -> None:
         2: "Results",
     }
 
-    def on_nav_change(e: ft.ControlEvent) -> None:
-        idx = e.control.selected_index
+    def on_nav_change(e) -> None:
+        idx = e.control.selected_index  # type: ignore
         log_result(f"NavigationRail: page {nav_pages.get(idx, idx)}")
 
     nav_rail = ft.NavigationRail(
@@ -255,4 +264,4 @@ def main(page: ft.Page) -> None:
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.run(main)

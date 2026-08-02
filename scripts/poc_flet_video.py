@@ -16,7 +16,8 @@ import os
 from pathlib import Path
 
 import flet as ft
-
+from flet_video import Video, VideoMedia, MaterialVideoControls
+from typing import cast
 
 def find_sample_video() -> str | None:
     """Cari file .mp4 pertama di direktori clips/."""
@@ -78,59 +79,61 @@ def main(page: ft.Page) -> None:
     log(f"   File size: {os.path.getsize(video_path) / (1024*1024):.1f} MB")
 
     # Create video player
-    video = ft.Video(
-        playlist=[ft.VideoMedia(video_path)],
-        show_controls=True,
+    video = Video(
+        playlist=[VideoMedia(video_path)],
+        controls=MaterialVideoControls(),
         autoplay=False,
-        fit=ft.ImageFit.CONTAIN,
+        fit=ft.BoxFit.CONTAIN,
         aspect_ratio=16 / 9,
         volume=80,
         expand=True,
-        on_loaded=lambda _: log("✅ Video loaded successfully!"),
+        on_load=lambda _: log("✅ Video loaded successfully!"),
         on_error=lambda e: log(f"❌ Video error: {e.data}"),
     )
 
-    log("✅ ft.Video control created")
+    log("✅ flet_video.Video control created")
 
     # Custom controls
-    def play_pause(e: ft.ControlEvent) -> None:
-        video.play_or_pause()
+    async def play_pause(e) -> None:
+        await video.play_or_pause()
         log("⏯️ Play/Pause toggled")
 
-    def seek_forward(e: ft.ControlEvent) -> None:
-        video.seek(10000)  # Seek to 10s
+    async def seek_forward(e) -> None:
+        await video.seek(10000)  # Seek to 10s
         log("⏩ Seeked to 10s")
 
-    def volume_change(e: ft.ControlEvent) -> None:
-        video.volume = int(e.control.value)
-        log(f"🔊 Volume: {int(e.control.value)}%")
+    def volume_change(e) -> None:
+        video.volume = int(e.control.value)  # type: ignore
+        log(f"🔊 Volume: {int(e.control.value)}%")  # type: ignore
         page.update()
 
+    video_controls: list[ft.Control] = cast(list[ft.Control], [
+        ft.IconButton(
+            ft.Icons.PLAY_ARROW,
+            icon_size=32,
+            on_click=play_pause,
+            tooltip="Play/Pause",
+        ),
+        ft.IconButton(
+            ft.Icons.FORWARD_10,
+            icon_size=32,
+            on_click=seek_forward,
+            tooltip="Seek to 10s",
+        ),
+        ft.Text("Volume:"),
+        ft.Slider(
+            min=0,
+            max=100,
+            value=80,
+            divisions=20,
+            label="{value}%",
+            on_change=volume_change,
+            expand=True,
+        ),
+    ])
+    
     controls_row = ft.Row(
-        controls=[
-            ft.IconButton(
-                ft.Icons.PLAY_ARROW,
-                icon_size=32,
-                on_click=play_pause,
-                tooltip="Play/Pause",
-            ),
-            ft.IconButton(
-                ft.Icons.FORWARD_10,
-                icon_size=32,
-                on_click=seek_forward,
-                tooltip="Seek to 10s",
-            ),
-            ft.Text("Volume:"),
-            ft.Slider(
-                min=0,
-                max=100,
-                value=80,
-                divisions=20,
-                label="{value}%",
-                on_change=volume_change,
-                expand=True,
-            ),
-        ],
+        controls=video_controls,
         alignment=ft.MainAxisAlignment.CENTER,
     )
 
@@ -169,4 +172,4 @@ def main(page: ft.Page) -> None:
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.run(main)
