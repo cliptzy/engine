@@ -17,7 +17,7 @@ dynamic = ["dependencies"]
 dependencies = {file = ["requirements.in"]}
 
 [project.scripts]
-cliptzy = "run:main"
+cliptzy = "main:main"
 
 [tool.flet]
 exclude = [
@@ -31,3 +31,9 @@ exclude = [
     "cred/supabase_session.json",
     "*.log"
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core", "gui", "fonts", "assets"]
+exclude = []
+namespaces = false
