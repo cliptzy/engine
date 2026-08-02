@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [
     { name = "Dicky Mulia Fiqri", email = "santrialanwari@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dynamic = ["dependencies"]
 
 [tool.setuptools.dynamic]

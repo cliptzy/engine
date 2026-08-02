@@ -41,7 +41,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.12"
 
       - name: Set up Java
         if: matrix.target == 'apk'
@@ -79,7 +79,7 @@ jobs:
         env:
           PYTHONUTF8: "1"
         run: |
-          flet build ${{ matrix.target }} --python-version 3.13 --yes
+          flet build ${{ matrix.target }} --python-version 3.12 --yes
 
       - name: Archive Executable
         shell: bash
