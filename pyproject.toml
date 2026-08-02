@@ -14,12 +14,15 @@ requires-python = ">=3.12"
 dynamic = ["dependencies"]
 
 [tool.setuptools.dynamic]
-dependencies = {file = ["requirements.in"]}
+dependencies = {file = ["requirements.txt"]}
 
 [project.scripts]
 cliptzy = "main:main"
 
 [tool.flet]
+app.module = "main.main"
+app.name = "Cliptzy"
+app.description = "YouTube Clipper & Auto Uploader"
 exclude = [
     ".git",
     ".github",

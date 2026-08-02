@@ -83,9 +83,33 @@ def main(page: ft.Page) -> None:
 
     # Initialize Supabase Sync
     from core.supabase_sync import supabase_sync
-    from dotenv import load_dotenv
-    load_dotenv()
-    supabase_sync.initialize(os.getenv("SUPABASE_URL", ""), os.getenv("SUPABASE_SECRET_KEY", ""))
+    
+    # Check if a local .env exists (for development)
+    dotenv_path = os.path.join(os.getcwd(), ".env")
+    if not os.path.exists(dotenv_path):
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        dotenv_path = os.path.join(base_dir, ".env")
+        
+    if os.path.exists(dotenv_path):
+        from dotenv import load_dotenv
+        load_dotenv(dotenv_path=dotenv_path)
+    
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    supabase_key = os.getenv("SUPABASE_SECRET_KEY", "")
+    
+    # Fallback to auto-generated _build_env if env vars not set (e.g., in standalone build)
+    if not supabase_url or not supabase_key:
+        try:
+            from core import _build_env
+            from core.security import deobfuscate
+            if hasattr(_build_env, "SUPABASE_URL_OBFUSCATED"):
+                supabase_url = deobfuscate(_build_env.SUPABASE_URL_OBFUSCATED)
+            if hasattr(_build_env, "SUPABASE_SECRET_KEY_OBFUSCATED"):
+                supabase_key = deobfuscate(_build_env.SUPABASE_SECRET_KEY_OBFUSCATED)
+        except ImportError:
+            pass
+            
+    supabase_sync.initialize(supabase_url, supabase_key)
 
     # Check session — Kunci aplikasi jika belum login
     is_logged_in = supabase_sync.load_session()

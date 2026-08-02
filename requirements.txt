@@ -27,6 +27,7 @@ bidict
     # via desktop-notifier
 certifi
     # via
+    #   -r requirements.in
     #   edge-tts
     #   httpcore
     #   httpx
@@ -37,14 +38,14 @@ charset-normalizer
     # via requests
 click
     # via gtts
-coloredlogs
-    # via onnxruntime
 cryptography
     # via
     #   google-auth
     #   pyjwt
 ctranslate2
     # via faster-whisper
+dbus-fast
+    # via desktop-notifier
 deprecation
     # via
     #   postgrest
@@ -129,8 +130,6 @@ huggingface-hub
     # via
     #   faster-whisper
     #   tokenizers
-humanfriendly
-    # via coloredlogs
 hyperframe
     # via h2
 idna
@@ -147,8 +146,6 @@ markdown-it-py
     # via rich
 mdurl
     # via markdown-it-py
-mpmath
-    # via sympy
 msgpack
     # via flet
 multidict
@@ -226,14 +223,6 @@ pygments
     # via rich
 pyjwt[crypto]
     # via supabase-auth
-pyobjc-core
-    # via
-    #   pyobjc-framework-cocoa
-    #   pyobjc-framework-quartz
-pyobjc-framework-cocoa
-    # via pyobjc-framework-quartz
-pyobjc-framework-quartz
-    # via pystray
 pyparsing
     # via httplib2
 pysocks
@@ -242,6 +231,8 @@ pystray
     # via -r requirements.in
 python-dotenv
     # via -r requirements.in
+python-xlib
+    # via pystray
 pytz
     # via tiktok-uploader
 pyyaml
@@ -265,13 +256,12 @@ requests-oauthlib
     # via google-auth-oauthlib
 rich
     # via typer
-rubicon-objc
-    # via desktop-notifier
 shellingham
     # via typer
 six
     # via
     #   pystray
+    #   python-xlib
     #   repath
 sniffio
     # via
@@ -287,8 +277,6 @@ supabase-auth
     # via supabase
 supabase-functions
     # via supabase
-sympy
-    # via onnxruntime
 tabulate
     # via edge-tts
 tenacity
