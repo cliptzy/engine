@@ -37,3 +37,6 @@ where = ["."]
 include = ["core", "gui", "fonts", "assets"]
 exclude = []
 namespaces = false
+
+[tool.flet.macos]
+target_arch = ["x86_64"]
