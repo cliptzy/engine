@@ -18,3 +18,16 @@ dependencies = {file = ["requirements.in"]}
 
 [project.scripts]
 cliptzy = "run:main"
+
+[tool.flet]
+exclude = [
+    ".git",
+    ".github",
+    ".venv",
+    "clips",
+    "logs",
+    "venv",
+    "__pycache__",
+    "cred/supabase_session.json",
+    "*.log"
+]

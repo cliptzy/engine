@@ -136,8 +136,8 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
             
     log.info("Generating ASS subtitle file...")
     try:
-        alignment = "2" if config.subtitle_location == "bottom" else "5"
-        margin_v = "200" if config.subtitle_location == "bottom" else "0"
+        alignment = "2" if config.subtitle.location == "bottom" else "5"
+        margin_v = "200" if config.subtitle.location == "bottom" else "0"
         
         ass_header = f"""[Script Info]
 ScriptType: v4.00+
@@ -146,7 +146,7 @@ PlayResY: 1280
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{config.subtitle_font},{config.subtitle_font_size},{config.subtitle_color},&H000000FF,&H00000000,{config.subtitle_bg_color},-1,0,0,0,100,100,0,0,{config.subtitle_border_style},3,0,{alignment},10,10,{margin_v},1
+Style: Default,{config.subtitle.font},{config.subtitle.font_size},{config.subtitle.color},&H000000FF,&H00000000,{config.subtitle.bg_color},-1,0,0,0,100,100,0,0,{config.subtitle.border_style},3,0,{alignment},10,10,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -158,12 +158,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     continue
                 words = segment.words
                 chunks = []
-                for i in range(0, len(words), max(1, config.subtitle_max_words)):
-                    chunks.append(words[i:i + config.subtitle_max_words])
+                for i in range(0, len(words), max(1, config.subtitle.max_words)):
+                    chunks.append(words[i:i + config.subtitle.max_words])
                 
                 for chunk in chunks:
-                    word_start = max(0.0, chunk[0].start + config.subtitle_delay)
-                    word_end = max(0.0, chunk[-1].end + config.subtitle_delay)
+                    word_start = max(0.0, chunk[0].start + config.subtitle.delay)
+                    word_end = max(0.0, chunk[-1].end + config.subtitle.delay)
                     
                     # Prevent stuck subtitle if Whisper fails to detect proper end boundary
                     if word_end - word_start > 2.0:
@@ -180,7 +180,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         except Exception:
                             pass
 
-                    if config.subtitle_animation == "scale":
+                    if config.subtitle.animation == "scale":
                         ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{{\\fscx50\\fscy50\\t(0,150,\\fscx100\\fscy100)}}{text}\n"
                     else:
                         ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{text}\n"

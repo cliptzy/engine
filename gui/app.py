@@ -1,93 +1,99 @@
-"""
-Desktop GUI Entry Point for Cliptzy application.
-"""
-
-import sys
+import flet as ft
+from core.config import config
+from gui.theme import build_theme
+from gui.state import app_state
 import os
 
-if len(sys.argv) >= 3 and sys.argv[1] == "-m" and sys.argv[2] == "yt_dlp":
-    import yt_dlp
-    sys.argv = [sys.argv[0]] + sys.argv[3:]
-    try:
-        sys.exit(yt_dlp.main())
-    except SystemExit as e:
-        sys.exit(e.code)
+w = 1024
+h = 768
 
+def main(page: ft.Page) -> None:
+    """Initialization"""
+    config.load_from_file()
 
-# Ensure application root directory is in sys.path
-app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if app_dir not in sys.path:
-    sys.path.insert(0, app_dir)
-
-# Linux / Ubuntu Wayland rendering & button clickability compatibility fixes
-if sys.platform.startswith("linux"):
-    # Force Xwayland (xcb) by default on Linux to prevent Wayland subsurface QVideoWidget hit-test freezes and visual glitches
-    if "QT_QPA_PLATFORM" not in os.environ:
-        os.environ["QT_QPA_PLATFORM"] = "xcb;wayland"
-    os.environ.setdefault("QSG_RENDER_LOOP", "basic")
-
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication, QMessageBox
-from gui.main_window import MainWindow
-from gui.login_dialog import LoginDialog
-from core.supabase_sync import supabase_sync
-from core.config import config
-from core.logger import log
-
-def main():
-    # Set Qt Attributes for Linux high DPI and rendering stability
-    QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
+    """Flet application entry point."""
+    page.title = "Cliptzy Desktop"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.theme = build_theme()
+    page.padding = 8
+    page.window.min_width = w
+    page.window.min_height = h
+    page.window.width = w
+    page.window.height = h
     
-    app = QApplication(sys.argv)
-    app.setApplicationName("Cliptzy Desktop")
-    
-    # Load environment variables
-    import os
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(os.path.join(app_dir, ".env"))
-    except ImportError:
-        log.warning("python-dotenv tidak terinstal. Pastikan environment variables sudah diatur.")
+    # Load fonts
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    page.fonts = {
+        "Inter": os.path.join(base_dir, "assets", "fonts", "Inter-Regular.ttf"),
+        "Inter Bold": os.path.join(base_dir, "assets", "fonts", "Inter-Bold.ttf")
+    }
 
-    # Initialize Supabase
-    supabase_url = os.environ.get("SUPABASE_URL", "")
-    supabase_key = os.environ.get("SUPABASE_SECRET_KEY", "")
+    # Scaffold the main layout elements
+    from gui.layout import Header, Sidebar, MainLayout
+    from gui.router import Router
+    from gui.components.log_viewer import LogViewer
+    from gui.layout.footer import StatusBar
+    from gui.views.login_view import LoginView
+    from gui.event_bus import event_bus
     
-    if not supabase_url or not supabase_key:
-        try:
-            from core._build_env import SUPABASE_URL, SUPABASE_SECRET_KEY
-            supabase_url = supabase_url or SUPABASE_URL
-            supabase_key = supabase_key or SUPABASE_SECRET_KEY
-        except ImportError:
-            pass
-            
-    if not supabase_url or not supabase_key:
-        QMessageBox.critical(None, "Error", "Konfigurasi Supabase tidak ditemukan (SUPABASE_URL dan SUPABASE_KEY). Periksa file .env Anda atau kompilasi ulang.")
-        sys.exit(1)
+    app_bar = Header()
+    
+    def on_navigate(index: int) -> None:
+        routes = ["clipper", "creator_hub", "settings"]
+        if 0 <= index < len(routes):
+            app_state.set_page(routes[index])
+    
+    sidebar = Sidebar(on_navigate=on_navigate)
+    router = Router(page, app_state)
+    main_layout = MainLayout(sidebar, router.wrapper)
+    log_viewer = LogViewer(height=120, expand=False)
+    status_bar = StatusBar()
+    
+    login_view = LoginView(page)
+    
+    def build_app_ui():
+        """Bangun UI utama aplikasi (hanya jika sudah login)."""
+        page.controls.clear()
+        app_bar.refresh_profile()
+        page.add(app_bar, main_layout, log_viewer, status_bar)
+        app_state.set_page("clipper")
+        router.initialize()
+        page.update()
         
-    supabase_sync.initialize(supabase_url, supabase_key)
-    
-    if supabase_sync.client is None:
-        QMessageBox.critical(None, "Error", "Gagal melakukan inisialisasi Supabase client. Pastikan package 'supabase' sudah terinstal.")
-        sys.exit(1)
-        
-    # Show Login Dialog only if session was not restored
-    if supabase_sync.user is None:
-        login_dialog = LoginDialog()
-        if login_dialog.exec() != 1:  # 1 is QDialog.DialogCode.Accepted
-            sys.exit(0)
-        
-    # Create cred directory if it doesn't exist
-    config.ensure_cred_dir()
-    
-    window = MainWindow()
-    window.show()
-    
-    # Run the application event loop
-    ret = app.exec()
-    
-    sys.exit(ret)
+    def show_login_ui():
+        """Tampilkan halaman login (kunci aplikasi)."""
+        page.controls.clear()
+        page.add(login_view)
+        page.update()
 
-if __name__ == "__main__":
-    main()
+    def on_login_success(*args, **kwargs):
+        """Handler saat login berhasil — unlock aplikasi."""
+        build_app_ui()
+    
+    def on_logout(*args, **kwargs):
+        """Handler saat logout — kunci aplikasi kembali ke login."""
+        # Reset login view state
+        login_view.btn_login.disabled = False
+        login_view.progress_ring.visible = False
+        login_view.info_text.value = "Silakan login menggunakan Google untuk mengakses aplikasi"
+        show_login_ui()
+        
+    event_bus.subscribe("LOGIN_SUCCESS", on_login_success)
+    event_bus.subscribe("LOGOUT", on_logout)
 
+    # Initialize Supabase Sync
+    from core.supabase_sync import supabase_sync
+    from dotenv import load_dotenv
+    load_dotenv()
+    supabase_sync.initialize(os.getenv("SUPABASE_URL", ""), os.getenv("SUPABASE_SECRET_KEY", ""))
+
+    # Check session — Kunci aplikasi jika belum login
+    is_logged_in = supabase_sync.load_session()
+    if is_logged_in:
+        build_app_ui()
+    else:
+        show_login_ui()
+
+def run_gui() -> None:
+    """Wrapper to start the Flet app."""
+    ft.run(main=main)

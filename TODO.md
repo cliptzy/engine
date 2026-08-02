@@ -56,7 +56,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 1.1 — Definisi Interface & Protocol (Kontrak Antar Layer)
 
-- [ ] **Buat `core/interfaces.py` — Abstract Base Classes & Protocols**
+- [x] **Buat `core/interfaces.py` — Abstract Base Classes & Protocols**
   - Definisikan `Protocol` class untuk semua callback yang digunakan controller:
 
     ```python
@@ -73,7 +73,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
   - Definisikan `Protocol` untuk setiap operasi utama (scan, clip, preview, AI detect).
   - Ini menegaskan kontrak yang harus dipenuhi oleh layer UI manapun (PyQt6, Flet, CLI).
 
-- [ ] **Refactor `core/controller.py` — Gunakan Dependency Injection**
+- [x] **Refactor `core/controller.py` — Gunakan Dependency Injection**
   - Hapus semua _implicit coupling_ ke PyQt6.
   - Controller harus menerima _reporter/callback_ melalui constructor injection, bukan global state.
   - Terapkan pola _Command_ atau _UseCase_ untuk setiap operasi:
@@ -92,7 +92,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 1.2 — Modularisasi Engine Core
 
-- [ ] **Pecah `core/processor.py` (27 KB!) menjadi modul-modul kecil:**
+- [x] **Pecah `core/processor.py` (27 KB!) menjadi modul-modul kecil:**
   - `core/processing/cropper.py` — Logika crop (default, split-left, split-right).
   - `core/processing/stacker.py` — Logika vstack split-screen.
   - `core/processing/merger.py` — Logika merge multiple clips.
@@ -101,7 +101,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
   - `core/processing/__init__.py` — Re-export public API.
   - Setiap modul harus memiliki **satu tanggung jawab** (_Single Responsibility Principle_).
 
-- [ ] **Pecah `core/controller.py` (28 KB!) menjadi Use Cases:**
+- [x] **Pecah `core/controller.py` (28 KB!) menjadi Use Cases:**
   - `core/use_cases/__init__.py`
   - `core/use_cases/scan_video.py` — Orkestrasi scan heatmap.
   - `core/use_cases/clip_video.py` — Orkestrasi pemotongan klip.
@@ -110,14 +110,14 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
   - `core/use_cases/upload_clip.py` — Orkestrasi upload ke platform.
   - Controller utama (`core/controller.py`) menjadi _Facade_ ringan yang mendelegasikan ke use case.
 
-- [ ] **Pecah `core/ai_detector.py` (17 KB) — Strategy Pattern:**
+- [x] **Pecah `core/ai_detector.py` (17 KB) — Strategy Pattern:**
   - `core/ai/base_provider.py` — Abstract base class `AIProvider`.
   - `core/ai/ollama_provider.py` — Implementasi Ollama.
   - `core/ai/gemini_provider.py` — Implementasi Google Gemini.
   - `core/ai/openai_provider.py` — Implementasi OpenAI.
   - `core/ai/factory.py` — Factory function `create_ai_provider(config) -> AIProvider`.
 
-- [ ] **Pecah `core/uploader.py` (14 KB) — Strategy Pattern:**
+- [x] **Pecah `core/uploader.py` (14 KB) — Strategy Pattern:**
   - `core/uploaders/base.py` — `BaseUploader` ABC.
   - `core/uploaders/youtube.py` — YouTube Shorts uploader.
   - `core/uploaders/tiktok.py` — TikTok uploader.
@@ -126,7 +126,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 1.3 — Standarisasi Type Hints & Data Classes
 
-- [ ] **Buat `core/models.py` — Typed Data Models:**
+- [x] **Buat `core/models.py` — Typed Data Models:**
   - Gunakan `dataclasses` atau `pydantic.BaseModel` untuk semua entitas:
 
     ```python
@@ -155,13 +155,13 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
   - Eliminasi penggunaan `dict` generik yang tidak terstruktur sebagai data carrier.
 
-- [ ] **Tambahkan Type Hints ke Seluruh Public API di `core/`**
+- [x] **Tambahkan Type Hints ke Seluruh Public API di `core/`**
   - Semua fungsi publik harus memiliki _return type_ dan _parameter types_ yang eksplisit.
   - Konfigurasi `mypy` atau `pyright` di `pyproject.toml` untuk _type checking_.
 
 ### 1.4 — Standarisasi Error Handling
 
-- [ ] **Buat `core/exceptions.py` — Custom Exception Hierarchy:**
+- [x] **Buat `core/exceptions.py` — Custom Exception Hierarchy:**
   ```python
   class CliptzyError(Exception): ...
   class VideoDownloadError(CliptzyError): ...
@@ -177,7 +177,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 1.5 — Standarisasi Konfigurasi
 
-- [ ] **Refactor `core/config.py` (12 KB) — Typed Configuration:**
+- [x] **Refactor `core/config.py` (12 KB) — Typed Configuration:**
   - Gunakan `dataclass` atau `pydantic.BaseModel` untuk validasi konfigurasi:
 
     ```python
@@ -206,7 +206,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 2.1 — Struktur Direktori Baru
 
-- [ ] **Buat Struktur `gui/` Baru untuk Flet:**
+- [x] **Buat Struktur `gui/` Baru untuk Flet:**
   ```
   gui/
   ├── __init__.py
@@ -239,7 +239,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 2.2 — Event Bus (Pengganti `pyqtSignal`)
 
-- [ ] **Implementasi `gui/event_bus.py` — Pub/Sub Thread-Safe:**
+- [x] **Implementasi `gui/event_bus.py` — Pub/Sub Thread-Safe:**
 
   ```python
   import threading
@@ -280,7 +280,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 2.3 — State Management
 
-- [ ] **Implementasi `gui/state.py` — Centralized Observable State:**
+- [x] **Implementasi `gui/state.py` — Centralized Observable State:**
   ```python
   @dataclass
   class AppState:
@@ -298,7 +298,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 2.4 — Background Worker Abstraction
 
-- [ ] **Implementasi `gui/workers.py` — Generic Worker Menggunakan `threading.Thread`:**
+- [x] **Implementasi `gui/workers.py` — Generic Worker Menggunakan `threading.Thread`:**
 
   ```python
   class BackgroundWorker:
@@ -327,7 +327,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 2.5 — Entry Point
 
-- [ ] **Buat `gui/app.py` Baru (Flet Entry Point):**
+- [x] **Buat `gui/app.py` Baru (Flet Entry Point):**
 
   ```python
   import flet as ft
@@ -352,7 +352,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
       ft.app(target=main)
   ```
 
-- [ ] **Update `run.py` — Deteksi Mode GUI (Flet):**
+- [x] **Update `run.py` — Deteksi Mode GUI (Flet):**
   - Pertahankan mode `--cli` yang sudah ada.
   - Mode GUI default menjalankan `ft.app(target=main)` alih-alih `QApplication.exec()`.
 
@@ -364,53 +364,53 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 3.1 — Layout Struktural
 
-- [ ] **`gui/layout/sidebar.py`** — Ganti `SidebarWidget` (PyQt6) → `ft.NavigationRail`
+- [x] **`gui/layout/sidebar.py`** — Ganti `SidebarWidget` (PyQt6) → `ft.NavigationRail`
   - Gunakan `NavigationRailDestination` untuk setiap halaman: Clipper, Preview, Creator Hub, Upload, Settings.
   - Tautkan `on_change` event ke `router.navigate()`.
-- [ ] **`gui/layout/header.py`** — Ganti `HeaderWidget` → `ft.AppBar` atau `ft.Row` custom
+- [x] **`gui/layout/header.py`** — Ganti `HeaderWidget` → `ft.AppBar` atau `ft.Row` custom
   - Tampilkan judul halaman aktif, info video yang sedang diproses, dan tombol aksi cepat.
-- [ ] **`gui/layout/main_layout.py`** — Ganti `QHBoxLayout` + `QStackedWidget`
+- [x] **`gui/layout/main_layout.py`** — Ganti `QHBoxLayout` + `QStackedWidget`
   - Gunakan `ft.Row` dengan `NavigationRail` + `ft.Container(expand=True)` sebagai area konten.
   - Content area akan di-swap berdasarkan routing state.
 
 ### 3.2 — Halaman Utama (Views)
 
-- [ ] **`gui/views/clipper_view.py`** — Migrasi dashboard clipper utama
+- [x] **`gui/views/clipper_view.py`** — Migrasi dashboard clipper utama
   - Gabungkan: `VideoInputWidget`, `ClipConfigWidget`, `ProcessControlWidget`.
   - Ganti `QLineEdit` → `ft.TextField`, `QComboBox` → `ft.Dropdown`.
   - Ganti `QCheckBox` → `ft.Checkbox`, `QGroupBox` → `ft.Card`.
   - Ganti `QSpinBox`/`QDoubleSpinBox` → Custom `SpinBox` component.
   - Ganti `QProgressBar` → `ft.ProgressBar`.
-- [ ] **`gui/views/preview_view.py`** — Migrasi preview & media player
+- [x] **`gui/views/preview_view.py`** — Migrasi preview & media player
   - Ganti `QMediaPlayer` + `QVideoWidget` → `ft.Video`.
   - Ganti `QSlider` → `ft.Slider` (untuk seek).
   - Pertahankan fitur heatmap visualization (render sebagai `ft.Canvas` atau `ft.Image`).
-- [ ] **`gui/views/creator_hub_view.py`** — Migrasi Creator Hub
+- [x] **`gui/views/creator_hub_view.py`** — Migrasi Creator Hub
   - Ganti `QScrollArea` + grid of cards → `ft.GridView` atau `ft.ResponsiveRow`.
   - Ganti `QPixmap` untuk thumbnail → `ft.Image(src=url)`.
   - Ganti `QPushButton` → `ft.ElevatedButton` / `ft.IconButton`.
-- [ ] **`gui/views/upload_view.py`** — Migrasi Auto Upload
+- [x] **`gui/views/upload_view.py`** — Migrasi Auto Upload
   - Ganti `QTabWidget` → `ft.Tabs`.
   - Migrasi form konfigurasi setiap platform (YouTube, TikTok, Instagram).
   - Ganti `QFileDialog` → `ft.FilePicker` (untuk import cookies).
-- [ ] **`gui/views/settings_view.py`** — Migrasi Settings & AI Config
+- [x] **`gui/views/settings_view.py`** — Migrasi Settings & AI Config
   - Migrasi `AISettingsWidget` dan `DependencyManagerWidget`.
   - Gunakan `ft.ExpansionPanelList` untuk collapsible section groups.
-- [ ] **`gui/views/login_view.py`** — Migrasi Login Dialog
+- [x] **`gui/views/login_view.py`** — Migrasi Login Dialog
   - Ganti `QDialog` → `ft.AlertDialog` atau dedicated view.
   - Ganti `QFormLayout` → `ft.Column` dengan labeled `ft.TextField`.
 
 ### 3.3 — Komponen Reusable
 
-- [ ] **`gui/components/spin_box.py`** — Custom SpinBox
+- [x] **`gui/components/spin_box.py`** — Custom SpinBox
   - `ft.Row` berisi `ft.IconButton(-)` + `ft.TextField` + `ft.IconButton(+)`.
   - Support `min`, `max`, `step`, `value`, `on_change`.
-- [ ] **`gui/components/log_viewer.py`** — Log Console
+- [x] **`gui/components/log_viewer.py`** — Log Console
   - `ft.ListView` dengan auto-scroll-to-bottom.
   - Terima log messages dari `EventBus`.
-- [ ] **`gui/components/progress_indicator.py`** — Unified Progress
+- [x] **`gui/components/progress_indicator.py`** — Unified Progress
   - Wrapper `ft.ProgressBar` + `ft.Text(label)` yang tersinkronisasi.
-- [ ] **`gui/components/video_card.py`** — Video Thumbnail Card
+- [x] **`gui/components/video_card.py`** — Video Thumbnail Card
   - `ft.Card` berisi `ft.Image` + `ft.Text(title)` + metadata.
   - Reusable di Creator Hub dan Preview.
 
@@ -460,7 +460,7 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 5.1 — Material Design Theming
 
-- [ ] **Implementasi `gui/theme.py`:**
+- [x] **Implementasi `gui/theme.py`:**
   - Definisikan `ft.Theme` dengan color scheme custom:
     ```python
     def build_theme() -> ft.Theme:
@@ -482,18 +482,18 @@ Dokumen ini berisi **roadmap lengkap** untuk migrasi _GUI framework_ Cliptzy dar
 
 ### 5.2 — Custom Fonts
 
-- [ ] **Registrasi Font Custom**
+- [x] **Registrasi Font Custom**
   - Pindahkan file font ke `assets/fonts/`.
   - Register via `page.fonts = {"CustomFont": "/fonts/CustomFont.ttf"}`.
   - Terapkan font ke `page.theme.font_family`.
 
 ### 5.3 — Micro-Animations & Transitions
 
-- [ ] **Animasi Transisi Halaman**
+- [x] **Animasi Transisi Halaman**
   - Gunakan `ft.AnimatedSwitcher` atau `ft.Container(animate=...)` untuk transisi saat berpindah view.
-- [ ] **Hover Effects**
+- [x] **Hover Effects**
   - Terapkan `on_hover` pada kartu-kartu video dan tombol untuk efek elevasi/skala.
-- [ ] **Smooth Progress**
+- [x] **Smooth Progress**
   - Animasikan perubahan value `ProgressBar` menggunakan `animate` property.
 
 ---

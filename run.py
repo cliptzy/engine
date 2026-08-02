@@ -59,20 +59,20 @@ def main():
 
     # Launch Desktop GUI by default if no CLI flag or direct CLI processing requested
     if not args.cli and not args.url and not args.check:
-        from gui.app import main as launch_gui
+        from gui.app import run_gui as launch_gui
         launch_gui()
         return
 
     # Apply configuration from arguments
 
     if args.whisper_model:
-        config.whisper_model = args.whisper_model
+        config.subtitle.whisper_model = args.whisper_model
     if args.subtitle_font:
-        config.subtitle_font = args.subtitle_font
+        config.subtitle.font = args.subtitle_font
     if args.subtitle_fontsdir:
-        config.subtitle_fonts_dir = args.subtitle_fontsdir
+        config.subtitle.fonts_dir = args.subtitle_fontsdir
     if args.subtitle_location:
-        config.subtitle_location = args.subtitle_location
+        config.subtitle.location = args.subtitle_location
     if args.ratio:
         config.set_ratio_preset(args.ratio)
     if args.merge:
@@ -142,7 +142,7 @@ def main():
 
         print(f"Selected: {crop_desc}")
         print("\n=== Auto Subtitle ===")
-        print(f"Available model: {config.whisper_model} (~{get_model_size(config.whisper_model)})")
+        print(f"Available model: {config.subtitle.whisper_model} (~{get_model_size(config.subtitle.whisper_model)})")
         
         while use_subtitle is None:
             sub_choice = input("Add auto subtitle using Faster-Whisper? (y/n): ").strip().lower()
@@ -154,7 +154,7 @@ def main():
                 print("Invalid choice. Please enter y or n.")
 
         if use_subtitle:
-            print(f"Subtitle enabled (Model: {config.whisper_model}, Language: id)")
+            print(f"Subtitle enabled (Model: {config.subtitle.whisper_model}, Language: id)")
         else:
             print("Subtitle disabled")
         print()

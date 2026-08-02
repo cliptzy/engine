@@ -2,7 +2,7 @@ import cv2
 import os
 from core.logger import log
 
-def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) -> tuple[float, float]:
+def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) -> tuple[float | None, float | None]:
     """
     Reads a video and samples frames to detect faces.
     Returns the median normalized center (cx_norm, cy_norm) of the largest face detected.

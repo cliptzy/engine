@@ -45,8 +45,8 @@ def fetch_most_replayed(video_id: str, min_score: float, max_duration: int) -> L
     ]
     
     from core.config import config
-    if config.yt_session and os.path.exists(config.yt_session):
-        cmd.extend(["--cookies", config.yt_session])
+    if config.youtube.session and os.path.exists(config.youtube.session):
+        cmd.extend(["--cookies", config.youtube.session])
         
     cmd.append(f"https://youtu.be/{video_id}")
 
@@ -95,8 +95,8 @@ def get_video_duration(video_id: str) -> int:
     ]
     
     from core.config import config
-    if config.yt_session and os.path.exists(config.yt_session):
-        cmd.extend(["--cookies", config.yt_session])
+    if config.youtube.session and os.path.exists(config.youtube.session):
+        cmd.extend(["--cookies", config.youtube.session])
         
     cmd.append(f"https://youtu.be/{video_id}")
 

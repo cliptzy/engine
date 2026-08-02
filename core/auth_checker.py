@@ -29,17 +29,18 @@ def check_youtube_auth() -> tuple[bool, str]:
                 else:
                     return False, "Token kadaluarsa dan tidak bisa direfresh."
             return True, "Token valid dan aktif."
+        return False, "Data token tidak ditemukan di file."
     except Exception as e:
         logger.error(f"Error check_youtube_auth: {e}")
         return False, f"Error validasi token: {str(e)}"
 
 def check_tiktok_auth() -> tuple[bool, str]:
-    if not config.tt_session or not os.path.exists(config.tt_session):
+    if not config.tiktok.session or not os.path.exists(config.tiktok.session):
         return False, "File cookie TikTok belum diisi atau tidak ditemukan."
         
     try:
         session_id = ""
-        with open(config.tt_session, 'r', encoding='utf-8') as f:
+        with open(config.tiktok.session, 'r', encoding='utf-8') as f:
             content = f.read()
             
         try:
@@ -81,12 +82,12 @@ def check_tiktok_auth() -> tuple[bool, str]:
         return False, f"Gagal menghubungi server TikTok: {str(e)}"
 
 def check_instagram_auth() -> tuple[bool, str]:
-    if not config.ig_session or not os.path.exists(config.ig_session):
+    if not config.instagram.session or not os.path.exists(config.instagram.session):
         return False, "File cookie Instagram belum diisi atau tidak ditemukan."
         
     try:
         session_id = ""
-        with open(config.ig_session, 'r', encoding='utf-8') as f:
+        with open(config.instagram.session, 'r', encoding='utf-8') as f:
             content = f.read()
             
         try:

@@ -1,10 +1,76 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
+
+@dataclass
+class SubtitleConfig:
+    enabled: bool = True
+    whisper_model: str = "small"
+    font: str = "Arial"
+    fonts_dir: Optional[str] = None
+    location: str = "bottom"
+    delay: float = 0.0
+    font_size: int = 60
+    color: str = "&H0000FFFF"
+    bg_color: str = "&H80000000"
+    border_style: int = 3
+    animation: str = "none"
+    max_words: int = 3
+
+@dataclass
+class AIConfig:
+    provider: str = "ollama"
+    ollama_host: str = "http://localhost:11434"
+    ollama_model: str = "llama3"
+    gemini_key: str = ""
+    gemini_model: str = "gemini-3.5-flash"
+    openai_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    openai_base_url: str = ""
+    prompt: str = ""
+    use_highlight: bool = False
+    use_generate_intro: bool = False
+
+@dataclass
+class YoutubeConfig:
+    upload: bool = False
+    session: Optional[str] = "cred/yt_cookies.txt"
+    client_id: str = ""
+    client_secret: str = ""
+    visibility: str = "Public"
+    tags: str = "#Shorts #Viral #Cliptzy"
+    auto_upload: bool = False
+
+@dataclass
+class TikTokConfig:
+    upload: bool = False
+    session: str = "cred/tiktok_cookies.txt"
+    privacy: str = "Public (Semua Orang)"
+    caption: str = "Cuplikan seru hari ini! #fyp #viral"
+    auto_upload: bool = False
+
+@dataclass
+class InstagramConfig:
+    upload: bool = False
+    business_id: str = ""
+    access_token: str = ""
+    session: str = "cred/instagram_cookies.txt"
+    caption: str = "Best moment clip #reels #instagram"
+    auto_upload: bool = False
+
+import os
+import sys
+
+def get_user_data_dir() -> str:
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+APP_ROOT = get_user_data_dir()
 
 @dataclass
 class AppConfig:
     """Application configuration container."""
-    output_dir: str = "clips"
+    output_dir: str = os.path.join(APP_ROOT, "clips")
     max_duration: int = 60
     min_score: float = 0.40
     max_clips: int = 10
@@ -12,20 +78,6 @@ class AppConfig:
     
     top_height: int = 960
     bottom_height: int = 320
-    
-    use_subtitle: bool = True
-    whisper_model: str = "small"
-    subtitle_font: str = "Arial"
-    subtitle_fonts_dir: Optional[str] = None
-    subtitle_location: str = "bottom"
-    subtitle_delay: float = 0.0
-    
-    subtitle_font_size: int = 60
-    subtitle_color: str = "&H0000FFFF"
-    subtitle_bg_color: str = "&H80000000"
-    subtitle_border_style: int = 3
-    subtitle_animation: str = "none"
-    subtitle_max_words: int = 3
     
     intro_video: Optional[str] = None
     outro_video: Optional[str] = None
@@ -40,47 +92,17 @@ class AppConfig:
     merge_clips: bool = False
     ui_locked: bool = False
 
-    upload_youtube: bool = False
-    upload_tiktok: bool = False
-    upload_instagram: bool = False
     upload_interval: float = 0.0
     hw_accel: str = "cpu"
     
-
-    yt_session: Optional[str] = "cred/yt_cookies.txt"
-    yt_client_id: str = ""
-    yt_client_secret: str = ""
-    yt_visibility: str = "Public"
-    yt_tags: str = "#Shorts #Viral #Cliptzy"
-    yt_auto_upload: bool = False
-
-    tt_session: str = "cred/tiktok_cookies.txt"
-    tt_privacy: str = "Public (Semua Orang)"
-    tt_caption: str = "Cuplikan seru hari ini! #fyp #viral"
-    tt_auto_upload: bool = False
-
-    ig_business_id: str = ""
-    ig_access_token: str = ""
-    ig_session: str = "cred/instagram_cookies.txt"
-    ig_caption: str = "Best moment clip #reels #instagram"
-    ig_auto_upload: bool = False
-
-    ai_provider: str = "ollama"
-    ollama_host: str = "http://localhost:11434"
-    ollama_model: str = "llama3"
-    gemini_key: str = ""
-    gemini_model: str = "gemini-3.5-flash"
-
-    openai_key: str = ""
-    openai_model: str = "gpt-4o-mini"
-    openai_base_url: str = ""
-    
-    ai_prompt: str = ""
-    use_highlight: bool = False
-    use_generate_intro: bool = False
-    
     tts_language: str = "default"
     tts_voice: str = "female"
+    
+    subtitle: SubtitleConfig = field(default_factory=SubtitleConfig)
+    ai: AIConfig = field(default_factory=AIConfig)
+    youtube: YoutubeConfig = field(default_factory=YoutubeConfig)
+    tiktok: TikTokConfig = field(default_factory=TikTokConfig)
+    instagram: InstagramConfig = field(default_factory=InstagramConfig)
 
     def set_ratio_preset(self, preset: str) -> None:
         """Sets the output resolution based on the given ratio preset."""
@@ -106,59 +128,66 @@ class AppConfig:
             "padding": self.padding,
             "top_height": self.top_height,
             "bottom_height": self.bottom_height,
-            "use_subtitle": self.use_subtitle,
-            "use_highlight": self.use_highlight,
-            "use_generate_intro": self.use_generate_intro,
-            "whisper_model": self.whisper_model,
-            "subtitle_font": self.subtitle_font,
-            "subtitle_fonts_dir": self.subtitle_fonts_dir,
-            "subtitle_location": self.subtitle_location,
-            "subtitle_delay": self.subtitle_delay,
-            "subtitle_font_size": self.subtitle_font_size,
-            "subtitle_color": self.subtitle_color,
-            "subtitle_bg_color": self.subtitle_bg_color,
-            "subtitle_border_style": self.subtitle_border_style,
-            "subtitle_animation": self.subtitle_animation,
-            "subtitle_max_words": self.subtitle_max_words,
-            "yt_session": self.yt_session,
+            
+            "use_subtitle": self.subtitle.enabled,
+            "use_highlight": self.ai.use_highlight,
+            "use_generate_intro": self.ai.use_generate_intro,
+            "whisper_model": self.subtitle.whisper_model,
+            "subtitle_font": self.subtitle.font,
+            "subtitle_fonts_dir": self.subtitle.fonts_dir,
+            "subtitle_location": self.subtitle.location,
+            "subtitle_delay": self.subtitle.delay,
+            "subtitle_font_size": self.subtitle.font_size,
+            "subtitle_color": self.subtitle.color,
+            "subtitle_bg_color": self.subtitle.bg_color,
+            "subtitle_border_style": self.subtitle.border_style,
+            "subtitle_animation": self.subtitle.animation,
+            "subtitle_max_words": self.subtitle.max_words,
+            
+            "yt_session": self.youtube.session,
             "intro_video": self.intro_video,
             "outro_video": self.outro_video,
             "output_ratio": self.output_ratio,
             "crop_mode": self.crop_mode,
             "merge_clips": self.merge_clips,
             "ui_locked": self.ui_locked,
-            "upload_youtube": self.upload_youtube,
-            "upload_tiktok": self.upload_tiktok,
-            "upload_instagram": self.upload_instagram,
-            "yt_client_id": self.yt_client_id,
-            "yt_client_secret": self.yt_client_secret,
-            "yt_visibility": self.yt_visibility,
-            "yt_tags": self.yt_tags,
-            "yt_auto_upload": self.yt_auto_upload,
-            "tt_session": self.tt_session,
-            "tt_privacy": self.tt_privacy,
-            "tt_caption": self.tt_caption,
-            "tt_auto_upload": self.tt_auto_upload,
-            "ig_business_id": self.ig_business_id,
-            "ig_access_token": self.ig_access_token,
-            "ig_session": self.ig_session,
-            "ig_caption": self.ig_caption,
-            "ig_auto_upload": self.ig_auto_upload,
-            "ai_provider": self.ai_provider,
-            "ollama_host": self.ollama_host,
-            "ollama_model": self.ollama_model,
-            "gemini_key": self.gemini_key,
-            "gemini_model": self.gemini_model,
-            "openai_key": self.openai_key,
-            "openai_model": self.openai_model,
-            "openai_base_url": self.openai_base_url,
-            "ai_prompt": self.ai_prompt,
+            
+            "upload_youtube": self.youtube.upload,
+            "upload_tiktok": self.tiktok.upload,
+            "upload_instagram": self.instagram.upload,
+            
+            "yt_client_id": self.youtube.client_id,
+            "yt_client_secret": self.youtube.client_secret,
+            "yt_visibility": self.youtube.visibility,
+            "yt_tags": self.youtube.tags,
+            "yt_auto_upload": self.youtube.auto_upload,
+            
+            "tt_session": self.tiktok.session,
+            "tt_privacy": self.tiktok.privacy,
+            "tt_caption": self.tiktok.caption,
+            "tt_auto_upload": self.tiktok.auto_upload,
+            
+            "ig_business_id": self.instagram.business_id,
+            "ig_access_token": self.instagram.access_token,
+            "ig_session": self.instagram.session,
+            "ig_caption": self.instagram.caption,
+            "ig_auto_upload": self.instagram.auto_upload,
+            
+            "ai_provider": self.ai.provider,
+            "ollama_host": self.ai.ollama_host,
+            "ollama_model": self.ai.ollama_model,
+            "gemini_key": self.ai.gemini_key,
+            "gemini_model": self.ai.gemini_model,
+            "openai_key": self.ai.openai_key,
+            "openai_model": self.ai.openai_model,
+            "openai_base_url": self.ai.openai_base_url,
+            "ai_prompt": self.ai.prompt,
+            
             "tts_language": self.tts_language,
             "tts_voice": self.tts_voice,
             "upload_interval": self.upload_interval,
             "hw_accel": self.hw_accel,
         }
-
 
     def update_from_dict(self, data: dict) -> None:
         """Updates configuration from dictionary."""
@@ -172,36 +201,39 @@ class AppConfig:
             self.max_clips = int(data["max_clips"])
         if "padding" in data and data["padding"] is not None:
             self.padding = int(data["padding"])
+            
         if "use_subtitle" in data:
-            self.use_subtitle = bool(data["use_subtitle"])
+            self.subtitle.enabled = bool(data["use_subtitle"])
         if "use_highlight" in data:
-            self.use_highlight = bool(data["use_highlight"])
+            self.ai.use_highlight = bool(data["use_highlight"])
         if "use_generate_intro" in data:
-            self.use_generate_intro = bool(data["use_generate_intro"])
+            self.ai.use_generate_intro = bool(data["use_generate_intro"])
+            
         if "whisper_model" in data and data["whisper_model"]:
-            self.whisper_model = data["whisper_model"]
+            self.subtitle.whisper_model = data["whisper_model"]
         if "subtitle_font" in data and data["subtitle_font"]:
-            self.subtitle_font = data["subtitle_font"]
+            self.subtitle.font = data["subtitle_font"]
         if "subtitle_fonts_dir" in data:
-            self.subtitle_fonts_dir = data["subtitle_fonts_dir"]
+            self.subtitle.fonts_dir = data["subtitle_fonts_dir"]
         if "subtitle_location" in data and data["subtitle_location"]:
-            self.subtitle_location = data["subtitle_location"]
+            self.subtitle.location = data["subtitle_location"]
         if "subtitle_delay" in data and data["subtitle_delay"] is not None:
-            self.subtitle_delay = float(data["subtitle_delay"])
+            self.subtitle.delay = float(data["subtitle_delay"])
         if "subtitle_font_size" in data and data["subtitle_font_size"] is not None:
-            self.subtitle_font_size = int(data["subtitle_font_size"])
+            self.subtitle.font_size = int(data["subtitle_font_size"])
         if "subtitle_color" in data and data["subtitle_color"]:
-            self.subtitle_color = data["subtitle_color"]
+            self.subtitle.color = data["subtitle_color"]
         if "subtitle_bg_color" in data and data["subtitle_bg_color"]:
-            self.subtitle_bg_color = data["subtitle_bg_color"]
+            self.subtitle.bg_color = data["subtitle_bg_color"]
         if "subtitle_border_style" in data and data["subtitle_border_style"] is not None:
-            self.subtitle_border_style = int(data["subtitle_border_style"])
+            self.subtitle.border_style = int(data["subtitle_border_style"])
         if "subtitle_animation" in data and data["subtitle_animation"]:
-            self.subtitle_animation = data["subtitle_animation"]
+            self.subtitle.animation = data["subtitle_animation"]
         if "subtitle_max_words" in data and data["subtitle_max_words"] is not None:
-            self.subtitle_max_words = int(data["subtitle_max_words"])
+            self.subtitle.max_words = int(data["subtitle_max_words"])
+            
         if "yt_session" in data:
-            self.yt_session = data["yt_session"]
+            self.youtube.session = data["yt_session"]
         if "intro_video" in data:
             self.intro_video = data["intro_video"]
         if "outro_video" in data:
@@ -214,52 +246,54 @@ class AppConfig:
             self.merge_clips = bool(data["merge_clips"])
         if "ui_locked" in data:
             self.ui_locked = bool(data["ui_locked"])
-        if "upload_youtube" in data:
-            self.upload_youtube = bool(data["upload_youtube"])
-        if "upload_tiktok" in data:
-            self.upload_tiktok = bool(data["upload_tiktok"])
-        if "upload_instagram" in data:
-            self.upload_instagram = bool(data["upload_instagram"])
             
-        if "yt_client_id" in data: self.yt_client_id = data["yt_client_id"]
-        if "yt_client_secret" in data: self.yt_client_secret = data["yt_client_secret"]
-        if "yt_visibility" in data: self.yt_visibility = data["yt_visibility"]
-        if "yt_tags" in data: self.yt_tags = data["yt_tags"]
-        if "yt_auto_upload" in data: self.yt_auto_upload = bool(data["yt_auto_upload"])
+        if "upload_youtube" in data:
+            self.youtube.upload = bool(data["upload_youtube"])
+        if "upload_tiktok" in data:
+            self.tiktok.upload = bool(data["upload_tiktok"])
+        if "upload_instagram" in data:
+            self.instagram.upload = bool(data["upload_instagram"])
+            
+        if "yt_client_id" in data: self.youtube.client_id = data["yt_client_id"]
+        if "yt_client_secret" in data: self.youtube.client_secret = data["yt_client_secret"]
+        if "yt_visibility" in data: self.youtube.visibility = data["yt_visibility"]
+        if "yt_tags" in data: self.youtube.tags = data["yt_tags"]
+        if "yt_auto_upload" in data: self.youtube.auto_upload = bool(data["yt_auto_upload"])
 
-        if "tt_session" in data: self.tt_session = data["tt_session"]
-        if "tt_privacy" in data: self.tt_privacy = data["tt_privacy"]
-        if "tt_caption" in data: self.tt_caption = data["tt_caption"]
-        if "tt_auto_upload" in data: self.tt_auto_upload = bool(data["tt_auto_upload"])
+        if "tt_session" in data: self.tiktok.session = data["tt_session"]
+        if "tt_privacy" in data: self.tiktok.privacy = data["tt_privacy"]
+        if "tt_caption" in data: self.tiktok.caption = data["tt_caption"]
+        if "tt_auto_upload" in data: self.tiktok.auto_upload = bool(data["tt_auto_upload"])
 
-        if "ig_business_id" in data: self.ig_business_id = data["ig_business_id"]
-        if "ig_access_token" in data: self.ig_access_token = data["ig_access_token"]
-        if "ig_session" in data: self.ig_session = data["ig_session"]
-        if "ig_caption" in data: self.ig_caption = data["ig_caption"]
-        if "ig_auto_upload" in data: self.ig_auto_upload = bool(data["ig_auto_upload"])
+        if "ig_business_id" in data: self.instagram.business_id = data["ig_business_id"]
+        if "ig_access_token" in data: self.instagram.access_token = data["ig_access_token"]
+        if "ig_session" in data: self.instagram.session = data["ig_session"]
+        if "ig_caption" in data: self.instagram.caption = data["ig_caption"]
+        if "ig_auto_upload" in data: self.instagram.auto_upload = bool(data["ig_auto_upload"])
         
         if "ai_provider" in data and data["ai_provider"]:
-            self.ai_provider = data["ai_provider"]
+            self.ai.provider = data["ai_provider"]
         if "ollama_host" in data and data["ollama_host"]:
-            self.ollama_host = data["ollama_host"]
+            self.ai.ollama_host = data["ollama_host"]
         if "ollama_model" in data and data["ollama_model"]:
-            self.ollama_model = data["ollama_model"]
+            self.ai.ollama_model = data["ollama_model"]
         if "gemini_key" in data:
-            self.gemini_key = data["gemini_key"]
+            self.ai.gemini_key = data["gemini_key"]
         if "gemini_model" in data and data["gemini_model"]:
             m = str(data["gemini_model"]).strip()
             if m.startswith("gemini-2.5"):
                 m = "gemini-1.5-flash"
-            self.gemini_model = m
+            self.ai.gemini_model = m
 
         if "openai_key" in data:
-            self.openai_key = data["openai_key"]
+            self.ai.openai_key = data["openai_key"]
         if "openai_model" in data and data["openai_model"]:
-            self.openai_model = data["openai_model"]
+            self.ai.openai_model = data["openai_model"]
         if "openai_base_url" in data:
-            self.openai_base_url = data["openai_base_url"]
+            self.ai.openai_base_url = data["openai_base_url"]
         if "ai_prompt" in data and data["ai_prompt"]:
-            self.ai_prompt = data["ai_prompt"]
+            self.ai.prompt = data["ai_prompt"]
+            
         if "tts_language" in data:
             self.tts_language = data["tts_language"]
         if "tts_voice" in data:
@@ -290,9 +324,9 @@ class AppConfig:
     def get_files_to_sync(self) -> list:
         """Returns a list of credential/session files to sync."""
         files = ["cred/youtube_token.json"]
-        if self.tt_session: files.append(self.tt_session)
-        if self.yt_session: files.append(self.yt_session)
-        if self.ig_session: files.append(self.ig_session)
+        if self.tiktok.session: files.append(self.tiktok.session)
+        if self.youtube.session: files.append(self.youtube.session)
+        if self.instagram.session: files.append(self.instagram.session)
         return files
 
     def ensure_cred_dir(self) -> None:
@@ -302,4 +336,3 @@ class AppConfig:
 
 # Global configuration instance
 config = AppConfig()
-

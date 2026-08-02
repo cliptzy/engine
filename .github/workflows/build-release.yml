@@ -4,23 +4,34 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
+    name: Build ${{ matrix.target }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
+            target: apk
+            artifact_name: cliptzy-android
+            file_extension: apk
+          - os: ubuntu-latest
+            target: linux
             artifact_name: cliptzy-linux
+            file_extension: zip
           - os: windows-latest
+            target: windows
             artifact_name: cliptzy-windows
+            file_extension: zip
           - os: macos-latest
+            target: macos
             artifact_name: cliptzy-macos
+            file_extension: zip
 
     steps:
       - name: Checkout Code
@@ -33,39 +44,60 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.13" # Turunkan ke "3.12" jika pustaka di requirements.txt gagal di-install
 
-      - name: Install Linux Dependencies
+      - name: Set up Java
+        if: matrix.target == 'apk'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+
+      - name: Install Linux Build Dependencies
         if: runner.os == 'Linux'
+        # Menambahkan cmake, clang, ninja-build, pkg-config (Wajib untuk Flutter Linux)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxcb-cursor0 libasound2t64
+          sudo apt-get install -y clang cmake ninja-build pkg-config libxcb-cursor0 libasound2t64 libgtk-3-dev libblkid-dev liblzma-dev
 
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install flet
 
       - name: Build Executable
         run: |
-          python build_executable.py
+          flet build ${{ matrix.target }} --yes
 
       - name: Archive Executable
         shell: bash
         run: |
-          cd dist
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            7z a ../${{ matrix.artifact_name }}.zip cliptzy
+          if [ "${{ matrix.target }}" == "apk" ]; then
+            # Pindahkan APK ke root dengan nama artifact
+            cp build/apk/*.apk ${{ matrix.artifact_name }}.apk
+          elif [ "${{ matrix.target }}" == "windows" ]; then
+            cd build/windows
+            7z a ../../${{ matrix.artifact_name }}.zip .
+          elif [ "${{ matrix.target }}" == "macos" ]; then
+            cd build/macos
+            # Menggunakan -ry untuk mempertahankan symlink pada .app bundle
+            zip -ry ../../${{ matrix.artifact_name }}.zip .
           else
-            zip -r ../${{ matrix.artifact_name }}.zip cliptzy
+            cd build/linux
+            zip -r ../../${{ matrix.artifact_name }}.zip .
           fi
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_name }}.zip
+          path: ${{ matrix.artifact_name }}.${{ matrix.file_extension }}
 
   release:
     name: Create Release
@@ -119,6 +151,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           body_path: release_notes.md
-          files: artifacts/**/*.zip
+          # Mengubah target file agar file APK juga ikut masuk ke GitHub Release
+          files: artifacts/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

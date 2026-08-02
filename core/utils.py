@@ -161,7 +161,7 @@ def write_json(file_path: str, data: Any, indent: int = 2) -> bool:
         log.warning(f"Gagal menulis ke {file_path}: {e}")
         return False
 
-def get_preview_data(job_dir: str = None, video_id: str = None) -> dict:
+def get_preview_data(job_dir: str | None = None, video_id: str | None = None) -> dict:
     """
     Reads and returns the content of preview.json.
     Priority:
