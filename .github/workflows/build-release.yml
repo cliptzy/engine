@@ -50,6 +50,11 @@ jobs:
           distribution: "zulu"
           java-version: "17"
 
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+
       - name: Install Linux Build Dependencies
         if: runner.os == 'Linux'
         run: |
@@ -70,14 +75,9 @@ jobs:
           pip install -r requirements.txt
           pip install flet
 
-      - name: Build
-        id: build
-        uses: flet-dev/flet-build-action@v1
-        with:
-          target: ${{ matrix.target}}
-          runner-python-version: "3.13"
-          bundled-python-version: "3.13"
-          build-number: ${{ github.run_number }}
+      - name: Build Executable
+        run: |
+          flet build ${{ matrix.target }} --python-version 3.13 --yes
 
       - name: Archive Executable
         shell: bash
