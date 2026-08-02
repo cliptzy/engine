@@ -2,9 +2,6 @@ name: Build and Release
 
 on:
   push:
-    tags:
-      - "v*"
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -44,7 +41,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13" # Turunkan ke "3.12" jika pustaka di requirements.txt gagal di-install
+          python-version: "3.13"
 
       - name: Set up Java
         if: matrix.target == 'apk'
@@ -54,16 +51,24 @@ jobs:
           java-version: "17"
 
       - name: Set up Flutter
+        if: matrix.target == 'apk'
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
 
       - name: Install Linux Build Dependencies
         if: runner.os == 'Linux'
-        # Menambahkan cmake, clang, ninja-build, pkg-config (Wajib untuk Flutter Linux)
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libxcb-cursor0 libasound2t64 libgtk-3-dev libblkid-dev liblzma-dev
+
+      - name: Clean OS-Specific Requirements
+        if: runner.os != 'macOS'
+        shell: bash
+        run: |
+          # Menghapus 'pyobjc' dari requirements.txt agar tidak gagal saat diinstall di Linux/Windows
+          grep -vi "pyobjc" requirements.txt > req_temp.txt
+          mv req_temp.txt requirements.txt
 
       - name: Install Python Dependencies
         run: |
@@ -79,14 +84,12 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.target }}" == "apk" ]; then
-            # Pindahkan APK ke root dengan nama artifact
             cp build/apk/*.apk ${{ matrix.artifact_name }}.apk
           elif [ "${{ matrix.target }}" == "windows" ]; then
             cd build/windows
             7z a ../../${{ matrix.artifact_name }}.zip .
           elif [ "${{ matrix.target }}" == "macos" ]; then
             cd build/macos
-            # Menggunakan -ry untuk mempertahankan symlink pada .app bundle
             zip -ry ../../${{ matrix.artifact_name }}.zip .
           else
             cd build/linux
@@ -151,7 +154,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           body_path: release_notes.md
-          # Mengubah target file agar file APK juga ikut masuk ke GitHub Release
           files: artifacts/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
