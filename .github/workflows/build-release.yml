@@ -76,6 +76,8 @@ jobs:
           pip install flet
 
       - name: Build Executable
+        env:
+          PYTHONUTF8: "1"
         run: |
           flet build ${{ matrix.target }} --python-version 3.13 --yes
 

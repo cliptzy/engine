@@ -236,12 +236,6 @@ pyobjc-framework-quartz
     # via pystray
 pyparsing
     # via httplib2
-pyqt6
-    # via -r requirements.in
-pyqt6-qt6
-    # via pyqt6
-pyqt6-sip
-    # via pyqt6
 pysocks
     # via instagrapi
 pystray
