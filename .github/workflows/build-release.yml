@@ -59,7 +59,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libxcb-cursor0 libasound2t64 libgtk-3-dev libblkid-dev liblzma-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libxcb-cursor0 libasound2t64 libgtk-3-dev libblkid-dev liblzma-dev libmpv-dev
 
       - name: Clean OS-Specific Requirements
         if: runner.os != 'macOS'
