@@ -26,24 +26,23 @@ class PreviewClipUseCase:
             if cached:
                 return cached
 
-        cmd = [
-            sys.executable,
-            "-m",
-            "yt_dlp",
-            "--skip-download",
-            "-J",
-        ]
+        import yt_dlp
+        from typing import Any
+        ydl_opts: dict[str, Any] = {
+            'skip_download': True,
+            'quiet': True,
+            'no_warnings': True,
+        }
         
         if config.youtube.session and os.path.exists(config.youtube.session):
-            cmd.extend(["--cookies", config.youtube.session])
+            ydl_opts['cookiefile'] = config.youtube.session
             
-        cmd.append(url_clean)
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        if res.returncode != 0:
-            err_msg = (res.stderr or res.stdout or "Gagal mengambil metadata video").strip()
-            raise RuntimeError(err_msg)
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                raw: Any = ydl.extract_info(url_clean, download=False)
+        except Exception as e:
+            raise RuntimeError(f"Gagal mengambil metadata video: {e}")
 
-        raw = json.loads(res.stdout)
         item = raw["entries"][0] if isinstance(raw, dict) and "entries" in raw and raw.get("entries") else raw
 
         lang = item.get("language")

@@ -60,20 +60,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libxcb-cursor0 libasound2t64 libgtk-3-dev libblkid-dev liblzma-dev libmpv-dev
-      
-      - name: Clean OS-Specific Requirements
-        if: runner.os != 'macOS'
-        shell: bash
-        run: |
-          # Menghapus 'pyobjc' dari requirements.txt agar tidak gagal saat diinstall di Linux/Windows
-          grep -vi "pyobjc" requirements.txt > req_temp.txt
-          mv req_temp.txt requirements.txt
 
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install flet
+          python scripts/manage_reqs.py compile
+          python scripts/manage_reqs.py sync
 
       - name: Build Executable
         env:
@@ -81,21 +73,21 @@ jobs:
         run: |
           python build_executable.py
 
-      - name: Archive Executable
-        shell: bash
-        run: |
-          if [ "${{ matrix.target }}" == "apk" ]; then
-            cp dist/cliptzy/*.apk ${{ matrix.artifact_name }}.apk
-          elif [ "${{ matrix.target }}" == "windows" ]; then
-            cd dist/cliptzy
-            7z a ../../${{ matrix.artifact_name }}.zip .
-          elif [ "${{ matrix.target }}" == "macos" ]; then
-            cd dist/cliptzy
-            zip -ry ../../${{ matrix.artifact_name }}.zip .
-          else
-            cd dist/cliptzy
-            zip -r ../../${{ matrix.artifact_name }}.zip .
-          fi
+      # - name: Archive Executable
+      #   shell: bash
+      #   run: |
+      #     if [ "${{ matrix.target }}" == "apk" ]; then
+      #       cp dist/cliptzy/*.apk ${{ matrix.artifact_name }}.apk
+      #     elif [ "${{ matrix.target }}" == "windows" ]; then
+      #       cd dist/cliptzy
+      #       7z a ../../${{ matrix.artifact_name }}.zip .
+      #     elif [ "${{ matrix.target }}" == "macos" ]; then
+      #       cd dist/cliptzy
+      #       zip -ry ../../${{ matrix.artifact_name }}.zip .
+      #     else
+      #       cd dist/cliptzy
+      #       zip -r ../../${{ matrix.artifact_name }}.zip .
+      #     fi
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

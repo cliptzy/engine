@@ -43,19 +43,26 @@ class DetectHighlightsUseCase:
                     self.reporter.on_progress("download", 0, 0)
                     self.reporter.on_log("[AI] Mengunduh file audio video...")
 
-                cmd_audio = [
-                    sys.executable, "-m", "yt_dlp",
-                    "--force-ipv4", "--quiet", "--no-warnings",
-                    "-f", "ba[ext=m4a]/ba/b",
-                    "-o", audio_file,
-                    f"https://youtu.be/{video_id}"
-                ]
+                import yt_dlp
+                from typing import Any
+                ydl_opts: dict[str, Any] = {
+                    'force_ipv4': True,
+                    'quiet': True,
+                    'no_warnings': True,
+                    'format': 'ba[ext=m4a]/ba/b',
+                    'outtmpl': audio_file,
+                }
                 if config.youtube.session and os.path.exists(config.youtube.session):
-                    cmd_audio.extend(["--cookies", config.youtube.session])
+                    ydl_opts['cookiefile'] = config.youtube.session
 
-                res = subprocess.run(cmd_audio)
-                if res.returncode != 0 or not os.path.exists(audio_file):
-                    raise RuntimeError("Gagal mengunduh audio video untuk transkripsi AI.")
+                try:
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                        ydl.download([f"https://youtu.be/{video_id}"])
+                except Exception as e:
+                    raise RuntimeError(f"Gagal mengunduh audio video untuk transkripsi AI: {e}")
+
+                if not os.path.exists(audio_file):
+                    raise RuntimeError("Gagal mengunduh audio video untuk transkripsi AI (file tidak ditemukan).")
 
             if self.reporter:
                 self.reporter.on_progress("subtitle_transcribe", 0, 0)

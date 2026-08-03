@@ -63,41 +63,34 @@ class ChannelManager:
         log.info(f"Extracting authentic channel info for {url} via yt-dlp...")
 
         # 1. Scrape videos (Uploads)
-        cmd_meta = [
-            sys.executable, "-m", "yt_dlp",
-            "--force-ipv4", "--quiet", "--no-warnings",
-            "-J", "--flat-playlist",
-            "--playlist-end", "60",
-            f"{url}/videos"
-        ]
+        import yt_dlp
+        from typing import Any
+        ydl_opts: dict[str, Any] = {
+            'force_ipv4': True,
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': True,
+            'playlistend': 60,
+        }
 
-        res = subprocess.run(cmd_meta, capture_output=True, text=True)
-        if res.returncode != 0 or not res.stdout.strip():
-            cmd_meta[-1] = url
-            res = subprocess.run(cmd_meta, capture_output=True, text=True)
-
-        info = {}
-        if res.returncode == 0 and res.stdout.strip():
+        info: Any = {}
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                info = ydl.extract_info(f"{url}/videos", download=False)
+        except Exception:
             try:
-                info = json.loads(res.stdout)
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                    info = ydl.extract_info(url, download=False)
             except Exception:
                 pass
 
         # 2. Scrape live streams
-        cmd_live = [
-            sys.executable, "-m", "yt_dlp",
-            "--force-ipv4", "--quiet", "--no-warnings",
-            "-J", "--flat-playlist",
-            "--playlist-end", "60",
-            f"{url}/streams"
-        ]
-        res_live = subprocess.run(cmd_live, capture_output=True, text=True)
-        info_live = {}
-        if res_live.returncode == 0 and res_live.stdout.strip():
-            try:
-                info_live = json.loads(res_live.stdout)
-            except Exception:
-                pass
+        info_live: Any = {}
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                info_live = ydl.extract_info(f"{url}/streams", download=False)
+        except Exception:
+            pass
 
         # Defer to live info if videos is completely empty
         if not info and info_live:

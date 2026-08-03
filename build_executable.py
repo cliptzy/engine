@@ -127,9 +127,13 @@ def main():
     cmd = [flet_bin, "build", target_platform, "--python-version", "3.13", "-o", dist_dir]
     
     # Explicitly exclude heavy/unneeded directories to prevent tmpfs disk quota issues
-    exclude_list = [".git", ".github", ".venv", "venv", "clips", "logs", "build", "dist", "__pycache__", "*.log"]
-    for exc in exclude_list:
-        cmd.extend(["--exclude", exc])
+    exclude_list = [
+        ".git", ".github", ".venv", "venv", "clips", "logs", "build", "dist", "__pycache__",
+        "*.log", ".env", "*.md", "cred", "*.json",
+        "tests", "*.sql", ".gitignore", "requirements.in"
+    ]
+    cmd.append("--exclude")
+    cmd.extend(exclude_list)
         
     print(f"[RUN] {' '.join(cmd)}")
     

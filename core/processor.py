@@ -1,7 +1,7 @@
 import os
 import sys
 import subprocess
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any, Callable, Optional, cast
 
 from core.logger import log
 from core.config import config
@@ -52,46 +52,79 @@ def process_single_clip(
         except Exception as e:
             log.debug(f"Event hook error: {e}")
 
-    cmd_download = [
-        sys.executable, "-m", "yt_dlp",
-        "-v",
-        "--force-ipv4",
-        "--remote-components",
-        "ejs:github",
-        "--no-warnings",
-        "--download-sections", f"*{start}-{end}",
-        "--force-keyframes-at-cuts",
-        "--merge-output-format", "mkv",
-        "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b",
-    ]
+    import yt_dlp
+    from yt_dlp.utils import download_range_func
+
+    class YtDlpLogger:
+        def __init__(self, hook, prefix):
+            self.hook = hook
+            self.prefix = prefix
+        def debug(self, msg):
+            if self.hook and not msg.startswith('[download]'):
+                self.hook("log", f"{self.prefix} {msg}")
+        def info(self, msg):
+            if self.hook:
+                self.hook("log", f"{self.prefix} {msg}")
+        def warning(self, msg):
+            if self.hook:
+                self.hook("log", f"{self.prefix} [WARNING] {msg}")
+        def error(self, msg):
+            if self.hook:
+                self.hook("log", f"{self.prefix} [ERROR] {msg}")
+
+    def yt_dlp_progress_hook(d):
+        if d['status'] == 'downloading':
+            percent = d.get('_percent_str', '').strip()
+            speed = d.get('_speed_str', '').strip()
+            eta = d.get('_eta_str', '').strip()
+            total = d.get('_total_bytes_estimate_str', d.get('_total_bytes_str', ''))
+            msg = f"[download] {percent} of {total} at {speed} ETA {eta}"
+            if callable(event_hook):
+                event_hook("log", f"[yt-dlp] {msg}")
+
+    ydl_opts: dict[str, Any] = {
+        'force_ipv4': True,
+        'remote_components': ['ejs:github'],
+        'no_warnings': False,
+        'merge_output_format': 'mkv',
+        'format': 'bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b',
+        'outtmpl': temp_file,
+        'download_ranges': download_range_func(cast(Any, None), [(start, end)]),
+        'force_keyframes_at_cuts': True,
+        'logger': YtDlpLogger(event_hook, "[yt-dlp]"),
+        'progress_hooks': [yt_dlp_progress_hook],
+    }
     
-    cmd_download_fallback = [
-        sys.executable, "-m", "yt_dlp",
-        "-v",
-        "--force-ipv4",
-        "--remote-components",
-        "ejs:github",
-        "--no-warnings",
-        "--download-sections", f"*{start}-{end}",
-        "--force-keyframes-at-cuts",
-        "--merge-output-format", "mkv",
-        "-f", "bv*+ba/b",
-    ]
+    ydl_opts_fallback: dict[str, Any] = {
+        'force_ipv4': True,
+        'remote_components': ['ejs:github'],
+        'no_warnings': False,
+        'merge_output_format': 'mkv',
+        'format': 'bv*+ba/b',
+        'outtmpl': temp_file,
+        'download_ranges': download_range_func(cast(Any, None), [(start, end)]),
+        'force_keyframes_at_cuts': True,
+        'logger': YtDlpLogger(event_hook, "[yt-dlp-fallback]"),
+        'progress_hooks': [yt_dlp_progress_hook],
+    }
     
     if config.youtube.session and os.path.exists(config.youtube.session):
-        cmd_download.extend(["--cookies", config.youtube.session])
-        cmd_download_fallback.extend(["--cookies", config.youtube.session])
-        
-    cmd_download.extend(["-o", temp_file, f"https://youtu.be/{video_id}"])
-    cmd_download_fallback.extend(["-o", temp_file, f"https://youtu.be/{video_id}"])
+        ydl_opts['cookiefile'] = config.youtube.session
+        ydl_opts_fallback['cookiefile'] = config.youtube.session
 
     try:
         if not os.path.exists(cropped_file):
             try:
-                run_command_with_logging(cmd_download, event_hook, prefix="[yt-dlp]")
-            except subprocess.CalledProcessError as e:
-                log.info(f"Retrying download with fallback format for clip {index}...")
-                run_command_with_logging(cmd_download_fallback, event_hook, prefix="[yt-dlp-fallback]")
+                if callable(event_hook):
+                    event_hook("log", f"[yt-dlp] Downloading segment: {start}s - {end}s\n")
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                    ydl.download([f"https://youtu.be/{video_id}"])
+            except Exception as e:
+                log.info(f"Retrying download with fallback format for clip {index}: {e}")
+                if callable(event_hook):
+                    event_hook("log", f"[yt-dlp] Retrying download with fallback format...\n")
+                with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl: # type: ignore
+                    ydl.download([f"https://youtu.be/{video_id}"])
 
             if not os.path.exists(temp_file):
                 log.error(f"Failed to download video segment for clip {index}.")

@@ -34,25 +34,25 @@ def fetch_most_replayed(video_id: str, min_score: float, max_duration: int) -> L
     """
     log.info(f"Reading YouTube heatmap data for video ID: {video_id}")
     
-    cmd = [
-        sys.executable,
-        "-m",
-        "yt_dlp",
-        "--remote-components",
-        "ejs:github",
-        "--dump-json",
-        "--skip-download"
-    ]
-    
+    import yt_dlp
+    from typing import Any
     from core.config import config
+    
+    ydl_opts: dict[str, Any] = {
+        'skip_download': True,
+        'quiet': True,
+        'no_warnings': True,
+        'remote_components': ['ejs:github'],
+    }
+    
     if config.youtube.session and os.path.exists(config.youtube.session):
-        cmd.extend(["--cookies", config.youtube.session])
+        ydl_opts['cookiefile'] = config.youtube.session
         
-    cmd.append(f"https://youtu.be/{video_id}")
+    url = f"https://youtu.be/{video_id}"
 
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        data = json.loads(res.stdout)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+            data: Any = ydl.extract_info(url, download=False)
         heatmap = data.get("heatmap")
         
         if not heatmap:
@@ -85,33 +85,29 @@ def get_video_duration(video_id: str) -> int:
     """
     Retrieves the total duration of a YouTube video in seconds using yt-dlp.
     """
-    cmd = [
-        sys.executable,
-        "-m",
-        "yt_dlp",
-        "--remote-components",
-        "ejs:github",
-        "--get-duration"
-    ]
-    
+    import yt_dlp
+    from typing import Any
     from core.config import config
+    
+    ydl_opts: dict[str, Any] = {
+        'skip_download': True,
+        'quiet': True,
+        'no_warnings': True,
+        'remote_components': ['ejs:github'],
+        'extract_flat': True,
+    }
+    
     if config.youtube.session and os.path.exists(config.youtube.session):
-        cmd.extend(["--cookies", config.youtube.session])
+        ydl_opts['cookiefile'] = config.youtube.session
         
-    cmd.append(f"https://youtu.be/{video_id}")
+    url = f"https://youtu.be/{video_id}"
 
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        time_parts = res.stdout.strip().split(":")
-
-        if len(time_parts) == 2:
-            return int(time_parts[0]) * 60 + int(time_parts[1])
-        if len(time_parts) == 3:
-            return (
-                int(time_parts[0]) * 3600 +
-                int(time_parts[1]) * 60 +
-                int(time_parts[2])
-            )
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+            data: Any = ydl.extract_info(url, download=False)
+        duration = data.get("duration")
+        if duration:
+            return int(duration)
     except Exception as e:
         log.warning(f"Failed to get video duration: {e}")
 

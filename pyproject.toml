@@ -19,10 +19,10 @@ dependencies = {file = ["requirements.txt"]}
 [project.scripts]
 cliptzy = "main:main"
 
-[tool.flet]
-app.module = "main.main"
-app.name = "Cliptzy"
-app.description = "YouTube Clipper & Auto Uploader"
+[tool.flet.app]
+module = "main.main"
+name = "Cliptzy"
+description = "YouTube Clipper & Auto Uploader"
 exclude = [
     ".git",
     ".github",
@@ -31,8 +31,16 @@ exclude = [
     "logs",
     "venv",
     "__pycache__",
-    "cred/supabase_session.json",
-    "*.log"
+    "cred",
+    "*.json",
+    "*.log",
+    ".env",
+    "*.md",
+    "comments.txt",
+    "tests",
+    "*.sql",
+    ".gitignore",
+    "requirements.in"
 ]
 
 [tool.setuptools.packages.find]

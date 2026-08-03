@@ -335,7 +335,7 @@ class SettingsView(ft.Container):
         
         # Keterangan
         info_text = ft.Text(
-            "Backup & Restore menyimpan/memulihkan config.json dan seluruh kredensial (cred/) Anda ke/dari cloud Supabase.",
+            "Backup & Restore menyimpan/memulihkan config.json dan seluruh channel dan kredensial Anda ke/dari database.",
             size=12,
             color=ft.Colors.GREY_500,
             italic=True
