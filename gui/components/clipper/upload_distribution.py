@@ -8,6 +8,7 @@ import flet_video as ftv
 from core.config import config
 from gui.event_bus import event_bus
 from core.logger import log
+from core.utils import open_dir
 
 class UploadDistribution(ft.Container):
     def __init__(self, page: ft.Page):
@@ -30,6 +31,7 @@ class UploadDistribution(ft.Container):
             expand=True
         )
         self.refresh_projects_btn = ft.IconButton(icon=ft.Icons.REFRESH, on_click=self.load_projects, tooltip="Refresh") # type: ignore
+        self.open_project_dir_btn = ft.IconButton(icon=ft.Icons.FOLDER_OPEN, on_click=self.open_project_dir, tooltip="Open Folder")
         
         # --- Left: Clip List ---
         self.clip_list = ft.ListView(expand=True, spacing=2)
@@ -172,7 +174,7 @@ class UploadDistribution(ft.Container):
         ])
 
         self.content = ft.Column([
-            ft.Row([self.project_dropdown, self.refresh_projects_btn]),
+            ft.Row([self.project_dropdown, self.refresh_projects_btn, self.open_project_dir_btn]),
             top_split,
             ft.Divider(),
             meta_panel,
@@ -270,6 +272,10 @@ class UploadDistribution(ft.Container):
         if h > 0:
             return f"{h:02d}:{m:02d}:{s:02d}"
         return f"{m:02d}:{s:02d}"
+
+    def open_project_dir(self) -> None:
+        if os.path.exists(config.output_dir):
+            open_dir(config.output_dir)
 
     def load_projects(self, e: Any) -> None:
         self.project_dropdown.options.clear()

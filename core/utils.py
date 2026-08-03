@@ -2,8 +2,22 @@ import os
 import sys
 import shutil
 import subprocess
+import platform
 from typing import Any
 from core.logger import log
+
+def open_dir(dir_path):
+    sysops = platform.system()
+
+    try:
+        if sysops == "Windows":
+            os.startfile(dir_path)
+        elif sysops == "Darwin":
+            subprocess.Popen(["open", dir_path])
+        else:
+            subprocess.Popen(["xdg-open", dir_path])
+    except Exception as e:
+        print(f"Terjadi kesalahan saat membuka folder: {e}")
 
 def inject_local_bin_to_path():
     """
