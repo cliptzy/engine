@@ -1,12 +1,11 @@
 import os
-import subprocess
-import sys
 from typing import Dict, Any, Optional
 
 from core.config import config
 from core.youtube import extract_video_id, get_video_duration
 from core.utils import read_json, write_json
 from core.interfaces import ProgressReporter
+from core.yt_dlp_logger import create_yt_dlp_logger
 
 class DetectHighlightsUseCase:
     def __init__(self, reporter: Optional[ProgressReporter] = None):
@@ -47,10 +46,10 @@ class DetectHighlightsUseCase:
                 from typing import Any
                 ydl_opts: dict[str, Any] = {
                     'force_ipv4': True,
-                    'quiet': True,
                     'no_warnings': True,
                     'format': 'ba[ext=m4a]/ba/b',
                     'outtmpl': audio_file,
+                    'logger': create_yt_dlp_logger('[yt-dlp:ai-audio]'),
                 }
                 if config.youtube.session and os.path.exists(config.youtube.session):
                     ydl_opts['cookiefile'] = config.youtube.session

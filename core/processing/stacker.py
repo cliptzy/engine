@@ -1,5 +1,4 @@
 import os
-import sys
 import subprocess
 import shutil
 from typing import Optional, Callable
@@ -43,15 +42,17 @@ def generate_intro(index: int, metadata: dict, event_hook: Optional[Callable] = 
             voice = voice_map[base_lang].get(tts_gender.lower(), voice_map[base_lang]["female"])
             audio_path = os.path.join(config.job_dir, f"intro_audio_{index}.mp3")
             
-            python_exe = sys.executable or "python"
             try:
-                res = subprocess.run([
-                    python_exe, "-m", "edge_tts", 
-                    "--voice", voice,
-                    "--rate=-15%",
-                    "--text", highlight_text,
-                    "--write-media", audio_path
-                ], capture_output=True, text=True, check=True)
+                import asyncio
+                import edge_tts
+
+                async def _run_tts() -> None:
+                    communicate = edge_tts.Communicate(
+                        highlight_text, voice, rate="-25%"
+                    )
+                    await communicate.save(audio_path)
+
+                asyncio.run(_run_tts())
             except Exception as e:
                 log.error(f"edge-tts failed: {e}")
                 # Fallback to gTTS if edge-tts fails

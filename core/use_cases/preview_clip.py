@@ -1,12 +1,11 @@
 import os
 import json
-import subprocess
-import sys
 import threading
 from typing import Dict, Any, Optional
 
 from core.config import config
 from core.interfaces import ProgressReporter
+from core.yt_dlp_logger import create_yt_dlp_logger
 
 _preview_lock = threading.Lock()
 _preview_cache: Dict[str, Dict[str, Any]] = {}
@@ -30,8 +29,8 @@ class PreviewClipUseCase:
         from typing import Any
         ydl_opts: dict[str, Any] = {
             'skip_download': True,
-            'quiet': True,
             'no_warnings': True,
+            'logger': create_yt_dlp_logger('[yt-dlp:preview]'),
         }
         
         if config.youtube.session and os.path.exists(config.youtube.session):

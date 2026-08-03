@@ -1,8 +1,8 @@
 import os
-import sys
 import subprocess
 from typing import Dict, Any, Callable, Optional, cast
 
+from core.yt_dlp_logger import create_yt_dlp_logger, create_yt_dlp_progress_hook
 from core.logger import log
 from core.config import config
 
@@ -55,33 +55,6 @@ def process_single_clip(
     import yt_dlp
     from yt_dlp.utils import download_range_func
 
-    class YtDlpLogger:
-        def __init__(self, hook, prefix):
-            self.hook = hook
-            self.prefix = prefix
-        def debug(self, msg):
-            if self.hook and not msg.startswith('[download]'):
-                self.hook("log", f"{self.prefix} {msg}")
-        def info(self, msg):
-            if self.hook:
-                self.hook("log", f"{self.prefix} {msg}")
-        def warning(self, msg):
-            if self.hook:
-                self.hook("log", f"{self.prefix} [WARNING] {msg}")
-        def error(self, msg):
-            if self.hook:
-                self.hook("log", f"{self.prefix} [ERROR] {msg}")
-
-    def yt_dlp_progress_hook(d):
-        if d['status'] == 'downloading':
-            percent = d.get('_percent_str', '').strip()
-            speed = d.get('_speed_str', '').strip()
-            eta = d.get('_eta_str', '').strip()
-            total = d.get('_total_bytes_estimate_str', d.get('_total_bytes_str', ''))
-            msg = f"[download] {percent} of {total} at {speed} ETA {eta}"
-            if callable(event_hook):
-                event_hook("log", f"[yt-dlp] {msg}")
-
     ydl_opts: dict[str, Any] = {
         'force_ipv4': True,
         'remote_components': ['ejs:github'],
@@ -91,8 +64,8 @@ def process_single_clip(
         'outtmpl': temp_file,
         'download_ranges': download_range_func(cast(Any, None), [(start, end)]),
         'force_keyframes_at_cuts': True,
-        'logger': YtDlpLogger(event_hook, "[yt-dlp]"),
-        'progress_hooks': [yt_dlp_progress_hook],
+        'logger': create_yt_dlp_logger("[yt-dlp]"),
+        'progress_hooks': [create_yt_dlp_progress_hook(event_hook, "[yt-dlp]")],
     }
     
     ydl_opts_fallback: dict[str, Any] = {
@@ -104,8 +77,8 @@ def process_single_clip(
         'outtmpl': temp_file,
         'download_ranges': download_range_func(cast(Any, None), [(start, end)]),
         'force_keyframes_at_cuts': True,
-        'logger': YtDlpLogger(event_hook, "[yt-dlp-fallback]"),
-        'progress_hooks': [yt_dlp_progress_hook],
+        'logger': create_yt_dlp_logger("[yt-dlp-fallback]"),
+        'progress_hooks': [create_yt_dlp_progress_hook(event_hook, "[yt-dlp-fallback]")],
     }
     
     if config.youtube.session and os.path.exists(config.youtube.session):

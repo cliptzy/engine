@@ -1,12 +1,12 @@
 import re
 import json
 import subprocess
-import sys
 import os
 from typing import Optional, List, Dict, Any
 from urllib.parse import urlparse, parse_qs
 import requests
 from core.logger import log
+from core.yt_dlp_logger import create_yt_dlp_logger
 
 def extract_video_id(url: str) -> Optional[str]:
     """
@@ -40,9 +40,9 @@ def fetch_most_replayed(video_id: str, min_score: float, max_duration: int) -> L
     
     ydl_opts: dict[str, Any] = {
         'skip_download': True,
-        'quiet': True,
         'no_warnings': True,
         'remote_components': ['ejs:github'],
+        'logger': create_yt_dlp_logger('[yt-dlp:heatmap]'),
     }
     
     if config.youtube.session and os.path.exists(config.youtube.session):
@@ -91,10 +91,10 @@ def get_video_duration(video_id: str) -> int:
     
     ydl_opts: dict[str, Any] = {
         'skip_download': True,
-        'quiet': True,
         'no_warnings': True,
         'remote_components': ['ejs:github'],
         'extract_flat': True,
+        'logger': create_yt_dlp_logger('[yt-dlp:duration]'),
     }
     
     if config.youtube.session and os.path.exists(config.youtube.session):

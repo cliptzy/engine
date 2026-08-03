@@ -6,10 +6,10 @@ Extracts authentic channel metadata (avatar, subscribers, title) and videos cata
 import os
 import json
 import subprocess
-import sys
 import urllib.request
 from typing import List, Dict, Any, Optional
 from core.logger import log
+from core.yt_dlp_logger import create_yt_dlp_logger
 
 CHANNELS_DIR = "channels"
 CHANNELS_INDEX_FILE = os.path.join(CHANNELS_DIR, "channels.json")
@@ -67,10 +67,10 @@ class ChannelManager:
         from typing import Any
         ydl_opts: dict[str, Any] = {
             'force_ipv4': True,
-            'quiet': True,
             'no_warnings': True,
             'extract_flat': True,
             'playlistend': 60,
+            'logger': create_yt_dlp_logger('[yt-dlp:channel]'),
         }
 
         info: Any = {}

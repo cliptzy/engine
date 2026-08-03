@@ -50,6 +50,7 @@ Lapisan murni yang tidak memiliki ketergantungan pada UI (PyQt6). Berisi inti pe
 - **`subtitle.py`**: Ekstraksi transkripsi menggunakan Whisper (atau Faster-Whisper) dan pemformatan file `.ass`.
 - **`utils.py`**: Fungsi utilitas untuk system pathing, pengecekan dependensi, dan helper IO lainnya.
 - **`youtube.py`**: Modul integrasi `yt-dlp` untuk mengunduh video dan mengekstrak metadata dari YouTube.
+- **`yt_dlp_logger.py`**: Adapter terpusat yang menjembatani antarmuka logger kustom yt-dlp dengan sistem logging standar Python (`core/logger.py`). Semua pesan yt-dlp secara otomatis muncul di GUI `LogViewer` melalui `EventBusLogHandler`.
 
 ## 2. Manajemen Threading & Aliran Data (Data Flow)
 
