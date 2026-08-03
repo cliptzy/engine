@@ -2,6 +2,12 @@
 
 Semua catatan pembaruan dari proyek Cliptzy akan didokumentasikan di dalam file ini.
 
+## [v3.0.2] - 2026-08-03
+
+### Fixed
+
+- **Outro:** Memperbaiki state tombol Set Video Outro pada Clipper
+
 ## [v3.0.1] - 2026-08-03
 
 ### Added

@@ -38,17 +38,14 @@ charset-normalizer
     # via requests
 click
     # via gtts
-colorama
-    # via
-    #   click
-    #   tqdm
-    #   typer
 cryptography
     # via
     #   google-auth
     #   pyjwt
 ctranslate2
     # via faster-whisper
+dbus-fast
+    # via desktop-notifier
 deprecation
     # via
     #   postgrest
@@ -234,6 +231,8 @@ pystray
     # via -r requirements.in
 python-dotenv
     # via -r requirements.in
+python-xlib
+    # via pystray
 pytz
     # via tiktok-uploader
 pyyaml
@@ -262,6 +261,7 @@ shellingham
 six
     # via
     #   pystray
+    #   python-xlib
     #   repath
 sniffio
     # via
@@ -306,7 +306,6 @@ typing-extensions
     #   pyee
     #   realtime
     #   typing-inspection
-    #   winrt-runtime
 typing-inspection
     # via pydantic
 uritemplate
@@ -317,24 +316,6 @@ websockets
     # via
     #   google-genai
     #   realtime
-winrt-runtime
-    # via
-    #   desktop-notifier
-    #   winrt-windows-applicationmodel-core
-    #   winrt-windows-data-xml-dom
-    #   winrt-windows-foundation
-    #   winrt-windows-foundation-collections
-    #   winrt-windows-ui-notifications
-winrt-windows-applicationmodel-core
-    # via desktop-notifier
-winrt-windows-data-xml-dom
-    # via desktop-notifier
-winrt-windows-foundation
-    # via desktop-notifier
-winrt-windows-foundation-collections
-    # via desktop-notifier
-winrt-windows-ui-notifications
-    # via desktop-notifier
 yarl
     # via
     #   aiohttp

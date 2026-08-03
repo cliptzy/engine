@@ -1,5 +1,6 @@
 import flet as ft
-from typing import Any, cast
+from os import path
+from typing import Any, Optional, cast
 from core import controller, config
 from gui.event_bus import event_bus
 from gui.components.spin_box import SpinBox
@@ -146,7 +147,10 @@ class ClipConfig(ft.Container):
         self.btn_intro = ft.Button("🎬 Set Video Intro", on_click=self.on_intro_picked) # type: ignore
         # type: ignore
         self.btn_outro = ft.Button("🎬 Set Video Outro", on_click=self.on_outro_picked) # type: ignore
-        
+
+        # Check outro
+        self.on_toggle_outro_btn()
+
         # type: ignore
         self.btn_lock_all = ft.Button("🔒 Kunci dan Simpan Pengaturan", on_click=self.on_lock_all_toggled) # type: ignore
         self.btn_lock_all.data = False
@@ -266,9 +270,32 @@ class ClipConfig(ft.Container):
         if files and len(files) > 0 and files[0].path:
             try:
                 dest = controller.set_outro_video(files[0].path)
+                self.on_toggle_outro_btn()
                 self._show_snackbar(f"Video outro berhasil diset:\n{dest}")
             except Exception as ex:
                 self._show_snackbar(f"Gagal mengeset outro: {ex}", error=True)
+
+    def on_clear_outro_picked(self, e: Any) -> None:
+        """Menghapus pilihan video outro dari konfigurasi."""
+        try:
+            controller.clear_outro_video()
+            self.on_toggle_outro_btn()
+            self._show_snackbar("Video outro berhasil dihapus.")
+        except Exception as ex:
+            self._show_snackbar(f"Gagal menghapus outro: {ex}", error=True)
+
+    def on_toggle_outro_btn(self) -> None:
+        if config.outro_video is not None:
+            print(config.outro_video)
+            if path.exists(config.outro_video):
+                self.btn_outro.content = ft.Text("🎬 Hapus Video Outro", color=ft.Colors.RED)
+                self.btn_outro.on_click = self.on_clear_outro_picked
+            else:
+                self.btn_outro.content = ft.Text("🎬 Video Tidak Ditemukan", color=ft.Colors.RED)
+                self.btn_outro.on_click = self.on_clear_outro_picked
+        else:
+            self.btn_outro.content = ft.Text("🎬 Pilih Video Outro")
+            self.btn_outro.on_click = self.on_outro_picked
 
     def on_subtitle_toggled(self, e: Any) -> None:
         checked = bool(self.subtitle_check.value)

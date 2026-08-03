@@ -13,7 +13,8 @@ if app_dir not in sys.path:
 
 from core.youtube import extract_video_id
 from core.config import config, AppConfig
-from core.controller import controller, parse_time_to_seconds
+from core.controller import controller
+from core.use_cases.clip_video import parse_time_to_seconds
 from core.utils import is_ffmpeg_available
 
 class TestCliptzyCore(unittest.TestCase):
@@ -38,7 +39,7 @@ class TestCliptzyCore(unittest.TestCase):
 
     def test_config_persistence(self):
         test_cfg = AppConfig()
-        test_cfg.whisper_model = "tiny"
+        test_cfg.subtitle.whisper_model = "tiny"
         test_cfg.padding = 15
         test_cfg.set_ratio_preset("1:1")
 
@@ -49,7 +50,7 @@ class TestCliptzyCore(unittest.TestCase):
         loaded_cfg = AppConfig()
         loaded = loaded_cfg.load_from_file(test_path)
         self.assertTrue(loaded)
-        self.assertEqual(loaded_cfg.whisper_model, "tiny")
+        self.assertEqual(loaded_cfg.subtitle.whisper_model, "tiny")
         self.assertEqual(loaded_cfg.padding, 15)
         self.assertEqual(loaded_cfg.out_width, 720)
         self.assertEqual(loaded_cfg.out_height, 720)
@@ -67,7 +68,7 @@ class TestCliptzyCore(unittest.TestCase):
         self.assertIn("deleted_size_mb", res)
 
     def test_ai_detector_json_parser(self):
-        from core.ai_detector import ai_detector
+        from core.ai.detector import ai_detector
         raw_json_llm = '```json\n[\n  {"start": 10.5, "duration": 25.0, "title": "Gamer Clutch", "reason": "Yelling excited", "score": 0.95}\n]\n```'
         highlights = ai_detector._parse_json_highlights(raw_json_llm)
         self.assertEqual(len(highlights), 1)

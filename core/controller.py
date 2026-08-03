@@ -116,6 +116,11 @@ class ClipController:
         config.save_to_file()
         return dest
 
+    def clear_outro_video(self) -> None:
+        """Clears the configured outro video (does not delete the assets file)."""
+        config.outro_video = None
+        config.save_to_file()
+
     def get_available_fonts(self) -> List[str]:
         """Lists available fonts in fonts directory."""
         fonts = ["Arial", "Poppins", "Montserrat", "Impact", "Trebuchet MS"]
