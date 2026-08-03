@@ -2,6 +2,25 @@
 
 Semua catatan pembaruan dari proyek Cliptzy akan didokumentasikan di dalam file ini.
 
+## [v3.0.1] - 2026-08-03
+
+### Added
+
+- **Modul Logger yt-dlp Terpusat (`core/yt_dlp_logger.py`):** Menambahkan adapter logger terpusat baru yang menjembatani antarmuka logger kustom yt-dlp dengan sistem logging standar Python (`core/logger.py`). Dibangun mengikuti prinsip SOLID (_Single Responsibility_, _Open/Closed_, _Dependency Inversion_). Modul ini menyediakan `YtDlpLoggerAdapter`, `create_yt_dlp_logger()`, dan `create_yt_dlp_progress_hook()` yang dapat digunakan oleh seluruh modul yang menggunakan yt-dlp.
+- **Visibilitas Log yt-dlp di GUI:** Seluruh 5 modul yang menggunakan yt-dlp (`processor.py`, `youtube.py`, `channel_manager.py`, `detect_highlights.py`, `preview_clip.py`) kini meneruskan log ke `LogViewer` GUI secara otomatis melalui `EventBusLogHandler`. Sebelumnya, hanya `processor.py` yang menampilkan log parsial, sementara 4 modul lainnya membungkam output sepenuhnya (`quiet: True`).
+
+### Changed
+
+- **Pemanggilan `edge-tts` via API Langsung:** Menggantikan pemanggilan `edge-tts` melalui subprocess (`sys.executable -m edge_tts`) di `core/processing/stacker.py` dengan pemanggilan Python API langsung menggunakan `edge_tts.Communicate` dan `asyncio.run()`. Perubahan ini menghilangkan ketergantungan pada `sys.executable` yang menyebabkan _crash_ saat aplikasi dijalankan sebagai _frozen executable_.
+- **Modularisasi `YtDlpLogger` dari `processor.py`:** Class `YtDlpLogger` dan fungsi `yt_dlp_progress_hook` yang sebelumnya didefinisikan secara lokal di dalam fungsi `process_single_clip()` kini dipindahkan ke modul terpusat `core/yt_dlp_logger.py`, sehingga dapat diakses dari seluruh bagian aplikasi.
+- **Pembersihan Import:** Menghapus `import sys` yang tidak lagi digunakan dari `processor.py`, `stacker.py`, `youtube.py`, `channel_manager.py`, `detect_highlights.py`, dan `preview_clip.py`. Menghapus `import subprocess` yang tidak terpakai dari `detect_highlights.py` dan `preview_clip.py`.
+- **Dokumentasi Arsitektur:** Memperbarui `ARCHITECTURE.md` dengan dokumentasi modul baru `yt_dlp_logger.py`.
+
+### Fixed
+
+- **Bug Kritis `sys.executable` di Production:** Memperbaiki pemanggilan `sys.executable -m edge_tts` di `core/processing/stacker.py` yang menyebabkan _frozen executable_ (`cliptzy.exe`) memanggil dirinya sendiri alih-alih interpreter Python, mengakibatkan _crash_ atau perilaku tak terduga saat aplikasi di-_bundle_.
+- **Guard `is_frozen` untuk `pip install faster-whisper`:** Menambahkan pengecekan `is_frozen` pada blok instalasi `faster-whisper` di `core/utils.py` agar tidak mencoba menjalankan `pip install` saat aplikasi berjalan sebagai _standalone executable_, yang akan gagal karena `sys.executable` menunjuk ke biner aplikasi, bukan interpreter Python.
+
 ## [v2.0.7] - 2026-08-01
 
 ### Added
