@@ -34,9 +34,13 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
 
 1. **Non-Blocking UI Policy**:
    - Aplikasi tidak boleh mengalami kondisi _not responding_ atau _freeze_ saat sedang mengunduh video, memotong video, atau mengekstrak subtitle.
-2. **Cancellation Handling**:
+2. **Arsitektur Native Async Task Flet (DILARANG MENGGUNAKAN `threading.Thread`)**:
+   - Sejak Flet 0.80+, pemanggilan `threading.Thread` murni dari Python akan membuat thread kehilangan konteks sesi (_session contextvars_) WebSocket, menyebabkan pembaruan UI (seperti `page.update()`) tidak terkirim secara *real-time* ke antarmuka pengguna.
+   - Pekerjaan latar belakang (background workers) **WAJIB** diimplementasikan menggunakan fungsi _async_ dan dieksekusi melalui `self.page.run_task(nama_fungsi)`.
+   - Untuk melakukan pemblokiran I/O dari inti program di dalam task async, gunakan `await asyncio.to_thread(fungsi_blocking, args)`.
+3. **Cancellation Handling**:
    - Fitur pembatalan (_Abort/Cancel Job_) harus didukung. Worker thread harus secara berkala mengecek flag pembatalan (`is_cancelled`) untuk menghentikan proses subprocess FFmpeg/yt-dlp secara aman tanpa meninggalkan file sampah (_leftover temp files_).
-3. **Pembersihan Temporary File**:
+4. **Pembersihan Temporary File**:
    - Semua file mentah temporer (`*_raw.mkv`, `*.ass`, `*_nosub.mp4`) wajib dibersihkan secara otomatis jika proses selesai atau terjadi kegagalan/pembatalan.
 
 ---
@@ -69,11 +73,22 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
 
 ---
 
-## 🧪 6. ATURAN VERIFIKASI SEBELUM MENYATAKAN SELESAI
+## 🛡️ 6. ATURAN TYPE CHECKING & PYLANCE (FLET MIGRATION)
+
+1. **Resolusi Strict Typing Flet Event Handlers**:
+   - Dilarang memberikan anotasi spesifik `(e: ft.ControlEvent)` pada fungsi _event handler_ jika memicu error _contravariance_ dari Pylance (seperti *"is not assignable to type Event[Button]"*). Gunakan parameter `(e)` tanpa anotasi untuk menghindari bentrok tipe generik.
+2. **Pengecualian Properti Dinamis Flet (Type Ignore)**:
+   - Flet mendefinisikan event parameter dengan *base class* (seperti `_BaseControlType`) yang secara bawaan tidak menyimpan metadata properti spesifik subclass (contoh: `.value`, `.selected_index`). Gunakan komentar `# type: ignore` secara selektif saat mengakses properti turunan tersebut agar Pylance tidak menganggapnya sebagai error.
+3. **Casting Koleksi List**:
+   - Saat mendeklarasikan list yang berisi berbagai macam subclass Flet (contoh campuran `ft.IconButton`, `ft.Text`, `ft.Slider`), Anda **WAJIB** membungkusnya menggunakan `typing.cast(list[ft.Control], [...])`. Hal ini mencegah Pylance mengunci inferensi tipe ke spesifik _union_ subclass yang membuat list tersebut _invariant_ (ditolak saat dilempar ke parameter `controls=`).
+
+---
+
+## 🧪 7. ATURAN VERIFIKASI SEBELUM MENYATAKAN SELESAI
 
 Setiap pekerjaan refactoring atau penambahan fitur dianggap **SELESAI** hanya apabila AI Model telah memenuhi kriteria berikut:
 
-- [ ] Kode terkompilasi / berjalan tanpa syntax error atau missing import error.
+- [ ] Kode terkompilasi / berjalan tanpa syntax error atau missing import error, **serta lulus evaluasi Pylance / `pyright` dengan 0 errors.**
 - [ ] Fitur GUI dapat diluncurkan dan diuji secara empiris (menjalankan tes atau script verifikasi).
 - [ ] Operasi pemrosesan klip menghasilkan file output `.mp4` yang valid di direktori tujuan.
 - [ ] Log menunjukkan tidak ada error fatal yang disembunyikan.

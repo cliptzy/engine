@@ -1,398 +1,80 @@
 import os
-import json
-import subprocess
-import sys
 import shutil
-import threading
-from typing import Dict, Any, List, Optional, Tuple, Callable
+from typing import Dict, Any, List, Optional, Callable
 
 from core.config import config
 from core.logger import log
-from core.utils import check_dependencies, is_ffmpeg_available
-from core.youtube import extract_video_id, fetch_most_replayed, get_video_duration
-from core.processor import process_single_clip
-
-_preview_lock = threading.Lock()
-_preview_cache: Dict[str, Dict[str, Any]] = {}
-
-def parse_time_to_seconds(value: Any) -> Optional[int]:
-    """Parses time input (int, float, MM:SS, HH:MM:SS) into seconds."""
-    if value is None:
-        return None
-    if isinstance(value, (int, float)):
-        return int(value)
-    s = str(value).strip()
-    if not s:
-        return None
-    if s.isdigit():
-        return int(s)
-    parts = s.split(":")
-    if len(parts) == 2:
-        try:
-            return int(parts[0]) * 60 + int(float(parts[1]))
-        except ValueError:
-            return None
-    if len(parts) == 3:
-        try:
-            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(float(parts[2]))
-        except ValueError:
-            return None
-    return None
+from core.interfaces import ProgressReporter, BaseUploader
+from core.use_cases.scan_video import ScanVideoUseCase
+from core.use_cases.clip_video import ClipVideoUseCase
+from core.use_cases.preview_clip import PreviewClipUseCase
+from core.use_cases.detect_highlights import DetectHighlightsUseCase
+from core.use_cases.upload_clip import UploadClipUseCase
 
 class ClipController:
     """
     Central Controller layer for Cliptzy.
-    Decouples business logic, API processing, and job execution from Flask/HTTP web servers.
+    Decouples business logic, API processing, and job execution from GUI.
+    Acts as a Facade delegating tasks to specific Use Cases.
     """
 
-    def __init__(self):
+    def __init__(self, reporter: Optional[ProgressReporter] = None):
+        self.reporter = reporter
         config.load_from_file()
+
+        # Initialize use cases
+        self.scan_uc = ScanVideoUseCase(reporter=self.reporter)
+        self.clip_uc = ClipVideoUseCase(reporter=self.reporter)
+        self.preview_uc = PreviewClipUseCase(reporter=self.reporter)
+        self.detect_uc = DetectHighlightsUseCase(reporter=self.reporter)
 
     def get_preview(self, url: str) -> Dict[str, Any]:
         """Fetches metadata (title, thumbnail, duration, uploader) for a YouTube URL."""
-        url_clean = url.strip()
-        if not url_clean:
-            raise ValueError("URL YouTube tidak boleh kosong")
-
-        with _preview_lock:
-            cached = _preview_cache.get(url_clean)
-            if cached:
-                return cached
-
-        cmd = [
-            sys.executable,
-            "-m",
-            "yt_dlp",
-            "--skip-download",
-            "-J",
-        ]
-        
-        if config.yt_session and os.path.exists(config.yt_session):
-            cmd.extend(["--cookies", config.yt_session])
-            
-        cmd.append(url_clean)
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        if res.returncode != 0:
-            err_msg = (res.stderr or res.stdout or "Gagal mengambil metadata video").strip()
-            raise RuntimeError(err_msg)
-
-        raw = json.loads(res.stdout)
-        item = raw["entries"][0] if isinstance(raw, dict) and "entries" in raw and raw.get("entries") else raw
-
-        lang = item.get("language")
-        if lang and "-" in lang:
-            lang = lang.split("-")[0]
-
-        preview = {
-            "title": item.get("title", "Unknown Title"),
-            "thumbnail": item.get("thumbnail"),
-            "uploader": item.get("uploader", "Unknown Uploader"),
-            "duration": item.get("duration", 0),
-            "webpage_url": item.get("webpage_url") or url_clean,
-            "id": item.get("id"),
-            "language": lang
-        }
-
-        with _preview_lock:
-            _preview_cache[url_clean] = preview
-            if len(_preview_cache) > 200:
-                _preview_cache.clear()
-
-        return preview
+        return self.preview_uc.execute(url)
 
     def scan_segments(self, url: str) -> Dict[str, Any]:
         """Scans YouTube video for heatmap segments and returns total duration and heatmap segments."""
-        video_id = extract_video_id(url)
-        if not video_id:
-            raise ValueError("URL YouTube tidak valid")
-
-        if not is_ffmpeg_available():
-            ok = check_dependencies(install_whisper=False, skip_update_ytdlp=True, fatal=False)
-            if not ok:
-                raise RuntimeError("FFmpeg tidak ditemukan di sistem")
-
-        job_dir = os.path.join("clips", video_id)
-        os.makedirs(job_dir, exist_ok=True)
-        cache_file = os.path.join(job_dir, "segments.json")
-        
-        if os.path.exists(cache_file):
-            from core.utils import read_json
-            data_cache = read_json(cache_file)
-            if data_cache:
-                return {
-                    "video_id": video_id,
-                    "duration": data_cache.get("duration", 0),
-                    "segments": data_cache.get("segments", [])
-                }
-
-        segments = fetch_most_replayed(video_id, config.min_score, config.max_duration)
-        total_duration = get_video_duration(video_id)
-        
-        from core.utils import write_json
-        write_json(cache_file, {"duration": total_duration, "segments": segments})
-            
-        return {"video_id": video_id, "duration": total_duration, "segments": segments}
+        return self.scan_uc.execute(url)
 
     def get_cached_ai_highlights(self, url: str) -> Optional[Dict[str, Any]]:
+        from core.youtube import extract_video_id
+        from core.utils import read_json
         video_id = extract_video_id(url)
         if not video_id:
             return None
         job_dir = os.path.join("clips", video_id)
         ai_cache_file = os.path.join(job_dir, "ai_segments.json")
-        from core.utils import read_json
         return read_json(ai_cache_file) if os.path.exists(ai_cache_file) else None
 
     def execute_clipping(
         self,
         payload: Dict[str, Any],
-        event_hook: Optional[Callable[[str, Any], None]] = None,
         is_cancelled: Optional[Callable[[], bool]] = None
     ) -> Dict[str, Any]:
         """
         Executes the clipping pipeline based on settings payload.
         """
-        url = (payload.get("url") or "").strip()
-        if not url:
-            raise ValueError("URL YouTube tidak boleh kosong")
+        return self.clip_uc.execute(payload, is_cancelled)
 
-        crop = payload.get("crop") or "default"
-        ratio = payload.get("ratio") or "9:16"
-        subtitle = bool(payload.get("subtitle"))
-        whisper_model = payload.get("whisper_model") or "small"
-        subtitle_font = payload.get("subtitle_font") or "Arial"
-        subtitle_location = payload.get("subtitle_location") or "bottom"
-        subtitle_fontsdir = payload.get("subtitle_fontsdir") or None
+    def generate_subtitle_preview_sample(self, payload: Dict[str, Any]) -> str:
+        """
+        Generates a short 10-second preview clip with subtitles burned in for tuning subtitle delay.
+        """
+        return self.clip_uc.generate_subtitle_preview_sample(payload)
+
+    def scan_ai_highlights(self, url: str, ai_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Transcribes audio and uses AI to detect highlights.
+        """
+        return self.detect_uc.execute(url, ai_config)
         
-        try:
-            subtitle_delay = float(payload.get("subtitle_delay") or 0.0)
-        except (ValueError, TypeError):
-            subtitle_delay = 0.0
-            
-        subtitle_font_size = payload.get("subtitle_font_size") or 60
-        subtitle_color = payload.get("subtitle_color") or "&H0000FFFF"
-        subtitle_bg_color = payload.get("subtitle_bg_color") or "&H80000000"
-        subtitle_border_style = payload.get("subtitle_border_style")
-        if subtitle_border_style is None:
-            subtitle_border_style = 3
-        subtitle_animation = payload.get("subtitle_animation") or "none"
-        subtitle_max_words = payload.get("subtitle_max_words") or 3
-            
-        if not subtitle_fontsdir and os.path.isdir("fonts"):
-            subtitle_fontsdir = "fonts"
-            
-        padding = payload.get("padding") if payload.get("padding") is not None else 10
-        max_clips = payload.get("max_clips") if payload.get("max_clips") is not None else 10
-        mode = payload.get("mode") or "heatmap"
-        
-        video_id = extract_video_id(url)
-        if not video_id:
-            raise ValueError("URL YouTube tidak valid")
-
-        # Update application global configuration
-        config.whisper_model = whisper_model
-        config.use_highlight = bool(payload.get("use_highlight", False))
-        config.subtitle_font = subtitle_font
-        config.subtitle_fonts_dir = subtitle_fontsdir
-        config.subtitle_location = subtitle_location
-        config.subtitle_delay = subtitle_delay / 1000.0 if subtitle_delay > 10 else subtitle_delay # Convert ms to s if > 10
-        
-        config.subtitle_font_size = int(subtitle_font_size)
-        config.subtitle_color = str(subtitle_color)
-        config.subtitle_bg_color = str(subtitle_bg_color)
-        config.subtitle_border_style = int(subtitle_border_style)
-        config.subtitle_animation = str(subtitle_animation)
-        config.subtitle_max_words = int(subtitle_max_words)
-        
-        config.padding = max(0, int(padding))
-        config.set_ratio_preset(ratio)
-
-        job_dir = os.path.join("clips", video_id)
-        os.makedirs(job_dir, exist_ok=True)
-        config.job_dir = job_dir
-        
-        try:
-            url = payload.get("url")
-            if url:
-                preview = self.get_preview(url)
-                from core.utils import write_json
-                write_json(os.path.join(job_dir, "preview.json"), preview)
-        except Exception as e:
-            if callable(event_hook):
-                event_hook("log", f"Gagal menyimpan preview.json: {e}")
-
-        ok = check_dependencies(install_whisper=True, skip_update_ytdlp=True, fatal=False, whisper_model=whisper_model)
-        if not ok:
-            raise RuntimeError("FFmpeg tidak ditemukan di sistem")
-
-        total_duration = get_video_duration(video_id)
-
-        targets = []
-        picked = payload.get("segments")
-        if isinstance(picked, list) and len(picked) > 0:
-            if callable(event_hook):
-                event_hook("log", f"Menggunakan {len(picked)} segmen yang dipilih pengguna...")
-            for seg in picked:
-                try:
-                    start = float(seg.get("start"))
-                    dur = float(seg.get("duration"))
-                    score = float(seg.get("score", 1.0))
-                except Exception:
-                    continue
-                if dur <= 0:
-                    continue
-                targets.append({"start": start, "duration": dur, "score": score})
-            if not targets:
-                raise ValueError("Segmen yang dipilih tidak valid")
-        elif mode == "custom":
-            start_s = parse_time_to_seconds(payload.get("start"))
-            end_s = parse_time_to_seconds(payload.get("end"))
-            if start_s is None or end_s is None:
-                raise ValueError("Waktu Mulai dan Selesai harus diisi")
-            if end_s <= start_s:
-                raise ValueError("Waktu Selesai harus lebih besar dari Waktu Mulai")
-            targets = [{"start": float(start_s), "duration": float(end_s - start_s), "score": 1.0}]
-        else:
-            if callable(event_hook):
-                event_hook("log", "Memindai segmen most replayed...")
-            segments = fetch_most_replayed(video_id, config.min_score, config.max_duration)
-            if not segments:
-                raise RuntimeError("Data Most Replayed / Heatmap tidak ditemukan untuk video ini")
-            targets = segments[: max(1, int(max_clips) if max_clips else 10)]
-
-        if callable(event_hook):
-            event_hook("total_targets", len(targets))
-
-        success_count = 0
-        outputs = []
-        for idx, item in enumerate(targets, start=1):
-            if is_cancelled and is_cancelled():
-                if callable(event_hook):
-                    event_hook("log", "[CANCEL] Proses dibatalkan oleh pengguna.")
-                break
-
-            if callable(event_hook):
-                event_hook("stage", {"stage": "start_clip", "clip_index": idx, "total": len(targets)})
-
-            ok_clip = process_single_clip(
-                video_id=video_id,
-                item=item,
-                index=idx,
-                total_duration=total_duration,
-                crop_mode=crop,
-                use_subtitle=subtitle,
-                event_hook=event_hook
-            )
-
-            if ok_clip:
-                success_count += 1
-                clip_path = os.path.join(job_dir, f"clip_{idx}.mp4")
-                if os.path.exists(clip_path):
-                    outputs.append({
-                        "name": f"clip_{idx}.mp4",
-                        "path": os.path.abspath(clip_path),
-                        "size": os.path.getsize(clip_path)
-                    })
-
-            if callable(event_hook):
-                event_hook("stage", {"stage": "done_clip", "clip_index": idx, "success": success_count, "outputs": outputs})
-
-        if config.merge_clips and len(outputs) > 1 and not (is_cancelled and is_cancelled()):
-            if callable(event_hook):
-                event_hook("log", "Menggabungkan klip (Merge)...")
-                event_hook("stage", {"stage": "merging"})
-            
-            merged_filename = "merged.mp4"
-            merged_path = os.path.join(job_dir, merged_filename)
-            list_path = os.path.join(job_dir, "concat_list.txt")
-            
-            try:
-                with open(list_path, "w", encoding="utf-8") as f:
-                    for out in outputs:
-                        f.write(f"file '{out['name']}'\n")
-                
-                cmd = [
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                    "-f", "concat", "-safe", "0",
-                    "-i", "concat_list.txt",
-                    "-c", "copy",
-                    merged_filename
-                ]
-                import subprocess
-                res = subprocess.run(cmd, cwd=job_dir, capture_output=True, text=True)
-                if res.returncode != 0:
-                    raise RuntimeError(f"FFmpeg Error: {res.stderr}")
-                
-                outputs.append({
-                    "name": merged_filename,
-                    "path": os.path.abspath(merged_path),
-                    "size": os.path.getsize(merged_path)
-                })
-                
-                # --- Generate Metadata for Merged Video ---
-                try:
-                    from core.utils import read_json, get_preview_data, write_json
-                    combined_texts = []
-                    for out in outputs:
-                        if out['name'] == merged_filename: continue
-                        idx = out['name'].replace("clip_", "").replace(".mp4", "")
-                        meta_path = os.path.join(job_dir, f"metadata_{idx}.json")
-                        if os.path.exists(meta_path):
-                            m_data = read_json(meta_path)
-                            if m_data:
-                                t = m_data.get("title", "")
-                                d = m_data.get("description", "")
-                                combined_texts.append(f"Klip {idx}: Judul: {t}\nDeskripsi: {d}")
-                    
-                    if combined_texts:
-                        if callable(event_hook):
-                            event_hook("log", "Generating metadata for merged video via AI...")
-                            event_hook("stage", {"stage": "ai_metadata", "clip_index": success_count, "is_merge": True})
-                        
-                        preview_data = get_preview_data()
-                        youtube_title = preview_data.get("title", "Unknown")
-                        channel_name = preview_data.get("uploader", "Unknown")
-                        youtube_url = preview_data.get("webpage_url", f"https://youtu.be/{video_id}")
-                        
-                        clip_text = "Ini adalah kompilasi video panjang dari beberapa momen. Berikut ringkasannya:\n" + "\n\n".join(combined_texts)
-                        
-                        from core.ai_detector import ai_detector
-                        ai_config = config.to_dict()
-                        merged_metadata = ai_detector.generate_metadata(
-                            clip_text=clip_text,
-                            youtube_title=youtube_title,
-                            channel_name=channel_name,
-                            youtube_url=youtube_url,
-                            ai_config=ai_config,
-                            event_hook=event_hook,
-                            language=preview_data.get("language", "Indonesia")
-                        )
-                        
-                        if merged_metadata:
-                            meta_file = os.path.join(job_dir, "metadata_merge.json")
-                            write_json(meta_file, merged_metadata, indent=2)
-                            if callable(event_hook):
-                                event_hook("log", f"Metadata kompilasi disimpan ke {meta_file}")
-                except Exception as e:
-                    log.warning(f"Gagal men-generate metadata kompilasi: {e}")
-                
-                if callable(event_hook):
-                    event_hook("log", "Berhasil menggabungkan klip.")
-                    event_hook("stage", {"stage": "done_clip", "clip_index": success_count, "is_merge": True, "success": success_count, "outputs": outputs})
-            except Exception as e:
-                log.error(f"Gagal menggabungkan klip: {e}")
-                if callable(event_hook):
-                    event_hook("log", f"Gagal menggabungkan klip: {e}")
-            finally:
-                if os.path.exists(list_path):
-                    os.remove(list_path)
-
-        return {
-            "video_id": video_id,
-            "total": len(targets),
-            "success": success_count,
-            "output_dir": os.path.abspath(job_dir),
-            "outputs": outputs
-        }
+    def upload_clip(self, uploader: BaseUploader, video_path: str, title: str, description: str, tags: List[str]) -> bool:
+        """
+        Uploads a video to a specific platform.
+        """
+        from pathlib import Path
+        upload_uc = UploadClipUseCase(uploader=uploader, reporter=self.reporter)
+        return upload_uc.execute(Path(video_path), title, description, tags)
 
     def import_cookies(self, file_path: str) -> bool:
         """Imports Netscape cookies file."""
@@ -403,9 +85,10 @@ class ClipController:
         if "# Netscape HTTP Cookie File" not in content and ".youtube.com" not in content:
             raise ValueError("Format file cookie tidak valid. Harus format Netscape HTTP Cookie File.")
 
-        dest = "cred/yt_cookies.txt" # hardcode yt_cookies
+        dest = "cred/yt_cookies.txt"
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
         shutil.copy2(file_path, dest)
-        config.yt_session = dest
+        config.youtube.session = dest
         config.save_to_file()
         return True
 
@@ -448,8 +131,9 @@ class ClipController:
         """
         Clears cached segment JSON files, temporary MKV/MP4 files, and generated clips in clips/ directory.
         """
-        with _preview_lock:
-            _preview_cache.clear()
+        import core.use_cases.preview_clip as pc
+        with pc._preview_lock:
+            pc._preview_cache.clear()
 
         deleted_files = 0
         deleted_bytes = 0
@@ -478,191 +162,6 @@ class ClipController:
             "deleted_size_mb": round(deleted_bytes / (1024 * 1024), 2)
         }
 
-    def generate_subtitle_preview_sample(
-        self,
-        payload: Dict[str, Any],
-        event_hook: Optional[Callable[[str, Any], None]] = None
-    ) -> str:
-        """
-        Generates a short 10-second preview clip with subtitles burned in for tuning subtitle delay.
-        """
-        url = (payload.get("url") or "").strip()
-        if not url:
-            raise ValueError("URL YouTube tidak boleh kosong")
-
-        video_id = extract_video_id(url)
-        if not video_id:
-            raise ValueError("URL YouTube tidak valid")
-
-        crop = payload.get("crop") or "default"
-        ratio = payload.get("ratio") or "9:16"
-        whisper_model = payload.get("whisper_model") or "small"
-        subtitle_font = payload.get("subtitle_font") or "Arial"
-        subtitle_location = payload.get("subtitle_location") or "bottom"
-        subtitle_fontsdir = payload.get("subtitle_fontsdir") or None
-        
-        try:
-            subtitle_delay = float(payload.get("subtitle_delay") or 0.0)
-        except (ValueError, TypeError):
-            subtitle_delay = 0.0
-
-        subtitle_font_size = payload.get("subtitle_font_size") or 60
-        subtitle_color = payload.get("subtitle_color") or "&H0000FFFF"
-        subtitle_bg_color = payload.get("subtitle_bg_color") or "&H80000000"
-        subtitle_border_style = payload.get("subtitle_border_style")
-        if subtitle_border_style is None:
-            subtitle_border_style = 3
-        subtitle_animation = payload.get("subtitle_animation") or "none"
-        subtitle_max_words = payload.get("subtitle_max_words") or 3
-
-        if not subtitle_fontsdir and os.path.isdir("fonts"):
-            subtitle_fontsdir = "fonts"
-
-        config.whisper_model = whisper_model
-        config.subtitle_font = subtitle_font
-        config.subtitle_fonts_dir = subtitle_fontsdir
-        config.subtitle_location = subtitle_location
-        config.subtitle_delay = subtitle_delay / 1000.0 if subtitle_delay > 10 or subtitle_delay < -10 else subtitle_delay
-        
-        config.subtitle_font_size = int(subtitle_font_size)
-        config.subtitle_color = str(subtitle_color)
-        config.subtitle_bg_color = str(subtitle_bg_color)
-        config.subtitle_border_style = int(subtitle_border_style)
-        config.subtitle_animation = str(subtitle_animation)
-        config.subtitle_max_words = int(subtitle_max_words)
-        
-        config.set_ratio_preset(ratio)
-
-        preview_dir = os.path.join("clips", video_id)
-        os.makedirs(preview_dir, exist_ok=True)
-        config.job_dir = preview_dir
-
-        # Determine 10-second test segment start
-        start = 30.0
-        picked = payload.get("segments")
-        if isinstance(picked, list) and len(picked) > 0:
-            start = float(picked[0].get("start", 30.0))
-        elif payload.get("mode") == "custom":
-            start_s = parse_time_to_seconds(payload.get("start"))
-            if start_s is not None:
-                start = float(start_s)
-
-        total_duration = get_video_duration(video_id)
-        test_item = {"start": start, "duration": 10.0, "score": 1.0}
-
-        if callable(event_hook):
-            event_hook("log", f"[PREVIEW] Memproses sampel 10 detik ({int(start)}s - {int(start + 10)}s) dengan Subtitle Delay: {subtitle_delay}ms...")
-
-        ok = process_single_clip(
-            video_id=video_id,
-            item=test_item,
-            index=999,
-            total_duration=total_duration,
-            crop_mode=crop,
-            use_subtitle=True,
-            event_hook=event_hook
-        )
-
-        if not ok:
-            raise RuntimeError("Gagal menghasilkan sampel preview subtitle")
-
-        sample_file = os.path.join(preview_dir, "clip_999.mp4")
-        if not os.path.exists(sample_file):
-            raise FileNotFoundError("File sampel preview tidak ditemukan")
-
-        return os.path.abspath(sample_file)
-
-    def scan_ai_highlights(
-        self,
-        url: str,
-        ai_config: Dict[str, Any],
-        event_hook: Optional[Callable[[str, Any], None]] = None
-    ) -> Dict[str, Any]:
-        """
-        1. Checks if transcript.json exists (loads from cache if available).
-        2. Downloads audio track via yt-dlp if transcript.json is missing.
-        3. Transcribes audio to timestamped segments via Faster-Whisper.
-        4. Saves complete transcript.json.
-        5. Sends transcript to AI Highlight Detector (Ollama / Gemini / OpenAI).
-        6. Returns detected highlights.
-        """
-        video_id = extract_video_id(url)
-        if not video_id:
-            raise ValueError("URL YouTube tidak valid")
-
-        job_dir = os.path.join("clips", video_id)
-        os.makedirs(job_dir, exist_ok=True)
-
-        transcript_cache_file = os.path.join(job_dir, "transcript.json")
-        transcript_segments = []
-
-        if os.path.exists(transcript_cache_file):
-            from core.utils import read_json
-            transcript_segments = read_json(transcript_cache_file, default=[])
-            if transcript_segments and callable(event_hook):
-                event_hook("log", f"[AI] Menggunakan {len(transcript_segments)} klausa transkrip audio dari cache (skip download & Whisper transcribing).")
-
-        if not transcript_segments:
-            audio_file = os.path.join(job_dir, "audio_full.m4a")
-            if not os.path.exists(audio_file):
-                if callable(event_hook):
-                    event_hook("stage", {"stage": "download", "clip_index": 0})
-                    event_hook("log", "[AI] Mengunduh file audio video...")
-
-                cmd_audio = [
-                    sys.executable, "-m", "yt_dlp",
-                    "--force-ipv4", "--quiet", "--no-warnings",
-                    "-f", "ba[ext=m4a]/ba/b",
-                    "-o", audio_file,
-                    f"https://youtu.be/{video_id}"
-                ]
-                if config.yt_session and os.path.exists(config.yt_session):
-                    cmd_audio.extend(["--cookies", config.yt_session])
-
-                res = subprocess.run(cmd_audio)
-                if res.returncode != 0 or not os.path.exists(audio_file):
-                    raise RuntimeError("Gagal mengunduh audio video untuk transkripsi AI.")
-
-            if callable(event_hook):
-                event_hook("stage", {"stage": "subtitle_transcribe", "clip_index": 0})
-                event_hook("log", f"[AI] Mengekstrak transkripsi audio dengan Whisper model ({config.whisper_model})...")
-
-            from core.subtitle import transcribe_audio_file
-            transcript_segments = transcribe_audio_file(audio_file, whisper_model=config.whisper_model, event_hook=event_hook)
-
-            if not transcript_segments:
-                raise RuntimeError("Gagal mengekstrak transkripsi audio.")
-
-            # Save complete transcript to disk so future AI calls don't need re-transcribing!
-            from core.utils import write_json
-            if write_json(transcript_cache_file, transcript_segments, indent=2):
-                if callable(event_hook):
-                    event_hook("log", f"[AI] Transkrip audio lengkap ({len(transcript_segments)} klausa) berhasil disimpan ke cache.")
-
-        if callable(event_hook):
-            event_hook("stage", {"stage": "ai_detect", "clip_index": 0})
-            event_hook("log", f"[AI] Menganalisis {len(transcript_segments)} klausa ucapan dengan AI Model ({ai_config.get('provider', 'ollama').upper()})...")
-
-        from core.ai_detector import ai_detector
-        highlights = ai_detector.detect_highlights(transcript_segments, ai_config, event_hook=event_hook, video_id=video_id)
-
-        total_duration = get_video_duration(video_id)
-        result = {
-            "video_id": video_id,
-            "duration": total_duration,
-            "segments": highlights,
-            "transcript_count": len(transcript_segments)
-        }
-
-        ai_cache_file = os.path.join(job_dir, "ai_segments.json")
-        from core.utils import write_json
-        write_json(ai_cache_file, result, indent=2)
-
-        return result
-
-# Global controller instance
+# For backward compatibility during migration, provide a global controller instance, 
+# although it won't have a ProgressReporter injected by default.
 controller = ClipController()
-
-
-
-

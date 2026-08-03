@@ -17,7 +17,7 @@ def build_subtitle_force_style(font: str, location: str) -> str:
         f"Alignment={alignment},MarginV={margin_v}"
     )
 
-def build_cover_scale_crop_vf(out_w: int, out_h: int) -> str:
+def build_cover_scale_crop_vf(out_w: Optional[int], out_h: Optional[int]) -> str:
     """Builds a video filter string for scaling and center-cropping to fill dimensions."""
     ar_expr = f"{out_w}/{out_h}"
     scale = f"scale='if(gte(iw/ih,{ar_expr}),-2,{out_w})':'if(gte(iw/ih,{ar_expr}),{out_h},-2)'"

@@ -6,10 +6,10 @@ Extracts authentic channel metadata (avatar, subscribers, title) and videos cata
 import os
 import json
 import subprocess
-import sys
 import urllib.request
 from typing import List, Dict, Any, Optional
 from core.logger import log
+from core.yt_dlp_logger import create_yt_dlp_logger
 
 CHANNELS_DIR = "channels"
 CHANNELS_INDEX_FILE = os.path.join(CHANNELS_DIR, "channels.json")
@@ -62,26 +62,42 @@ class ChannelManager:
 
         log.info(f"Extracting authentic channel info for {url} via yt-dlp...")
 
-        cmd_meta = [
-            sys.executable, "-m", "yt_dlp",
-            "--force-ipv4", "--quiet", "--no-warnings",
-            "-J", "--flat-playlist",
-            "--playlist-end", "60",
-            f"{url}/videos"
-        ]
+        # 1. Scrape videos (Uploads)
+        import yt_dlp
+        from typing import Any
+        ydl_opts: dict[str, Any] = {
+            'force_ipv4': True,
+            'no_warnings': True,
+            'extract_flat': True,
+            'playlistend': 60,
+            'logger': create_yt_dlp_logger('[yt-dlp:channel]'),
+        }
 
-        res = subprocess.run(cmd_meta, capture_output=True, text=True)
-        if res.returncode != 0 or not res.stdout.strip():
-            cmd_meta[-1] = url
-            res = subprocess.run(cmd_meta, capture_output=True, text=True)
-
-        if res.returncode != 0 or not res.stdout.strip():
-            raise RuntimeError(f"Gagal mengambil data channel dari YouTube: {url}")
-
+        info: Any = {}
         try:
-            info = json.loads(res.stdout)
-        except Exception as e:
-            raise RuntimeError(f"Gagal memproses data JSON channel: {e}")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                info = ydl.extract_info(f"{url}/videos", download=False)
+        except Exception:
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                    info = ydl.extract_info(url, download=False)
+            except Exception:
+                pass
+
+        # 2. Scrape live streams
+        info_live: Any = {}
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                info_live = ydl.extract_info(f"{url}/streams", download=False)
+        except Exception:
+            pass
+
+        # Defer to live info if videos is completely empty
+        if not info and info_live:
+            info = info_live
+
+        if not info:
+            raise RuntimeError(f"Gagal mengambil data channel dari YouTube: {url}")
 
         channel_title = info.get("title") or info.get("uploader") or query
         channel_id = info.get("uploader_id") or info.get("id") or query.replace("@", "").lower()
@@ -92,16 +108,33 @@ class ChannelManager:
         subs_count = info.get("channel_follower_count") or info.get("subscriber_count")
         subs_str = format_subscriber_count(subs_count)
 
-        # Extract authentic channel avatar / profile picture URL
+        # Extract authentic channel avatar
         avatar_url = ""
         thumbnails = info.get("thumbnails") or []
         if isinstance(thumbnails, list) and thumbnails:
             avatar_url = thumbnails[-1].get("url", "")
 
-        entries = info.get("entries", [])
-        videos = []
-
+        # Combine entries
+        entries = info.get("entries", []) or []
+        entries_live = info_live.get("entries", []) or []
+        
+        seen_ids = set()
+        combined_entries = []
+        
         for entry in entries:
+            v_id = entry.get("id")
+            if v_id and v_id not in seen_ids:
+                seen_ids.add(v_id)
+                combined_entries.append((entry, False))
+                
+        for entry in entries_live:
+            v_id = entry.get("id")
+            if v_id and v_id not in seen_ids:
+                seen_ids.add(v_id)
+                combined_entries.append((entry, True))
+
+        videos = []
+        for entry, force_live in combined_entries:
             v_id = entry.get("id")
             v_title = entry.get("title", "Untitled Video")
             if not v_id or not v_title:
@@ -109,7 +142,7 @@ class ChannelManager:
 
             view_count = entry.get("view_count") or 0
             dur = entry.get("duration") or 0
-            is_live = bool(entry.get("is_live") or entry.get("was_live") or "live" in v_title.lower())
+            is_live = force_live or bool(entry.get("is_live") or entry.get("was_live") or "live" in v_title.lower())
 
             videos.append({
                 "id": v_id,
@@ -172,9 +205,6 @@ class ChannelManager:
         else:
             filtered = [v for v in videos if v.get("type") != "live"]
 
-        if not filtered and videos:
-            filtered = videos
-
         # Filter by Search Query
         if search:
             q = search.lower().strip()
@@ -201,5 +231,17 @@ class ChannelManager:
             "total_pages": total_pages,
             "current_page": page
         }
+    def delete_channel(self, channel_id: str) -> None:
+        """Hapus channel dari daftar indeks dan hapus file catalog JSON terkait."""
+        channel_file = os.path.join(CHANNELS_DIR, f"{channel_id}.json")
+        if os.path.exists(channel_file):
+            try:
+                os.remove(channel_file)
+            except Exception as e:
+                log.warning(f"Gagal menghapus file channel JSON: {e}")
+                
+        all_channels = self.get_all_channels()
+        all_channels = [c for c in all_channels if c.get("id") != channel_id]
+        self.save_channels(all_channels)
 
 channel_manager = ChannelManager()

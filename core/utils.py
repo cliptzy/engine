@@ -120,14 +120,17 @@ def check_dependencies(install_whisper: bool = False, skip_update_ytdlp: bool = 
                 log.info(f"Will auto-download ~{get_model_size(whisper_model)} on first transcribe.")
                 
         except ImportError:
-            log.info("Installing Faster-Whisper package...")
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "faster-whisper"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            log.info("Faster-Whisper package installed successfully.")
-            log.warning(f"Model '{whisper_model}' (~{get_model_size(whisper_model)}) will be downloaded on first use.")
+            if not is_frozen:
+                log.info("Installing Faster-Whisper package...")
+                subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "faster-whisper"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                log.info("Faster-Whisper package installed successfully.")
+                log.warning(f"Model '{whisper_model}' (~{get_model_size(whisper_model)}) will be downloaded on first use.")
+            else:
+                log.error("Faster-Whisper is not bundled in this executable. Subtitle features will be unavailable.")
 
     attempt_add_ffmpeg_to_path()
     if not is_ffmpeg_available():
@@ -161,7 +164,7 @@ def write_json(file_path: str, data: Any, indent: int = 2) -> bool:
         log.warning(f"Gagal menulis ke {file_path}: {e}")
         return False
 
-def get_preview_data(job_dir: str = None, video_id: str = None) -> dict:
+def get_preview_data(job_dir: str | None = None, video_id: str | None = None) -> dict:
     """
     Reads and returns the content of preview.json.
     Priority:

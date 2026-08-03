@@ -1,0 +1,205 @@
+import flet as ft
+from typing import Optional
+from gui.event_bus import event_bus
+from gui.workers import BackgroundWorker
+from gui.components.clipper import (
+    VideoInput,
+    Preview,
+    ClipConfig,
+    ProcessControl,
+    UploadDistribution
+)
+
+class ClipperView(ft.Column):
+    def __init__(self, page: ft.Page):
+        super().__init__()
+        self.page_ref = page
+        self.spacing = 20
+        # type: ignore
+        self.scroll = ft.ScrollMode.AUTO
+        
+        self.worker: Optional[BackgroundWorker] = None
+        
+        self.video_input = VideoInput(self.page_ref)
+        self.preview = Preview()
+        self.clip_config = ClipConfig(self.page_ref)
+        self.process_control = ProcessControl(self.page_ref)
+        self.upload_distribution = UploadDistribution(self.page_ref)
+        
+        self.controls = [
+            self.video_input,
+            self.preview,
+            self.clip_config,
+            self.process_control,
+            self.upload_distribution
+        ]
+        
+        self.clip_config.load_from_config()
+        self.clip_config.detect_hw_accel()
+        self.clip_config.detect_libass()
+        
+    def did_mount(self):
+        event_bus.subscribe("fetch_requested", self.on_fetch_requested)
+        event_bus.subscribe("start_process_requested", self.on_start_process_requested)
+        event_bus.subscribe("cancel_process_requested", self.on_cancel_process_requested)
+        
+    def will_unmount(self):
+        event_bus.unsubscribe("fetch_requested", self.on_fetch_requested)
+        event_bus.unsubscribe("start_process_requested", self.on_start_process_requested)
+        event_bus.unsubscribe("cancel_process_requested", self.on_cancel_process_requested)
+        
+    def on_cancel_process_requested(self, *args, **kwargs):
+        self._cancel_flag = True
+        from core.logger import log
+        log.info("Membatalkan proses klip...")
+        
+    def on_start_process_requested(self, *args, **kwargs):
+        from gui.state import app_state
+        from core.controller import controller
+        from core.logger import log
+        
+        url = self.video_input.url_input.value
+        if not url:
+            app_state.append_log("Error: URL kosong, silakan Load Video terlebih dahulu.")
+            return
+            
+        mode = self.preview.get_selected_mode()
+        segments = []
+        payload = {}
+        
+        if mode == "custom":
+            start_val, end_val = self.preview.get_custom_range()
+            payload["start"] = start_val
+            payload["end"] = end_val
+        else:
+            segments = self.preview.get_selected_segments()
+            if not segments:
+                app_state.append_log(f"Error: Tidak ada segmen yang dipilih untuk mode {mode}")
+                return
+            payload["segments"] = segments
+            
+        payload.update({
+            "url": url,
+            "mode": mode,
+            "crop": self.clip_config.crop_combo.value,
+            "ratio": self.clip_config.ratio_combo.value,
+            "subtitle": bool(self.clip_config.subtitle_check.value),
+            "use_highlight": bool(self.clip_config.highlight_check.value),
+            "merge_clips": bool(self.clip_config.merge_clips_check.value),
+            "whisper_model": self.clip_config.whisper_combo.value,
+            "subtitle_font": self.clip_config.font_combo.value,
+            "subtitle_location": self.clip_config.location_combo.value,
+            "subtitle_delay": float(self.clip_config.delay_spin.value or 0),
+            "subtitle_font_size": int(self.clip_config.font_size_spin.value or 60),
+            "subtitle_color": self.clip_config.color_combo.value,
+            "subtitle_border_style": int(self.clip_config.bg_combo.value or 3),
+            "subtitle_animation": self.clip_config.anim_combo.value,
+            "subtitle_max_words": int(self.clip_config.max_words_spin.value or 3),
+            "padding": int(self.clip_config.padding_spin.value or 0),
+            "max_duration": int(self.clip_config.max_duration_spin.value or 0)
+        })
+        
+        self.set_processing(True)
+        self._cancel_flag = False
+        
+        async def clip_worker():
+            import asyncio
+            try:
+                def check_cancelled():
+                    return self._cancel_flag
+                
+                log.info(f"Memulai proses clipping untuk URL: {url} (Mode: {mode})")
+                res = await asyncio.to_thread(controller.execute_clipping, payload, check_cancelled)
+                
+                if self._cancel_flag:
+                    log.warning("Proses clipping dibatalkan oleh pengguna.")
+                    app_state.append_log("Proses dibatalkan.")
+                else:
+                    success = res.get("success", 0)
+                    log.info(f"Proses clipping selesai! Berhasil memproses {success} klip.")
+                    app_state.append_log(f"Selesai: {success} klip diproses.")
+                    
+                    if success > 0:
+                        self.upload_distribution.load_projects(None)
+            except Exception as e:
+                import traceback
+                log.error(f"Error proses klip: {e}\n{traceback.format_exc()}")
+                app_state.append_log(f"Error: {e}")
+            finally:
+                self.set_processing(False)
+                self.process_control.update_stage("Idle", {})
+                
+        if self.page:
+            self.page.run_task(clip_worker)
+            
+    def on_fetch_requested(self, url: str):
+        from gui.state import app_state
+        from core.controller import controller
+        import threading
+        
+        self.video_input.set_loading(True)
+        app_state.set_processing(True, "Menganalisa URL Video...")
+        
+        async def worker():
+            import asyncio
+            from core.logger import log
+            # We must use asyncio.to_thread for blocking calls
+            try:
+                # 1. Fetch metadata
+                log.info(f"Mengambil metadata dari URL: {url}")
+                preview_data = await asyncio.to_thread(controller.get_preview, url)
+                self.preview.set_preview_data(preview_data)
+                log.info(f"Metadata berhasil didapatkan: {preview_data.get('title')}")
+                
+                # 2. Fetch segments/heatmap
+                app_state.set_processing(True, "Menganalisa Heatmap Video...")
+                log.info(f"Memindai Heatmap (Most Replayed) dari YouTube...")
+                scan_data = await asyncio.to_thread(controller.scan_segments, url)
+                self.preview.set_scan_data(scan_data)
+                log.info(f"Heatmap selesai: {len(scan_data.get('segments', []))} klip ditemukan.")
+                
+                # Check for cached AI segments
+                ai_cache = await asyncio.to_thread(controller.get_cached_ai_highlights, url)
+                if ai_cache:
+                    self.preview.set_ai_scan_data(ai_cache)
+                    
+            except Exception as e:
+                from core.logger import log
+                log.error(f"Gagal memuat video: {e}")
+                app_state.append_log(f"Error: {str(e)}")
+            finally:
+                self.video_input.set_loading(False)
+                app_state.set_processing(False)
+                try:
+                    if self.page:
+                        self.page.update()
+                    else:
+                        self.update()
+                except Exception:
+                    pass
+                    
+        if self.page:
+            self.page.run_task(worker)
+        
+    def set_loading(self, loading: bool) -> None:
+        self.video_input.set_loading(loading)
+
+    def set_processing(self, processing: bool) -> None:
+        self.process_control.set_processing(processing)
+
+    def set_total_targets(self, total: int) -> None:
+        self.process_control.set_total_targets(total)
+
+    def update_stage(self, stage_name: str, data: dict) -> None:
+        self.process_control.update_stage(stage_name, data)
+
+    def on_test_subtitle(self, e: ft.ControlEvent) -> None:
+        event_bus.publish("test_subtitle_requested")
+
+    def load_video_url(self, url: str) -> None:
+        self.video_input.url_input.value = url
+        try:
+            self.video_input.url_input.update()
+        except Exception:
+            pass
+        event_bus.publish("fetch_requested", url=url)
