@@ -79,11 +79,15 @@ jobs:
         run: |
           if [ "${{ matrix.target }}" == "apk" ]; then
             cp dist/cliptzy/*.apk ${{ matrix.artifact_name }}.apk
+          elif [ "${{ matrix.target }}" == "windows" ]; then
+            cd dist/cliptzy
+            7z a ../../${{ matrix.artifact_name }}.zip .
           elif [ "${{ matrix.target }}" == "macos" ]; then
             cd dist/cliptzy
             zip -ry ../../${{ matrix.artifact_name }}.zip .
           else
-            cp dist/cliptzy/*.zip ${{ matrix.artifact_name}}.zip
+            cd dist/cliptzy
+            zip -r ../../${{ matrix.artifact_name }}.zip .
           fi
 
       - name: Upload Artifact
