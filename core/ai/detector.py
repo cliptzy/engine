@@ -183,7 +183,8 @@ class AIHighlightDetector:
         ai_config: Dict[str, Any],
         user_context: str = "",
         event_hook: Optional[Any] = None,
-        language: str = "Indonesia"
+        language: str = "Indonesia",
+        words_data: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         if not clip_text or not clip_text.strip():
             log.warning("Teks subtitle klip kosong, tidak dapat men-generate metadata.")
@@ -216,9 +217,13 @@ WAJIB DITAATI:
    Description: Momen Bang Windah Lupa Disampingnya Ada Mamah Agnes
    Tonton video aslinya di: {youtube_url} #shorts #windahbasudara #windah #mediashare
 3. Highlight adalah teks yang sangat singkat (maksimal 3-4 kata) yang memancing rasa penasaran, lucu, atau bombastis.
+4. Jika data `words_data` diberikan, tulis ulang data tersebut ke dalam key `enriched_transcript` dengan menambahkan field `emotion` dan `color` (gunakan kode Hex). WAJIB gunakan `#FFFF00` (Kuning) untuk kata yang bernada netral/biasa. Gunakan warna mencolok lain (misal `#FF0000` untuk marah/umpatan) hanya pada kata yang memiliki emosi/penekanan kuat. Jangan mengubah nilai `start` dan `end`.
 
 Teks Subtitle Klip Ini:
 {clip_text}
+
+Data Kata (words_data) (Jika ada, gunakan untuk field enriched_transcript):
+{json.dumps(words_data) if words_data else "Tidak ada data kata."}
 
 Format JSON yang wajib:
 ```json
@@ -226,7 +231,16 @@ Format JSON yang wajib:
     "title": "Judul klip clickbait yang menarik",
     "description": "Deskripsi klip yang interaktif beserta link youtube asli",
     "tags": "#foryou #viral #dsb",
-    "highlight": "Teks highlight lucu/singkat"
+    "highlight": "Teks highlight lucu/singkat",
+    "enriched_transcript": [
+        {{
+            "word": "kata",
+            "start": 0.0,
+            "end": 0.5,
+            "emotion": "kaget",
+            "color": "#FF0000"
+        }}
+    ]
 }}
 ```
 """

@@ -2,15 +2,15 @@ import cv2
 import os
 from core.logger import log
 
-def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) -> tuple[float | None, float | None]:
+def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) -> tuple[float | None, float | None, str]:
     """
     Reads a video and samples frames to detect faces.
-    Returns the median normalized center (cx_norm, cy_norm) of the largest face detected.
+    Returns the median normalized center (cx_norm, cy_norm, error_message) of the largest face detected.
     Values are between 0.0 and 1.0.
-    Returns (None, None) if no face is detected or if an error occurs.
+    Returns (None, None, error_message) if no face is detected or if an error occurs.
     """
     if not os.path.exists(video_path):
-        return None, None
+        return None, None, "File video tidak ditemukan."
 
     try:
         import sys
@@ -32,28 +32,65 @@ def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) 
                 log.info("YuNet model downloaded successfully.")
             except Exception as e:
                 log.error(f"Failed to download YuNet model: {e}")
-                return None, None
+                return None, None, "Gagal mengunduh model AI pendeteksi wajah (YuNet). Pastikan koneksi internet stabil."
 
         cap = cv2.VideoCapture(video_path)
-
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        if frame_count <= 0:
-            frame_count = 300  # Fallback
-
-        step = max(1, frame_count // max_samples)
         
+        frames_list = []
+        
+        # Check if OpenCV can read the file
+        ret, test_frame = cap.read()
+        if not cap.isOpened() or not ret:
+            log.info("OpenCV VideoCapture failed (likely codec issue). Falling back to FFmpeg frame extraction...")
+            cap.release()
+            try:
+                import tempfile
+                import glob
+                import subprocess
+                tmpdir = tempfile.mkdtemp()
+                
+                cmd = [
+                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                    "-i", video_path,
+                    "-vf", "fps=1",
+                    "-vframes", str(max_samples),
+                    os.path.join(tmpdir, "frame_%03d.jpg")
+                ]
+                subprocess.run(cmd, check=True)
+                
+                for fpath in glob.glob(os.path.join(tmpdir, "*.jpg")):
+                    img = cv2.imread(fpath)
+                    if img is not None:
+                        frames_list.append(img)
+                        
+                import shutil
+                shutil.rmtree(tmpdir, ignore_errors=True)
+            except Exception as e:
+                log.warning(f"FFmpeg fallback extraction failed: {e}")
+        else:
+            # OpenCV works, append the first frame we already read
+            frames_list.append(test_frame)
+            
+            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if frame_count <= 0:
+                frame_count = 300  # Fallback
+
+            step = max(1, frame_count // max_samples)
+            for i in range(1, max_samples):
+                frame_id = i * step
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
+                r, frame = cap.read()
+                if r and frame is not None:
+                    frames_list.append(frame)
+            cap.release()
+
+        if not frames_list:
+            return None, None, "Sistem gagal membaca stream video (kemungkinan codec tidak didukung)."
+
         centers = []
-        
-        # Initialize the FaceDetectorYN
         detector = None
         
-        for i in range(max_samples):
-            frame_id = i * step
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
-            ret, frame = cap.read()
-            if not ret or frame is None:
-                continue
-
+        for frame in frames_list:
             h, w = frame.shape[:2]
             
             # Downscale frame if it's too large to improve speed
@@ -70,7 +107,7 @@ def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) 
                     model_path,
                     "",
                     (w, h),
-                    score_threshold=0.8,
+                    score_threshold=0.6,
                     nms_threshold=0.3,
                     top_k=5000
                 )
@@ -99,11 +136,9 @@ def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) 
                 cy = y + fh / 2.0
                 centers.append((cx / orig_w, cy / orig_h))
 
-        cap.release()
-
         if not centers:
             log.info("No face detected in sampled frames.")
-            return None, None
+            return None, None, "Secara alami tidak ada wajah manusia (atau terlalu buram) yang terdeteksi pada klip ini."
 
         # Calculate median center to ignore outliers
         centers.sort(key=lambda c: c[0])
@@ -113,8 +148,8 @@ def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) 
         median_cy = centers[len(centers) // 2][1]
         
         log.info(f"Dominant face detected at normalized center ({median_cx:.2f}, {median_cy:.2f})")
-        return median_cx, median_cy
+        return median_cx, median_cy, ""
 
     except Exception as e:
         log.warning(f"Face tracking error: {e}")
-        return None, None
+        return None, None, f"Kesalahan sistem saat deteksi wajah: {str(e)}"

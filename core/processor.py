@@ -115,12 +115,12 @@ def process_single_clip(
                         pass
                 try:
                     from core.face_tracker import get_dominant_face_normalized_center
-                    res_cx, res_cy = get_dominant_face_normalized_center(temp_file)
+                    res_cx, res_cy, error_msg = get_dominant_face_normalized_center(temp_file)
                     if res_cx is None or res_cy is None:
-                        log.info(f"Clip {index}: No face detected, falling back to full mode.")
+                        log.info(f"Clip {index}: No face detected ({error_msg}), falling back to full mode.")
                         if callable(event_hook):
                             try:
-                                event_hook("log", f"Wajah tidak terdeteksi pada klip {index}, beralih ke mode Full (fallback).")
+                                event_hook("log", f"Wajah tidak terdeteksi pada klip {index} ({error_msg}). Beralih ke mode Full (fallback).")
                             except Exception: pass
                         crop_mode = "full"
                     else:
@@ -154,7 +154,7 @@ def process_single_clip(
                 log.debug(f"Event hook error: {e}")
                 
         log.info(f"Generating subtitle for clip {index} (for metadata/burn)...")
-        subtitle_generated, transcript_text = generate_subtitle(cropped_file, subtitle_file, config.subtitle.whisper_model, event_hook=event_hook)
+        subtitle_generated, transcript_text, words_data = generate_subtitle(cropped_file, subtitle_file, config.subtitle.whisper_model, event_hook=event_hook)
         if not subtitle_generated:
             log.warning("Subtitle generation failed, continuing without subtitle...")
 
@@ -182,10 +182,16 @@ def process_single_clip(
                 youtube_url=youtube_url,
                 ai_config=ai_config,
                 event_hook=event_hook,
-                language=preview_data.get("language", "Indonesia")
+                language=preview_data.get("language", "Indonesia"),
+                words_data=words_data
             )
             
             if metadata:
+                enriched_transcript = metadata.get("enriched_transcript")
+                if enriched_transcript and isinstance(enriched_transcript, list):
+                    from core.subtitle import write_enriched_ass_file
+                    write_enriched_ass_file(enriched_transcript, subtitle_file, event_hook=event_hook)
+                    
                 metadata_file = os.path.join(config.job_dir, f"metadata_{index}.json")
                 try:
                     from core.utils import write_json

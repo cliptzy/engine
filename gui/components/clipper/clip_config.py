@@ -101,7 +101,7 @@ class ClipConfig(ft.Container):
             label="Efek Animasi",
             options=[
                 ft.dropdown.Option("none", "Tanpa Animasi"),
-                ft.dropdown.Option("scale", "Scale Up"),
+                ft.dropdown.Option("scale", "Timbul (Scale Up) Per Kata"),
             ],
             expand=1
         )
@@ -159,10 +159,10 @@ class ClipConfig(ft.Container):
             ft.Row(cast(list[ft.Control], [self.crop_combo, self.ratio_combo])),
             ft.Row(cast(list[ft.Control], [self.subtitle_check, self.highlight_check, self.generate_intro_check, self.merge_clips_check]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.whisper_combo, self.font_combo])),
-            ft.Row(cast(list[ft.Control], [self.delay_spin, self.padding_spin, self.max_duration_spin, self.font_size_spin]), alignment=ft.MainAxisAlignment.CENTER),
+            ft.Row(cast(list[ft.Control], [self.delay_spin, self.padding_spin, self.max_duration_spin]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.color_combo, self.location_combo])),
             ft.Row(cast(list[ft.Control], [self.bg_combo, self.anim_combo])),
-            ft.Row(cast(list[ft.Control], [self.max_words_spin, self.hw_combo])),
+            ft.Row(cast(list[ft.Control], [self.max_words_spin, self.font_size_spin, self.hw_combo])),
             ft.Row(cast(list[ft.Control], [self.tts_lang_combo, self.tts_voice_combo])),
             ft.Row(cast(list[ft.Control], [self.btn_intro, self.btn_outro]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.btn_lock_all]), alignment=ft.MainAxisAlignment.CENTER),

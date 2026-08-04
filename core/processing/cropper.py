@@ -53,7 +53,8 @@ def build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w:
             
             if crop_mode == "full_face":
                 vf = (
-                    f"[0:v]split=2[orig1][orig2];"
+                    f"[0:v]split=3[orig1][orig2][orig_bg];"
+                    f"[orig_bg]scale={out_w}:{out_h}:force_original_aspect_ratio=increase,crop={out_w}:{out_h},boxblur=20:20[bg];"
                     # Scale the top video to fit the output width while maintaining aspect ratio
                     f"[orig1]scale={out_w}:-2[top_vid];"
                     # Crop the facecam from the cover-scaled video for the bottom part
@@ -61,8 +62,8 @@ def build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w:
                     f"[scaled]crop={out_w}:{bottom_h}:{x_offset_bottom}:{y_offset_bottom}[bottom_vid];"
                     # Stack them vertically so they touch each other directly (no gap)
                     f"[top_vid][bottom_vid]vstack[stacked];"
-                    # Pad the stacked result to the full canvas size and center it vertically with black background
-                    f"[stacked]pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2:black[out]"
+                    # Overlay the stacked result onto the blurred background
+                    f"[bg][stacked]overlay=(W-w)/2:(H-h)/2[out]"
                 )
             else:
                 vf = (

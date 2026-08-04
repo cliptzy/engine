@@ -108,6 +108,15 @@ def generate_intro(index: int, metadata: dict, event_hook: Optional[Callable] = 
                 
     return intro_to_use
 
+def _has_audio_stream(filepath: str) -> bool:
+    try:
+        res = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0", filepath], capture_output=True, text=True)
+        return "audio" in res.stdout.lower()
+    except Exception:
+        return False
+
+
+
 def stack_and_concat(
     current_clip: str,
     output_file: str,
@@ -118,6 +127,14 @@ def stack_and_concat(
     has_intro = intro_to_use and os.path.isfile(intro_to_use)
     has_outro = config.outro_video and os.path.isfile(config.outro_video)
     
+    if has_intro and not _has_audio_stream(str(intro_to_use)):
+        log.warning("Intro video lacks audio stream. Ignoring intro.")
+        has_intro = False
+        
+    if has_outro and not _has_audio_stream(str(config.outro_video)):
+        log.warning("Outro video lacks audio stream. Ignoring outro.")
+        has_outro = False
+        
     if has_intro or has_outro:
         if callable(event_hook):
             try:
@@ -134,19 +151,19 @@ def stack_and_concat(
         out_w, out_h = config.out_width or 720, config.out_height or 1280
         scale_filter = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2,setsar=1"
         
-        if has_intro:
-            inputs.extend(["-i", intro_to_use])
+        def add_input(file_path: str):
+            nonlocal input_idx, filter_complex
+            inputs.extend(["-i", file_path])
             filter_complex += f"[{input_idx}:v:0]{scale_filter}[v{input_idx}]; [{input_idx}:a:0]aresample=async=1[a{input_idx}]; "
             input_idx += 1
+
+        if has_intro and intro_to_use:
+            add_input(intro_to_use)
             
-        inputs.extend(["-i", current_clip])
-        filter_complex += f"[{input_idx}:v:0]{scale_filter}[v{input_idx}]; [{input_idx}:a:0]aresample=async=1[a{input_idx}]; "
-        input_idx += 1
+        add_input(current_clip)
         
-        if has_outro:
-            inputs.extend(["-i", config.outro_video])
-            filter_complex += f"[{input_idx}:v:0]{scale_filter}[v{input_idx}]; [{input_idx}:a:0]aresample=async=1[a{input_idx}]; "
-            input_idx += 1
+        if has_outro and config.outro_video:
+            add_input(config.outro_video)
             
         concat_parts = ""
         for i in range(input_idx):
