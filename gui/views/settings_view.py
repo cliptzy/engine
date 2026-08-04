@@ -26,22 +26,12 @@ class SettingsView(ft.Container):
         self.ai_key_input = ft.TextField(label="Ollama Host / API Key", value=config.ai.ollama_host, expand=True)
         self.ai_model_input = ft.TextField(label="Model Name", value=config.ai.ollama_model, hint_text="misal: llama3, gemini-1.5-flash, gpt-4o-mini", expand=True)
         self.ai_base_url_input = ft.TextField(label="Base URL", value=config.ai.openai_base_url, expand=True, hint_text="Opsional, untuk 3rd party OpenAI API", visible=False)
-        self.ai_prompt_input = ft.TextField(
-            label="AI Prompt Template", 
-            value=config.ai.prompt or DEFAULT_PROMPT_TEMPLATE, 
-            multiline=True, 
-            min_lines=4, 
-            max_lines=8,
-            expand=True,
-            hint_text="Biarkan kosong untuk menggunakan prompt bawaan. Gunakan {transcript_text} untuk menyisipkan transkrip."
-        )
         
         self.on_ai_provider_changed(None) # init fields
         
         ai_settings_content = ft.Column([
             ft.Row(cast(list[ft.Control], [self.ai_provider_dropdown, self.ai_key_input]), expand=True),
-            ft.Row(cast(list[ft.Control], [self.ai_base_url_input, self.ai_model_input]), expand=True),
-            ft.Row(cast(list[ft.Control], [self.ai_prompt_input]), expand=True)
+            ft.Row(cast(list[ft.Control], [self.ai_base_url_input, self.ai_model_input]), expand=True)
         ], spacing=10)
         
         # --- System Settings ---
@@ -793,9 +783,7 @@ class SettingsView(ft.Container):
             config.ai.openai_key = val
             config.ai.openai_model = model_val
             config.ai.openai_base_url = self.ai_base_url_input.value.strip() if self.ai_base_url_input.value else ""
-            
-        config.ai.prompt = self.ai_prompt_input.value
-        
+
         # System settings
         if self.output_dir_input.value: config.output_dir = self.output_dir_input.value
         

@@ -1,5 +1,5 @@
 import os
-import random  # <-- Tambahkan import random
+import random
 import subprocess
 from typing import Optional, Callable
 from core.logger import log
@@ -61,12 +61,17 @@ def burn_subtitle_and_highlight(
         if config.subtitle.fonts_dir and os.path.isdir(config.subtitle.fonts_dir):
             fontsdir_fwd = config.subtitle.fonts_dir.replace("\\", "/")
             fontsdir_arg = f":fontsdir='{fontsdir_fwd}'"
-        
+
         vf_chain = []
-        af_chain = []
+        af_chain = ["loudnorm=I=-14:LRA=11:TP=-1.5"]
+        scheduled_external_sfx = []
+        scheduled_synth_sfx = []
         
-        from core.constant import SFX_MAP
-        scheduled_sfx = []
+        try:
+            from core.constant import SFX_MAP, SYNTH_SFX_MAP
+        except ImportError:
+            SFX_MAP = {}
+            SYNTH_SFX_MAP = {}
         
         enriched = metadata.get("enriched_transcript", [])
         if isinstance(enriched, list) and len(enriched) > 0:
@@ -77,12 +82,25 @@ def burn_subtitle_and_highlight(
             
             for w in enriched:
                 emotion = str(w.get("emotion", "")).lower()
-                if "sedih" in emotion or "sad" in emotion:
+                
+                if any(e in emotion for e in ["sedih", "sad", "nangis"]):
                     mapped = "sad"
-                elif "kaget" in emotion or "shock" in emotion or "marah" in emotion or "angry" in emotion:
+                elif any(e in emotion for e in ["bosan", "bored", "capek", "lelah", "garing"]):
+                    mapped = "bored"
+                elif any(e in emotion for e in ["kaget", "shock", "terkejut"]):
                     mapped = "shock"
-                elif "heran" in emotion or "confused" in emotion or "janggal" in emotion:
+                elif any(e in emotion for e in ["takut", "fear", "panik", "seram"]):
+                    mapped = "fear"
+                elif any(e in emotion for e in ["marah", "angry", "kesal", "emosi", "frustrasi"]):
+                    mapped = "angry"
+                elif any(e in emotion for e in ["jijik", "disgust", "ew", "najis", "bau"]):
+                    mapped = "disgust"
+                elif any(e in emotion for e in ["heran", "confused", "janggal", "bingung"]):
                     mapped = "confused"
+                elif any(e in emotion for e in ["senang", "happy", "joy", "excited", "keren", "mantap"]):
+                    mapped = "happy"
+                elif any(e in emotion for e in ["lucu", "amused", "haha", "wkwk", "ngakak"]):
+                    mapped = "amused"
                 else:
                     mapped = "neutral"
                     
@@ -105,35 +123,62 @@ def burn_subtitle_and_highlight(
                 e = e + 0.3
                 cond = f"between(t,{s},{e})"
                 
-                # Tambahkan efek visual dan filter audio utama
                 if emo == "sad":
                     vf_chain.append(f"hue=s=0:enable='{cond}'")
                     af_chain.append(f"lowpass=f=500:enable='{cond}'")
+                elif emo == "bored":
+                    vf_chain.append(f"hue=s=0.2:enable='{cond}'")
                 elif emo == "shock":
                     vf_chain.append(f"geq=p(X+15*sin(T*50)\\,Y+15*cos(T*60)):enable='{cond}'")
                     vf_chain.append(f"eq=brightness=0.3:enable='{cond}'")
                     af_chain.append(f"bass=g=5:enable='{cond}'")
                     af_chain.append(f"tremolo=f=10:d=0.5:enable='{cond}'")
+                elif emo == "fear":
+                    vf_chain.append(f"geq=p(X+5*sin(T*100)\\,Y+5*cos(T*110)):enable='{cond}'")
+                    vf_chain.append(f"vignette=PI/2:enable='{cond}'")
+                elif emo == "angry":
+                    vf_chain.append(f"eq=gamma_r=1.5:gamma_g=0.8:gamma_b=0.8:enable='{cond}'")
+                elif emo == "disgust":
+                    vf_chain.append(f"eq=gamma_g=1.5:gamma_r=0.8:gamma_b=0.8:enable='{cond}'")
                 elif emo == "confused":
                     vf_chain.append(f"geq=p(X/1.15+W/2*(1-1/1.15)\\,Y/1.15+H/2*(1-1/1.15)):enable='{cond}'")
                     vf_chain.append(f"vignette=PI/3:enable='{cond}'")
                     vf_chain.append(f"hue=s=0.5:enable='{cond}'")
-                    af_chain.append(f"flanger=delay=10:enable='{cond}'")
+                elif emo == "happy":
+                    vf_chain.append(f"eq=saturation=1.5:brightness=0.05:enable='{cond}'")
+                elif emo == "amused":
+                    vf_chain.append(f"eq=contrast=1.3:enable='{cond}'")
                 
-                if emo in SFX_MAP and len(SFX_MAP[emo]) > 0:
-                    sfx_file = "assets/audio/" + random.choice(SFX_MAP[emo])
-                    if os.path.exists(sfx_file):
-                        scheduled_sfx.append((sfx_file, s))
-                    else:
-                        log.warning(f"SFX file not found for emotion '{emo}': {sfx_file}")
+                available_sfx_pool = []
+                
+                if emo in SFX_MAP:
+                    for filename in SFX_MAP[emo]:
+                        sfx_file = "assets/audio/" + filename
+                        if os.path.exists(sfx_file):
+                            available_sfx_pool.append({"type": "external", "data": sfx_file})
+                            pass
+                        else:
+                            log.debug(f"File MP3 dilewati karena tidak ditemukan: {sfx_file}")
+                
+                if emo in SYNTH_SFX_MAP:
+                    # available_sfx_pool.append({"type": "synth", "data": SYNTH_SFX_MAP[emo]})
+                    pass
+
+                if available_sfx_pool:
+                    chosen_sfx = random.choice(available_sfx_pool)
+                    
+                    if chosen_sfx["type"] == "external":
+                        scheduled_external_sfx.append((chosen_sfx["data"], s))
+                    elif chosen_sfx["type"] == "synth":
+                        scheduled_synth_sfx.append((chosen_sfx["data"], s))
 
         subtitle_file_fwd = subtitle_file.replace("\\", "/")
         vf_chain.append(f"subtitles=filename='{subtitle_file_fwd}'{fontsdir_arg}")
         
+        unique_sfx_files = list(dict.fromkeys([sfx for sfx, _ in scheduled_external_sfx]))
+        total_sfx = len(scheduled_external_sfx) + len(scheduled_synth_sfx)
         
-        unique_sfx_files = list(dict.fromkeys([sfx for sfx, _ in scheduled_sfx]))
-        
-        if len(unique_sfx_files) > 0:
+        if total_sfx > 0:
             cmd_subtitle = [
                 "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
                 "-i", cropped_file
@@ -144,27 +189,31 @@ def burn_subtitle_and_highlight(
                 
             fc_parts = []
             
-            # Mapping Video
             fc_parts.append(f"[0:v]{','.join(vf_chain)}[vout]")
             
-            # Mapping Audio Utama
             if af_chain:
                 fc_parts.append(f"[0:a]{','.join(af_chain)}[main_a]")
                 main_a = "[main_a]"
             else:
                 main_a = "[0:a]"
                 
-            # Adelay untuk setiap SFX
             amix_inputs = main_a
-            for i, (sfx_file, s_time) in enumerate(scheduled_sfx):
+            mix_count = 1
+            
+            for i, (sfx_file, s_time) in enumerate(scheduled_external_sfx):
                 input_idx = unique_sfx_files.index(sfx_file) + 1
                 delay_ms = int(s_time * 1000)
-                fc_parts.append(f"[{input_idx}:a]adelay={delay_ms}|{delay_ms}[sfx{i}]")
-                amix_inputs += f"[sfx{i}]"
+                fc_parts.append(f"[{input_idx}:a]adelay={delay_ms}|{delay_ms}[ext_sfx{i}]")
+                amix_inputs += f"[ext_sfx{i}]"
+                mix_count += 1
                 
-            # Mix
-            mix_count = len(scheduled_sfx) + 1
-            fc_parts.append(f"{amix_inputs}amix=inputs={mix_count}:duration=first:dropout_transition=0[aout]")
+            for i, (recipe, s_time) in enumerate(scheduled_synth_sfx):
+                delay_ms = int(s_time * 1000)
+                fc_parts.append(f"{recipe}[raw_syn{i}];[raw_syn{i}]adelay={delay_ms}|{delay_ms}[syn_sfx{i}]")
+                amix_inputs += f"[syn_sfx{i}]"
+                mix_count += 1
+
+            fc_parts.append(f"{amix_inputs}amix=inputs={mix_count}:duration=first:dropout_transition=0:normalize=0[aout]")
             
             cmd_subtitle.extend(["-filter_complex", ";".join(fc_parts)])
             cmd_subtitle.extend(["-map", "[vout]", "-map", "[aout]"])

@@ -99,10 +99,7 @@ class AIHighlightDetector:
         provider = AIProviderFactory.create(provider_name)
 
         for i, chunk_text in enumerate(chunks):
-            template = ai_config.get("ai_prompt")
-            if not template or not template.strip():
-                template = DEFAULT_PROMPT_TEMPLATE
-            
+            template = DEFAULT_PROMPT_TEMPLATE
             prompt = template.replace("{transcript_text}", chunk_text)
             prompt = prompt.replace("{language}", language)
             
@@ -219,6 +216,7 @@ WAJIB DITAATI:
    Tonton video aslinya di: {youtube_url} #shorts #windahbasudara #windah #mediashare
 3. Highlight adalah teks yang sangat singkat (maksimal 3-4 kata) yang memancing rasa penasaran, lucu, atau bombastis.
 4. Jika data `words_data` diberikan, tulis ulang data tersebut ke dalam key `enriched_transcript` dengan menambahkan field `emotion` dan `color` (gunakan kode Hex). WAJIB gunakan `#FFFF00` (Kuning) untuk kata yang bernada netral/biasa. Gunakan warna mencolok lain (misal `#FF0000` untuk marah/umpatan) hanya pada kata yang memiliki emosi/penekanan kuat. Jangan mengubah nilai `start` dan `end`.
+5. Tidak boleh ada emosi berulang kecuali emosi netral, emosi yang sama boleh muncul kembali setelah 5 detik
 
 Teks Subtitle Klip Ini:
 {clip_text}
@@ -226,8 +224,19 @@ Teks Subtitle Klip Ini:
 Data Kata (words_data) (Jika ada, gunakan untuk field enriched_transcript):
 {json.dumps(words_data) if words_data else "Tidak ada data kata."}
 
-Contoh Emosi:
-{list(SFX_MAP)}
+KATEGORI EMOSI YANG DIIZINKAN (EMOTION_LIST):
+Hanya gunakan salah satu dari nilai di bawah ini untuk setiap segmen teks. Jika tidak ada emosi spesifik, gunakan "neutral".
+
+1. "sad"      : Sedih, menangis, kecewa, atau suasana murung.
+2. "bored"    : Bosan, lelah, capek, pasrah, atau kalimat garing/monoton.
+3. "shock"    : Kaget, terkejut keras, teriakan tiba-tiba, atau momen plot twist.
+4. "fear"     : Takut, panik, ngeri, seram, atau kekhawatiran yang mendesak.
+5. "angry"    : Marah, kesal, frustrasi, emosi, atau mengeluh dengan keras/kasar.
+6. "disgust"  : Jijik, ilfeel, menolak sesuatu yang kotor/aneh ("ew", "najis", "bau").
+7. "confused" : Bingung, heran, merasa ada yang janggal, atau tidak paham ("hah?", "maksudnya?").
+8. "happy"    : Senang, antusias (excited), memuji ("keren", "mantap"), atau merayakan sesuatu.
+9. "amused"   : Lucu, terhibur, tertawa ("haha", "wkwk", "bjir"), atau sarkasme komedi ringan.
+10. "neutral" : Normal, datar, informatif biasa, atau tidak ada emosi yang menonjol.
 
 Format JSON yang wajib:
 ```json

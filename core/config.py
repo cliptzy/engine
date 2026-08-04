@@ -26,7 +26,6 @@ class AIConfig:
     openai_key: str = ""
     openai_model: str = "gpt-4o-mini"
     openai_base_url: str = ""
-    prompt: str = ""
     use_highlight: bool = False
     use_generate_intro: bool = False
 
@@ -181,7 +180,6 @@ class AppConfig:
             "openai_key": self.ai.openai_key,
             "openai_model": self.ai.openai_model,
             "openai_base_url": self.ai.openai_base_url,
-            "ai_prompt": self.ai.prompt,
             
             "tts_language": self.tts_language,
             "tts_voice": self.tts_voice,
@@ -291,8 +289,6 @@ class AppConfig:
             self.ai.openai_model = data["openai_model"]
         if "openai_base_url" in data:
             self.ai.openai_base_url = data["openai_base_url"]
-        if "ai_prompt" in data and data["ai_prompt"]:
-            self.ai.prompt = data["ai_prompt"]
             
         if "tts_language" in data:
             self.tts_language = data["tts_language"]

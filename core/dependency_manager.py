@@ -96,7 +96,7 @@ def install_dependencies(on_progress: Optional[Callable[[str], None]] = None) ->
         # 2. Install FFmpeg
         emit_log("\n--- Instalasi FFmpeg ---")
         if is_windows:
-            ffmpeg_url = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+            ffmpeg_url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
             ffmpeg_zip = os.path.join(bin_dir, "ffmpeg.zip")
             emit_log(f"Mengunduh FFmpeg dari {ffmpeg_url}...")
             try:
@@ -112,7 +112,7 @@ def install_dependencies(on_progress: Optional[Callable[[str], None]] = None) ->
             except Exception as e:
                 emit_log(f"[ERROR] Gagal mengunduh FFmpeg: {e}")
         elif is_linux:
-            ffmpeg_url = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
+            ffmpeg_url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
             ffmpeg_tar = os.path.join(bin_dir, "ffmpeg.tar.xz")
             emit_log(f"Mengunduh FFmpeg dari {ffmpeg_url}...")
             try:
@@ -124,7 +124,7 @@ def install_dependencies(on_progress: Optional[Callable[[str], None]] = None) ->
             except Exception as e:
                 emit_log(f"[ERROR] Gagal mengunduh FFmpeg: {e}")
         elif is_mac:
-            ffmpeg_url = "https://evermeet.cx/ffmpeg/ffmpeg-6.0.zip"
+            ffmpeg_url = "https://evermeet.cx/ffmpeg/getrelease/zip"
             ffmpeg_zip = os.path.join(bin_dir, "ffmpeg.zip")
             emit_log(f"Mengunduh FFmpeg dari {ffmpeg_url}...")
             try:

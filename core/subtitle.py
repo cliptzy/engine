@@ -1,5 +1,6 @@
 import os
 import subprocess
+import gc  
 from typing import Callable, Any, Optional
 from core.logger import log
 
@@ -9,7 +10,6 @@ def format_ass_time(seconds: float) -> str:
     minutes = int((seconds % 3600) // 60)
     secs = int(seconds % 60)
     centis = int(round((seconds % 1) * 100))
-    # Handle rounding overflow
     if centis == 100:
         centis = 0
         secs += 1
@@ -21,14 +21,7 @@ def format_ass_time(seconds: float) -> str:
                 hours += 1
     return f"{hours}:{minutes:02d}:{secs:02d}.{centis:02d}"
 
-def _transcribe_with_language_sync(model, audio_file: str, word_timestamps: bool):
-    from core.config import config
-    import os
-    
-    from core.utils import get_preview_data
-    preview_data = get_preview_data()
-    target_lang = preview_data.get("language") if preview_data else None
-
+def _transcribe_with_language_sync(model, audio_file: str, word_timestamps: bool, target_lang: Optional[str] = None):
     prompt = "Berikut adalah cuplikan video dengan ucapan santai dan gaul yang diucapkan dengan cepat:" if target_lang == "id" else None
     
     segments_gen, _ = model.transcribe(
@@ -40,7 +33,6 @@ def _transcribe_with_language_sync(model, audio_file: str, word_timestamps: bool
         vad_filter=True,
         vad_parameters=dict(min_silence_duration_ms=500)
     )
-    
         
     return segments_gen
 
@@ -56,12 +48,16 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
         return False, "", []
         
     from core.config import config
+    from core.utils import get_preview_data
+    
+    preview_data = get_preview_data()
+    target_lang = preview_data.get("language") if preview_data else None
+    
+    audio_wav = video_file + ".wav"
 
     def load_and_transcribe():
-        audio_wav = video_file + ".wav"
         if callable(event_hook):
-            try:
-                event_hook("log", "[ffmpeg] Mengekstrak audio PCM murni (.wav) untuk memastikan subtitle sinkron 100%...")
+            try: event_hook("log", "[ffmpeg] Mengekstrak audio PCM murni (.wav) untuk memastikan subtitle sinkron 100%...")
             except Exception: pass
             
         cmd_extract = [
@@ -73,43 +69,35 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
         
         try:
             subprocess.run(cmd_extract, check=True)
+            current_audio = audio_wav
         except Exception as e:
             log.warning(f"Gagal mengekstrak .wav, fallback ke original video: {e}")
-            audio_wav = video_file
+            current_audio = video_file
             
         if callable(event_hook):
-            try:
-                event_hook("stage", {"stage": "subtitle_model_load"})
-            except Exception as e:
-                log.debug(f"Event hook error: {e}")
-                
+            try: event_hook("stage", {"stage": "subtitle_model_load"})
+            except Exception: pass
+            
         log.info(f"Loading Faster-Whisper model '{whisper_model}'...")
         model = WhisperModel(whisper_model, device="cpu", compute_type="int8")
         
         log.info("Model loaded. Transcribing audio...")
         if callable(event_hook):
-            try:
-                event_hook("stage", {"stage": "subtitle_transcribe"})
-            except Exception as e:
-                log.debug(f"Event hook error: {e}")
-                
-        segments_gen = _transcribe_with_language_sync(model, audio_wav, word_timestamps=True)
+            try: event_hook("stage", {"stage": "subtitle_transcribe"})
+            except Exception: pass
+            
+        segments_gen = _transcribe_with_language_sync(model, current_audio, word_timestamps=True, target_lang=target_lang)
         
         segments = []
         for s in segments_gen:
             if callable(event_hook):
-                try:
-                    event_hook("log", f"[whisper-segment] {s.start:.2f}s - {s.end:.2f}s : {s.text}")
-                except Exception:
-                    pass
+                try: event_hook("log", f"[whisper-segment] {s.start:.2f}s - {s.end:.2f}s : {s.text}")
+                except Exception: pass
             segments.append(s)
             
-        if audio_wav != video_file and os.path.exists(audio_wav):
-            try:
-                os.remove(audio_wav)
-            except Exception:
-                pass
-                
+        del model
+        gc.collect()
+            
         return segments
 
     try:
