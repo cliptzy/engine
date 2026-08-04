@@ -1,6 +1,7 @@
 import json
 import re
 from typing import List, Dict, Any, Optional
+from core.constant import SFX_MAP
 from core.logger import log
 from core.ai.factory import AIProviderFactory
 
@@ -224,6 +225,9 @@ Teks Subtitle Klip Ini:
 
 Data Kata (words_data) (Jika ada, gunakan untuk field enriched_transcript):
 {json.dumps(words_data) if words_data else "Tidak ada data kata."}
+
+Contoh Emosi:
+{list(SFX_MAP)}
 
 Format JSON yang wajib:
 ```json
