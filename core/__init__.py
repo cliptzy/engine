@@ -1,3 +1,5 @@
+__version__ = "v3.0.10"
+
 from core.logger import log, setup_logger
 from core.config import config, AppConfig
 from core.utils import check_dependencies, is_ffmpeg_available, get_model_size
@@ -6,6 +8,7 @@ from core.processor import process_single_clip
 from core.controller import controller, ClipController
 
 __all__ = [
+    "__version__",
     "log",
     "setup_logger",
     "config",

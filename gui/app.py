@@ -25,7 +25,8 @@ def main(page: ft.Page) -> None:
     page.window.height = h
     
     # Load fonts
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    from core.utils import get_app_root
+    base_dir = get_app_root()
     page.fonts = {
         "Inter": os.path.join(base_dir, "assets", "fonts", "Inter-Regular.ttf"),
         "Inter Bold": os.path.join(base_dir, "assets", "fonts", "Inter-Bold.ttf")
@@ -42,7 +43,7 @@ def main(page: ft.Page) -> None:
     app_bar = Header()
     
     def on_navigate(index: int) -> None:
-        routes = ["clipper", "creator_hub", "settings"]
+        routes = ["clipper", "creator_hub", "sfx", "settings"]
         if 0 <= index < len(routes):
             app_state.set_page(routes[index])
     
@@ -62,6 +63,44 @@ def main(page: ft.Page) -> None:
         app_state.set_page("clipper")
         router.initialize()
         page.update()
+        
+        # Check for updates in background
+        async def check_update_worker():
+            import asyncio
+            from core.updater import check_for_updates
+            from core.logger import log
+            
+            try:
+                # Run sync HTTP request in thread pool
+                has_update, new_ver, release_url = await asyncio.to_thread(check_for_updates)
+                if has_update and new_ver and release_url:
+                    log.info(f"Pembaruan tersedia: {new_ver}. Menampilkan notifikasi ke pengguna.")
+                    
+                    async def on_download_click(e):
+                        await ft.UrlLauncher().launch_url(release_url)
+                        dialog.open = False
+                        page.update()
+                        
+                    def on_close_click(e):
+                        dialog.open = False
+                        page.update()
+                        
+                    dialog = ft.AlertDialog(
+                        title=ft.Text("Pembaruan Tersedia 🚀", weight=ft.FontWeight.BOLD),
+                        content=ft.Text(f"Versi terbaru Cliptzy ({new_ver}) telah tersedia!\nSilakan unduh untuk mendapatkan fitur dan perbaikan terbaru."),
+                        actions=[
+                            ft.TextButton("Nanti Saja", on_click=on_close_click),
+                            ft.Button("Unduh Sekarang", on_click=on_download_click, bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE),
+                        ],
+                        actions_alignment=ft.MainAxisAlignment.END,
+                    )
+                    page.overlay.append(dialog)
+                    dialog.open = True
+                    page.update()
+            except Exception as e:
+                log.warning(f"Error saat menjalankan update checker: {e}")
+
+        page.run_task(check_update_worker)
         
     def show_login_ui():
         """Tampilkan halaman login (kunci aplikasi)."""

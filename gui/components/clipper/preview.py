@@ -195,6 +195,7 @@ class Preview(ft.Container):
         self.segment_count_label.value = f"Segmen Heatmap Ditemukan ({len(self.segments_data)}):"
         
         for idx, seg in enumerate(self.segments_data, start=1):
+            seg["original_index"] = idx
             start_s = int(seg.get("start", 0))
             dur_s = int(seg.get("duration", 0))
             score = seg.get("score", 0.0)
@@ -220,6 +221,7 @@ class Preview(ft.Container):
         self.ai_segment_count_label.value = f"Segmen AI Highlights Ditemukan ({len(self.ai_segments_data)}):"
 
         for idx, seg in enumerate(self.ai_segments_data, start=1):
+            seg["original_index"] = idx
             start_s = int(seg.get("start", 0))
             dur_s = int(seg.get("duration", 0))
             title = seg.get("title", "AI Highlight")

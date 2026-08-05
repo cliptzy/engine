@@ -39,8 +39,7 @@ class OpenAIProvider:
                     if callable(event_hook):
                         event_hook("log_inline", content_chunk)
                         
-            if callable(event_hook):
-                event_hook("log", "")
+            log.info( "")
                 
             if not full_response:
                 raise RuntimeError("Respon dari OpenAI API kosong.")

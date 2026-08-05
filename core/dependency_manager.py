@@ -104,7 +104,7 @@ def install_dependencies(on_progress: Optional[Callable[[str], None]] = None) ->
                 emit_log("Berhasil mengunduh FFmpeg. Mengekstrak...")
                 with zipfile.ZipFile(ffmpeg_zip, 'r') as zip_ref:
                     for file_info in zip_ref.infolist():
-                        if file_info.filename.endswith("ffmpeg.exe") or file_info.filename.endswith("ffprobe.exe"):
+                        if file_info.filename.endswith("ffmpeg.exe") or file_info.filename.endswith("ffprobe.exe") or file_info.filename.endswith("ffplay.exe"):
                             file_info.filename = os.path.basename(file_info.filename)
                             zip_ref.extract(file_info, bin_dir)
                 os.remove(ffmpeg_zip)
@@ -118,7 +118,7 @@ def install_dependencies(on_progress: Optional[Callable[[str], None]] = None) ->
             try:
                 urllib.request.urlretrieve(ffmpeg_url, ffmpeg_tar)
                 emit_log("Berhasil mengunduh FFmpeg. Mengekstrak...")
-                subprocess.run(["tar", "-xf", ffmpeg_tar, "-C", bin_dir, "--strip-components=1", "--wildcards", "*/ffmpeg", "*/ffprobe"], check=True)
+                subprocess.run(["tar", "-xf", ffmpeg_tar, "-C", bin_dir, "--strip-components=1", "--wildcards", "*/ffmpeg", "*/ffprobe", "*/ffplay"], check=True)
                 os.remove(ffmpeg_tar)
                 emit_log("FFmpeg berhasil diekstrak.")
             except Exception as e:

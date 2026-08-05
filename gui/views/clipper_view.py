@@ -1,5 +1,5 @@
 import flet as ft
-from typing import Optional
+from typing import Optional, Any
 from gui.event_bus import event_bus
 from gui.workers import BackgroundWorker
 from gui.components.clipper import (
@@ -102,6 +102,24 @@ class ClipperView(ft.Column):
         
         self.set_processing(True)
         self._cancel_flag = False
+        
+        class FletProgressReporter:
+            def __init__(self, view):
+                self.view = view
+            def on_progress(self, label: str, current: int, total: int) -> None:
+                if label == "total_targets":
+                    self.view.set_total_targets(current)
+                else:
+                    self.view.update_stage(label, {"clip_index": current, "total": total})
+            def on_log(self, message: str) -> None:
+                app_state.append_log(message)
+            def on_error(self, error: str) -> None:
+                app_state.append_log(f"Error: {error}")
+            def on_finished(self, result: Any) -> None:
+                pass
+                
+        controller.reporter = FletProgressReporter(self)
+        controller.clip_uc.reporter = controller.reporter
         
         async def clip_worker():
             import asyncio

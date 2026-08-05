@@ -90,8 +90,7 @@ def process_single_clip(
     try:
         if not os.path.exists(cropped_file):
             if source_url and os.path.isfile(source_url):
-                if callable(event_hook):
-                    event_hook("log", f"[ffmpeg] Memotong video lokal: {start}s - {end}s\n")
+                log.info( f"[ffmpeg] Memotong video lokal: {start}s - {end}s\n")
                 cmd_cut = [
                     "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
                     "-ss", str(start),
@@ -118,14 +117,11 @@ def process_single_clip(
                         return False
             else:
                 try:
-                    if callable(event_hook):
-                        event_hook("log", f"[yt-dlp] Downloading segment: {start}s - {end}s\n")
+                    log.info( f"[yt-dlp] Downloading segment: {start}s - {end}s\n")
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
                         ydl.download([f"https://youtu.be/{video_id}"])
                 except Exception as e:
                     log.info(f"Retrying download with fallback format for clip {index}: {e}")
-                    if callable(event_hook):
-                        event_hook("log", f"[yt-dlp] Retrying download with fallback format...\n")
                     with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl: # type: ignore
                         ydl.download([f"https://youtu.be/{video_id}"])
 
@@ -137,21 +133,14 @@ def process_single_clip(
             
             cx_norm, cy_norm = 0.5, 0.5
             if crop_mode in ["split_face", "full_face"]:
-                if callable(event_hook):
-                    try:
-                        event_hook("stage", {"stage": "face_track", "clip_index": index})
-                        event_hook("log", f"Detecting face position for dynamic crop in clip {index}...")
-                    except Exception as e:
-                        pass
+                log.info( f"Detecting face position for dynamic crop in clip {index}...")
+
                 try:
                     from core.face_tracker import get_dominant_face_normalized_center
                     res_cx, res_cy, error_msg = get_dominant_face_normalized_center(temp_file)
                     if res_cx is None or res_cy is None:
                         log.info(f"Clip {index}: No face detected ({error_msg}), falling back to full mode.")
-                        if callable(event_hook):
-                            try:
-                                event_hook("log", f"Wajah tidak terdeteksi pada klip {index} ({error_msg}). Beralih ke mode Full (fallback).")
-                            except Exception: pass
+                        log.info( f"Wajah tidak terdeteksi pada klip {index} ({error_msg}). Beralih ke mode Full (fallback).")
                         crop_mode = "full"
                     else:
                         cx_norm, cy_norm = res_cx, res_cy
@@ -191,10 +180,10 @@ def process_single_clip(
         # --- AI Metadata Generation ---
         metadata = {}
         if transcript_text:
+            log.info( f"Generating metadata (Title, Desc, Highlight) via AI for clip {index}...")
             if callable(event_hook):
                 try:
                     event_hook("stage", {"stage": "ai_metadata", "clip_index": index})
-                    event_hook("log", f"Generating metadata (Title, Desc, Highlight) via AI for clip {index}...")
                 except Exception: pass
                 
             from core.utils import get_preview_data
@@ -227,8 +216,7 @@ def process_single_clip(
                 try:
                     from core.utils import write_json
                     write_json(metadata_file, metadata, indent=2)
-                    if callable(event_hook):
-                        event_hook("log", f"Metadata saved to {metadata_file}")
+                    log.info( f"Metadata saved to {metadata_file}")
                 except Exception as e:
                     log.warning(f"Failed to save metadata for clip {index}: {e}")
 

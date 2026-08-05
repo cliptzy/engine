@@ -49,6 +49,11 @@ class ProcessControl(ft.Container):
         )
 
     def on_start_requested(self, e: Any = None) -> None:
+        self.start_btn.disabled = True
+        try:
+            self.update()
+        except Exception:
+            pass
         event_bus.publish("start_process_requested")
         
     def on_cancel_requested(self, e: Any = None) -> None:

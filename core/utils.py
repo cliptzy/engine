@@ -19,16 +19,28 @@ def open_dir(dir_path):
     except Exception as e:
         print(f"Terjadi kesalahan saat membuka folder: {e}")
 
+def get_app_root() -> str:
+    """Returns the absolute path to the application root directory."""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+        
+    exe_dir = os.path.dirname(sys.executable)
+    exe_name = os.path.basename(sys.executable).lower()
+    
+    # Deteksi flet build desktop runner (bukan python.exe)
+    if exe_name not in ("python.exe", "pythonw.exe", "python", "python3", "python3.exe"):
+        flet_app_dir = os.path.join(exe_dir, "app")
+        if os.path.isdir(flet_app_dir):
+            return flet_app_dir
+            
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 def inject_local_bin_to_path():
     """
     Unconditionally prepends the local app bin/ directory to the system PATH.
     This ensures that downloaded dependencies (FFmpeg, Deno) take highest priority.
     """
-    if getattr(sys, 'frozen', False):
-        app_root = os.path.dirname(sys.executable)
-    else:
-        app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        
+    app_root = get_app_root()
     bin_dir = os.path.join(app_root, "bin")
     if os.path.isdir(bin_dir) and bin_dir not in os.environ.get("PATH", ""):
         os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"

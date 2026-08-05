@@ -56,12 +56,12 @@ class InstagramUploader:
             
             caption = "\n\n".join(parts).strip()
                 
-            if event_hook: event_hook("log", f"[Instagram] Memulai login via sessionid...")
+            logger.info( f"[Instagram] Memulai login via sessionid...")
             
             cl = Client()
             cl.login_by_sessionid(session_id)
             
-            if event_hook: event_hook("log", f"[Instagram] Berhasil login. Memulai upload Reels...")
+            logger.info( f"[Instagram] Berhasil login. Memulai upload Reels...")
             logger.info(f"Mengunggah ke Instagram: {file_path}, caption: {caption}")
             
             thumb_path = f"{file_path}.jpg"
@@ -88,7 +88,7 @@ class InstagramUploader:
             
             if not media:
                 err_msg = f"Gagal upload video ke Instagram Reels."
-                if event_hook: event_hook("log", f"[Instagram] ❌ {err_msg}")
+                logger.error( f"[Instagram] ❌ {err_msg}")
                 logger.error(err_msg)
                 return UploadResult(False, self.platform_name, error_msg=err_msg)
             
@@ -104,12 +104,12 @@ class InstagramUploader:
                     })
                 from core.utils import write_json
                 if write_json(config.instagram.session, new_cookies, indent=2):
-                    if event_hook: event_hook("log", "[Instagram] Cookie berhasil diperbarui secara otomatis.")
+                    logger.info( "[Instagram] Cookie berhasil diperbarui secara otomatis.")
             except Exception as e:
                 logger.warning(f"Gagal memperbarui cookie Instagram: {e}")
 
             media_url = f"https://www.instagram.com/reel/{media.code}/"
-            if event_hook: event_hook("log", f"[Instagram] ✅ Upload berhasil! {media_url}")
+            logger.info( f"[Instagram] ✅ Upload berhasil! {media_url}")
             return UploadResult(True, self.platform_name, url=media_url)
             
         except Exception as e:

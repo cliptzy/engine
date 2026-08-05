@@ -79,13 +79,9 @@ def create_yt_dlp_progress_hook(
             total = d.get("_total_bytes_estimate_str", d.get("_total_bytes_str", ""))
             msg = f"{prefix} [download] {percent} of {total} at {speed} ETA {eta}"
             log.info(msg)
-            if callable(event_hook):
-                event_hook("log", msg)
         elif d["status"] == "finished":
             filename = d.get("filename", "")
             msg = f"{prefix} Download selesai: {filename}"
             log.info(msg)
-            if callable(event_hook):
-                event_hook("log", msg)
 
     return hook

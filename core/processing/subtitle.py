@@ -26,10 +26,7 @@ def burn_subtitle_and_highlight(
 
     if should_burn and os.path.exists(subtitle_file):
         if has_highlight:
-            if callable(event_hook):
-                try:
-                    event_hook("log", f"Adding Highlight text to subtitle file for clip {index}...")
-                except Exception: pass
+            log.info( f"Adding Highlight text to subtitle file for clip {index}...")
             try:
                 from core.subtitle import format_ass_time
                 highlight_val = metadata.get("highlight")
@@ -65,13 +62,12 @@ def burn_subtitle_and_highlight(
         vf_chain = []
         af_chain = ["loudnorm=I=-14:LRA=11:TP=-1.5"]
         scheduled_external_sfx = []
-        scheduled_synth_sfx = []
         
         try:
-            from core.constant import SFX_MAP, SYNTH_SFX_MAP
+            from core.sfx import sfx_manager
+            SFX_MAP = sfx_manager.sfx_map
         except ImportError:
             SFX_MAP = {}
-            SYNTH_SFX_MAP = {}
         
         enriched = metadata.get("enriched_transcript", [])
         if isinstance(enriched, list) and len(enriched) > 0:
@@ -152,31 +148,25 @@ def burn_subtitle_and_highlight(
                 available_sfx_pool = []
                 
                 if emo in SFX_MAP:
-                    for filename in SFX_MAP[emo]:
-                        sfx_file = "assets/audio/" + filename
+                    files = SFX_MAP[emo].get("files", []) if isinstance(SFX_MAP[emo], dict) else SFX_MAP[emo]
+                    for filename in files:
+                        sfx_file = os.path.join("assets", "audio", filename)
                         if os.path.exists(sfx_file):
                             available_sfx_pool.append({"type": "external", "data": sfx_file})
-                            pass
                         else:
                             log.debug(f"File MP3 dilewati karena tidak ditemukan: {sfx_file}")
-                
-                if emo in SYNTH_SFX_MAP:
-                    # available_sfx_pool.append({"type": "synth", "data": SYNTH_SFX_MAP[emo]})
-                    pass
 
                 if available_sfx_pool:
                     chosen_sfx = random.choice(available_sfx_pool)
                     
                     if chosen_sfx["type"] == "external":
                         scheduled_external_sfx.append((chosen_sfx["data"], s))
-                    elif chosen_sfx["type"] == "synth":
-                        scheduled_synth_sfx.append((chosen_sfx["data"], s))
 
         subtitle_file_fwd = subtitle_file.replace("\\", "/")
         vf_chain.append(f"subtitles=filename='{subtitle_file_fwd}'{fontsdir_arg}")
         
         unique_sfx_files = list(dict.fromkeys([sfx for sfx, _ in scheduled_external_sfx]))
-        total_sfx = len(scheduled_external_sfx) + len(scheduled_synth_sfx)
+        total_sfx = len(scheduled_external_sfx)
         
         if total_sfx > 0:
             cmd_subtitle = [
@@ -205,12 +195,6 @@ def burn_subtitle_and_highlight(
                 delay_ms = int(s_time * 1000)
                 fc_parts.append(f"[{input_idx}:a]adelay={delay_ms}|{delay_ms}[ext_sfx{i}]")
                 amix_inputs += f"[ext_sfx{i}]"
-                mix_count += 1
-                
-            for i, (recipe, s_time) in enumerate(scheduled_synth_sfx):
-                delay_ms = int(s_time * 1000)
-                fc_parts.append(f"{recipe}[raw_syn{i}];[raw_syn{i}]adelay={delay_ms}|{delay_ms}[syn_sfx{i}]")
-                amix_inputs += f"[syn_sfx{i}]"
                 mix_count += 1
 
             fc_parts.append(f"{amix_inputs}amix=inputs={mix_count}:duration=first:dropout_transition=0:normalize=0[aout]")
@@ -242,10 +226,5 @@ def burn_subtitle_and_highlight(
             current_clip = subbed_file
         except subprocess.CalledProcessError as e:
             log.warning("FFmpeg subtitle filter failed. Falling back to non-subbed video.")
-            if callable(event_hook):
-                try:
-                    event_hook("log", "[ffmpeg-subtitle] ERROR: FFmpeg processing failed. Menyimpan video tanpa subtitle.")
-                except Exception:
-                    pass
 
     return current_clip

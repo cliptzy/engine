@@ -1,6 +1,7 @@
 import time
 from typing import Dict, Any, Optional
 from core.uploaders.base import BaseUploader, UploadResult
+from core.logger import log
 
 class DummyUploader:
     """
@@ -12,7 +13,7 @@ class DummyUploader:
     def upload(self, file_path: str, metadata: Dict[str, Any], event_hook=None) -> UploadResult:
         # Simulate upload time
         if event_hook:
-            event_hook("log", f"[{self.platform_name}] Memulai simulasi upload...")
+            log.info( f"[{self.platform_name}] Memulai simulasi upload...")
         time.sleep(2.0)
         return UploadResult(
             success=True,

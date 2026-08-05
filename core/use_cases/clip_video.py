@@ -58,6 +58,8 @@ class ClipVideoUseCase:
                     idx = data.get("clip_index", 0)
                     tot = data.get("total", 0)
                     self.reporter.on_progress(stage, idx, tot)
+                elif event == "total_targets":
+                    self.reporter.on_progress("total_targets", int(data), int(data))
 
         crop = payload.get("crop") or "default"
         ratio = payload.get("ratio") or "9:16"
@@ -126,7 +128,7 @@ class ClipVideoUseCase:
             from core.utils import write_json
             write_json(os.path.join(job_dir, "preview.json"), preview)
         except Exception as e:
-            event_hook("log", f"Gagal menyimpan preview.json: {e}")
+            log.error( f"Gagal menyimpan preview.json: {e}")
 
         ok = check_dependencies(install_whisper=True, skip_update_ytdlp=True, fatal=False, whisper_model=whisper_model)
         if not ok:
@@ -140,17 +142,18 @@ class ClipVideoUseCase:
         targets = []
         picked = payload.get("segments")
         if isinstance(picked, list) and len(picked) > 0:
-            event_hook("log", f"Menggunakan {len(picked)} segmen yang dipilih pengguna...")
+            log.info( f"Menggunakan {len(picked)} segmen yang dipilih pengguna...")
             for seg in picked:
                 try:
                     start = float(seg.get("start"))
                     dur = float(seg.get("duration"))
                     score = float(seg.get("score", 1.0))
+                    orig_idx = seg.get("original_index")
                 except Exception:
                     continue
                 if dur <= 0:
                     continue
-                targets.append({"start": start, "duration": dur, "score": score})
+                targets.append({"start": start, "duration": dur, "score": score, "original_index": orig_idx})
             if not targets:
                 raise ValueError("Segmen yang dipilih tidak valid")
         elif mode == "custom":
@@ -160,7 +163,7 @@ class ClipVideoUseCase:
             if start_s is None and end_s is None:
                 start_s = 0
                 end_s = int(total_duration)
-                event_hook("log", f"Menggunakan rentang waktu kustom: memproses keseluruhan video (0s - {end_s}s)")
+                log.info( f"Menggunakan rentang waktu kustom: memproses keseluruhan video (0s - {end_s}s)")
 
             if start_s is None or end_s is None:
                 raise ValueError("Waktu Mulai dan Selesai harus diisi, atau kosongkan keduanya untuk memproses seluruh video")
@@ -168,7 +171,7 @@ class ClipVideoUseCase:
                 raise ValueError("Waktu Selesai harus lebih besar dari Waktu Mulai")
             targets = [{"start": float(start_s), "duration": float(end_s - start_s), "score": 1.0}]
         else:
-            event_hook("log", "Memindai segmen most replayed...")
+            log.info( "Memindai segmen most replayed...")
             segments = fetch_most_replayed(video_id, config.min_score, config.max_duration)
             if not segments:
                 raise RuntimeError("Data Most Replayed / Heatmap tidak ditemukan untuk video ini")
@@ -179,16 +182,22 @@ class ClipVideoUseCase:
         success_count = 0
         outputs = []
         for idx, item in enumerate(targets, start=1):
+            clip_idx = item.get("original_index")
+            if clip_idx is None:
+                clip_idx = idx
+            else:
+                clip_idx = int(clip_idx)
+
             if is_cancelled and is_cancelled():
-                event_hook("log", "[CANCEL] Proses dibatalkan oleh pengguna.")
+                log.info( "[CANCEL] Proses dibatalkan oleh pengguna.")
                 break
 
-            event_hook("stage", {"stage": "start_clip", "clip_index": idx, "total": len(targets)})
+            event_hook("stage", {"stage": "start_clip", "clip_index": clip_idx, "total": len(targets)})
 
             ok_clip = process_single_clip(
                 video_id=video_id,
                 item=item,
-                index=idx,
+                index=clip_idx,
                 total_duration=total_duration,
                 crop_mode=crop,
                 use_subtitle=subtitle,
@@ -199,18 +208,18 @@ class ClipVideoUseCase:
 
             if ok_clip:
                 success_count += 1
-                clip_path = os.path.join(job_dir, f"clip_{idx}.mp4")
+                clip_path = os.path.join(job_dir, f"clip_{clip_idx}.mp4")
                 if os.path.exists(clip_path):
                     outputs.append({
-                        "name": f"clip_{idx}.mp4",
+                        "name": f"clip_{clip_idx}.mp4",
                         "path": os.path.abspath(clip_path),
                         "size": os.path.getsize(clip_path)
                     })
 
-            event_hook("stage", {"stage": "done_clip", "clip_index": idx, "success": success_count, "outputs": outputs})
+            event_hook("stage", {"stage": "done_clip", "clip_index": clip_idx, "success": success_count, "outputs": outputs})
 
         if config.merge_clips and len(outputs) > 1 and not (is_cancelled and is_cancelled()):
-            event_hook("log", "Menggabungkan klip (Merge)...")
+            log.info( "Menggabungkan klip (Merge)...")
             event_hook("stage", {"stage": "merging"})
             
             merged_filename = "merged.mp4"
@@ -256,7 +265,7 @@ class ClipVideoUseCase:
                                 combined_texts.append(f"Klip {idx}: Judul: {t}\nDeskripsi: {d}")
                     
                     if combined_texts:
-                        event_hook("log", "Generating metadata for merged video via AI...")
+                        log.info( "Generating metadata for merged video via AI...")
                         event_hook("stage", {"stage": "ai_metadata", "clip_index": success_count, "is_merge": True})
                         
                         preview_data = get_preview_data()
@@ -281,15 +290,15 @@ class ClipVideoUseCase:
                         if merged_metadata:
                             meta_file = os.path.join(job_dir, "metadata_merge.json")
                             write_json(meta_file, merged_metadata, indent=2)
-                            event_hook("log", f"Metadata kompilasi disimpan ke {meta_file}")
+                            log.info( f"Metadata kompilasi disimpan ke {meta_file}")
                 except Exception as e:
                     log.warning(f"Gagal men-generate metadata kompilasi: {e}")
                 
-                event_hook("log", "Berhasil menggabungkan klip.")
+                log.info( "Berhasil menggabungkan klip.")
                 event_hook("stage", {"stage": "done_clip", "clip_index": success_count, "is_merge": True, "success": success_count, "outputs": outputs})
             except Exception as e:
                 log.error(f"Gagal menggabungkan klip: {e}")
-                event_hook("log", f"Gagal menggabungkan klip: {e}")
+                log.error( f"Gagal menggabungkan klip: {e}")
             finally:
                 if os.path.exists(list_path):
                     os.remove(list_path)
@@ -393,7 +402,7 @@ class ClipVideoUseCase:
             total_duration = get_video_duration(video_id)
         test_item = {"start": start, "duration": 10.0, "score": 1.0}
 
-        event_hook("log", f"[PREVIEW] Memproses sampel 10 detik ({int(start)}s - {int(start + 10)}s) dengan Subtitle Delay: {subtitle_delay}ms...")
+        log.info( f"[PREVIEW] Memproses sampel 10 detik ({int(start)}s - {int(start + 10)}s) dengan Subtitle Delay: {subtitle_delay}ms...")
 
         ok = process_single_clip(
             video_id=video_id,

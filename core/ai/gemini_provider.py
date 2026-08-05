@@ -34,8 +34,7 @@ class GeminiProvider:
                     if callable(event_hook):
                         event_hook("log_inline", chunk.text)
             
-            if callable(event_hook):
-                event_hook("log", "")
+            log.info( "")
                 
             if not full_response:
                 raise RuntimeError("Respon dari Google GenAI SDK kosong.")
@@ -78,8 +77,7 @@ class GeminiProvider:
                 except Exception:
                     pass
                     
-        if callable(event_hook):
-            event_hook("log", "")
+        log.info( "")
             
         if not full_response:
             raise RuntimeError("Respon dari Gemini REST API kosong.")

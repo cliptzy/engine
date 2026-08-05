@@ -34,8 +34,7 @@ class OllamaProvider:
                     if callable(event_hook) and chunk:
                         event_hook("log_inline", chunk)
             
-            if callable(event_hook):
-                event_hook("log", "")
+            log.info( "")
             return full_response
         except Exception as e:
             msg = f"Gagal menghubungi Local Ollama ({url}): {e}"

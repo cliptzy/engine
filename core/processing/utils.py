@@ -25,8 +25,6 @@ def get_video_codec_args() -> list:
 def run_command_with_logging(cmd: list, event_hook: Optional[Callable], prefix: str = "") -> bool:
     """Helper to run a subprocess and stream its output line by line."""
     log.info(f"Running command: {' '.join(cmd)}")
-    if callable(event_hook):
-        event_hook("log", f"{prefix} Executing command: {' '.join(cmd)}\n")
         
     process = subprocess.Popen(
         cmd,
@@ -42,8 +40,6 @@ def run_command_with_logging(cmd: list, event_hook: Optional[Callable], prefix: 
                 clean_line = line.strip()
                 if clean_line:
                     log.info(f"{prefix} {clean_line}")
-                    if callable(event_hook):
-                        event_hook("log", f"{prefix} {clean_line}")
                     
         process.stdout.close()
     return_code = process.wait()
@@ -51,8 +47,6 @@ def run_command_with_logging(cmd: list, event_hook: Optional[Callable], prefix: 
     if return_code != 0:
         msg = f"{prefix} Command failed with return code {return_code}"
         log.error(msg)
-        if callable(event_hook):
-            event_hook("log", msg)
         raise subprocess.CalledProcessError(return_code, cmd)
     return True
 

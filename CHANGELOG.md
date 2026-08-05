@@ -2,6 +2,18 @@
 
 Semua catatan pembaruan dari proyek Cliptzy akan didokumentasikan di dalam file ini.
 
+## [v3.0.10] - 2026-08-05
+
+### Added
+
+- **Auto-Update Mechanism**: Mengimplementasikan pengecekan versi rilis terbaru secara otomatis menggunakan GitHub API. Aplikasi akan langsung memunculkan notifikasi (_AlertDialog_) pada GUI saat _startup_ apabila terdapat pembaruan baru, lengkap dengan fitur untuk mengunduhnya secara sinkron.
+- **Deteksi Tingkat Suara (Amplitudo Audio)**: Memperkuat integrasi Whisper transkripsi dengan perhitungan RMS (Root Mean Square) genap per-kata. Fitur ini memungkinkan klasifikasi secara real-time apakah orang di dalam klip sedang bersuara keras (_yelling_), berbisik (_whispering_), atau bersuara wajar (_normal_), dan selanjutnya menjadi parameter vital bagi AI (LLM) untuk menentukan SFX dan emoji yang jauh lebih akurat pada _subtitle_.
+
+### Changed
+
+- **Refactoring Arsitektur Logging (Event Hook vs Logger)**: Melakukan pergantian secara menyeluruh ke pustaka terpusat `core.logger` di 14 modul utama, menghapus `event_hook("log")` kuno. Perubahan ini mengeliminasi masalah *double-logging* di konsol, memastikan hierarki level (INFO/ERROR) terbaca benar oleh `LogViewer`, serta secara otomatis menulis rekaman aplikasi ke dalam `app.log`.
+- **Hardware Acceleration Encode Test (NVENC/AMF/QSV)**: Memperhalus sistem deteksi akselerasi GPU. Aplikasi sekarang melakukan eksekusi empiris (_trial encode_) mini sebelum meyakinkan GUI untuk mengaktifkan flag akselerasi pada UI, sehingga error kompatibilitas di sistem tertentu (misalnya laptop tanpa dedicated GPU) dapat dicegah lebih awal.
+
 ## [v3.0.8] - 2026-08-05
 
 ### Fixed

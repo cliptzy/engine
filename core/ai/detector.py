@@ -1,7 +1,6 @@
 import json
 import re
 from typing import List, Dict, Any, Optional
-from core.constant import SFX_MAP
 from core.logger import log
 from core.ai.factory import AIProviderFactory
 
@@ -108,12 +107,11 @@ class AIHighlightDetector:
             prompt = prompt.replace("{language}", language)
             prompt = prompt.replace("{custom_context}", custom_context_str)
             
-            if callable(event_hook):
-                if len(chunks) > 1:
-                    event_hook("log", f"[AI] Mengirim transkrip (Bagian {i+1}/{len(chunks)}) ke AI Provider: {provider_name.upper()}...")
-                else:
-                    event_hook("log", f"[AI] Mengirim transkrip ke AI Provider: {provider_name.upper()}...")
-
+            if len(chunks) > 1:
+                log.info( f"[AI] Mengirim transkrip (Bagian {i+1}/{len(chunks)}) ke AI Provider: {provider_name.upper()}...")
+            else:
+                log.info( f"[AI] Mengirim transkrip ke AI Provider: {provider_name.upper()}...")
+            
             raw_response = provider.generate(prompt, ai_config, event_hook)
             highlights = self._parse_json_highlights(raw_response)
             all_highlights.extend(highlights)
@@ -121,8 +119,7 @@ class AIHighlightDetector:
         # Mengurutkan semua highlight berdasarkan waktu mulai
         all_highlights.sort(key=lambda x: float(x.get("start", 0)))
 
-        if callable(event_hook):
-            event_hook("log", f"[AI] Berhasil mendeteksi total {len(all_highlights)} momen highlight dari AI!")
+        log.info( f"[AI] Berhasil mendeteksi total {len(all_highlights)} momen highlight dari AI!")
 
         return all_highlights
 
@@ -199,6 +196,22 @@ class AIHighlightDetector:
 
         context_str = f"- Konteks Tambahan dari Pengguna: {user_context}\n" if user_context else ""
 
+        try:
+            from core.sfx import sfx_manager
+            emotions = sfx_manager.sfx_map
+        except Exception:
+            emotions = {}
+            
+        emotion_lines = []
+        i = 1
+        for emo, data in emotions.items():
+            desc = data.get("desc", emo) if isinstance(data, dict) else emo
+            emotion_lines.append(f"{i}. \"{emo}\" : {desc}")
+            i += 1
+            
+        emotion_lines.append(f"{i}. \"neutral\" : Normal, datar, informatif biasa, atau tidak ada emosi yang menonjol.")
+        emotion_str = "\n".join(emotion_lines)
+        
         prompt = f"""
 Anda adalah seorang Social Media Manager spesialis konten viral (TikTok, YouTube Shorts, Reels).
 Berdasarkan teks subtitle spesifik dari klip video berikut, dan informasi konteks video aslinya, buatkan Title (Judul menarik), Description (Deskripsi ringkas yang memancing interaksi), Tags (Hashtags yang relevan), dan Highlight (Teks lucu/menjual singkat maksimal 3 kata, misal: "gg gak ?", "kaget momen", atau "minus -1 kuping").
@@ -221,7 +234,8 @@ WAJIB DITAATI:
    Tonton video aslinya di: {youtube_url} #shorts #windahbasudara #windah #mediashare
 3. Highlight adalah teks yang sangat singkat (maksimal 3-4 kata) yang memancing rasa penasaran, lucu, atau bombastis.
 4. Jika data `words_data` diberikan, tulis ulang data tersebut ke dalam key `enriched_transcript` dengan menambahkan field `emotion` dan `color` (gunakan kode Hex). WAJIB gunakan `#FFFF00` (Kuning) untuk kata yang bernada netral/biasa. Gunakan warna mencolok lain (misal `#FF0000` untuk marah/umpatan) hanya pada kata yang memiliki emosi/penekanan kuat. Jangan mengubah nilai `start` dan `end`.
-5. Tidak boleh ada emosi bertumpuk kecuali emosi netral (tidak boleh: disgust -> marah -> happy, harus disgust -> netral (n detik) -> emosi lain), emosi yang sama boleh muncul kembali setelah 5 detik
+5. Gunakan informasi tingkat suara (`voice_level`: yelling, whispering, normal) pada setiap kata di dalam `words_data` untuk membantu menentukan `emotion` secara akurat (misal: yelling = marah/shock, whispering = fear/sedih/bored, normal = neutral/happy/dll).
+6. Tidak boleh ada emosi bertumpuk kecuali emosi netral (tidak boleh: disgust -> marah -> happy, harus disgust -> netral (n detik) -> emosi lain), emosi yang sama boleh muncul kembali setelah 5 detik
 
 Teks Subtitle Klip Ini:
 {clip_text}
@@ -232,16 +246,7 @@ Data Kata (words_data) (Jika ada, gunakan untuk field enriched_transcript):
 KATEGORI EMOSI YANG DIIZINKAN (EMOTION_LIST):
 Hanya gunakan salah satu dari nilai di bawah ini untuk setiap segmen teks. Jika tidak ada emosi spesifik, gunakan "neutral".
 
-1. "sad"      : Sedih, menangis, kecewa, atau suasana murung.
-2. "bored"    : Bosan, lelah, capek, pasrah, atau kalimat garing/monoton.
-3. "shock"    : Kaget, terkejut keras, teriakan tiba-tiba, atau momen plot twist.
-4. "fear"     : Takut, panik, ngeri, seram, atau kekhawatiran yang mendesak.
-5. "angry"    : Marah, kesal, frustrasi, emosi, atau mengeluh dengan keras/kasar.
-6. "disgust"  : Jijik, ilfeel, menolak sesuatu yang kotor/aneh ("ew", "najis", "bau").
-7. "confused" : Bingung, heran, merasa ada yang janggal, atau tidak paham ("hah?", "maksudnya?").
-8. "happy"    : Senang, antusias (excited), memuji ("keren", "mantap"), atau merayakan sesuatu.
-9. "amused"   : Lucu, terhibur, tertawa ("haha", "wkwk", "bjir"), atau sarkasme komedi ringan.
-10. "neutral" : Normal, datar, informatif biasa, atau tidak ada emosi yang menonjol.
+{emotion_str}
 
 Format JSON yang wajib:
 ```json
@@ -263,8 +268,7 @@ Format JSON yang wajib:
 ```
 """
         provider_name = (ai_config.get("provider") or ai_config.get("ai_provider") or "ollama").lower()
-        if callable(event_hook):
-            event_hook("log", f"[AI] Mengirim permintaan metadata ke AI Provider: {provider_name.upper()}...")
+        log.info( f"[AI] Mengirim permintaan metadata ke AI Provider: {provider_name.upper()}...")
 
         try:
             provider = AIProviderFactory.create(provider_name)
@@ -276,8 +280,7 @@ Format JSON yang wajib:
                 return json.loads(match_obj.group(0))
             return json.loads(raw_response.strip())
         except Exception as e:
-            if callable(event_hook):
-                event_hook("log", f"[ERROR] Gagal men-generate metadata: {e}")
+            log.error( f"[ERROR] Gagal men-generate metadata: {e}")
             return {}
 
 ai_detector = AIHighlightDetector()

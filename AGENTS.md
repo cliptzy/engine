@@ -115,6 +115,9 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
    - Jika terjadi _runtime error_ atau _crash_, AI Model harus mengekstrak log lengkap sebelum mendiagnosis penyebab utama. Dilarang menebak-nebak tanpa melihat _stack trace_.
 3. **Verifikasi Frozen Build**:
    - Setiap perubahan yang menyentuh subprocess / path / dependensi runtime **wajib** diuji dalam kondisi `frozen` (build + jalankan executable), bukan hanya di mode development.
+4. **Dilarang Keras Menggunakan `event_hook("log", ...)` Secara Langsung**:
+   - Dilarang mengirim log teks menggunakan `event_hook("log", ...)` karena akan menyebabkan pencetakan duplikat (double-logging) di antarmuka `LogViewer` dan tidak memiliki format tingkatan (_leveling_).
+   - **Solusi**: SELALU gunakan pustaka standar `from core.logger import log` (contoh: `log.info(...)`, `log.error(...)`). Semua pemanggilan metode pada `core.logger` secara otomatis sudah terhubung dan diteruskan ke UI `LogViewer` melalui `EventBusLogHandler`.
 
 ---
 

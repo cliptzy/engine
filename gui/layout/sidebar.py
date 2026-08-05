@@ -22,6 +22,11 @@ class Sidebar(ft.NavigationRail):
                 label="Creator Hub"
             ),
             ft.NavigationRailDestination(
+                icon=ft.Icons.MUSIC_NOTE_OUTLINED,  # type: ignore
+                selected_icon=ft.Icons.MUSIC_NOTE,  # type: ignore
+                label="SFX"
+            ),
+            ft.NavigationRailDestination(
                 icon=ft.Icons.SETTINGS_OUTLINED,  # type: ignore
                 selected_icon=ft.Icons.SETTINGS,  # type: ignore
                 label="Settings"

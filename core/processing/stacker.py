@@ -11,8 +11,7 @@ def generate_intro(index: int, metadata: dict, event_hook: Optional[Callable] = 
     
     if config.ai.use_generate_intro and metadata and metadata.get("highlight"):
         try:
-            if callable(event_hook):
-                event_hook("log", f"[intro] Generating AI Intro with TTS for clip {index}...")
+            log.info( f"[intro] Generating AI Intro with TTS for clip {index}...")
             
             highlight_text = str(metadata.get("highlight", ""))
             
@@ -103,8 +102,6 @@ def generate_intro(index: int, metadata: dict, event_hook: Optional[Callable] = 
             
         except Exception as e:
             log.error(f"Failed to generate intro video: {e}")
-            if callable(event_hook):
-                event_hook("log", f"[intro] ❌ Failed to generate intro: {e}")
                 
     return intro_to_use
 
@@ -137,13 +134,13 @@ def stack_and_concat(
         has_outro = False
         
     if has_intro or has_outro or has_watermark:
+        if has_intro or has_outro:
+            log.info( f"[concat] Adding intro/outro/watermark to clip {index}...")
+        else:
+            log.info( f"[concat] Adding watermark to clip {index}...")
         if callable(event_hook):
             try:
                 event_hook("stage", {"stage": "finalize", "clip_index": index})
-                if has_intro or has_outro:
-                    event_hook("log", f"[concat] Adding intro/outro/watermark to clip {index}...")
-                else:
-                    event_hook("log", f"[concat] Adding watermark to clip {index}...")
             except Exception:
                 pass
                 

@@ -1,6 +1,7 @@
 import os
 from typing import Dict, Any
 from core.uploaders.base import BaseUploader, UploadResult
+from core.logger import log
 
 class YouTubeUploader:
     def __init__(self):
@@ -108,9 +109,9 @@ class YouTubeUploader:
         response = None
         while response is None:
             status, response = request.next_chunk()
-            if status and event_hook:
+            if status:
                 prog = int(status.progress() * 100)
-                event_hook("log", f"[YouTube] Progress Uploading Chunk: {prog}%")
+                log.info( f"[YouTube] Progress Uploading Chunk: {prog}%")
             
         video_id = response.get("id")
         if video_id:

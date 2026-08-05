@@ -219,35 +219,63 @@ class ClipConfig(ft.Container):
             self.btn_lock_all.data = True
             
         try:
-            if self.page: self.page.update()
+            if self.page_ref: self.page_ref.update()
             else: self.update()
         except Exception:
             pass
             
     def detect_hw_accel(self) -> None:
-        import subprocess
-        supported = ["cpu"]
-        try:
-            res = subprocess.run(["ffmpeg", "-encoders"], capture_output=True, text=True, timeout=5)
-            if res.returncode == 0:
-                out = res.stdout.lower()
-                if "h264_nvenc" in out: supported.append("nvidia")
-                if "h264_amf" in out: supported.append("amd")
-                if "h264_qsv" in out: supported.append("intel")
-                if "h264_videotoolbox" in out: supported.append("mac")
-        except Exception:
-            pass
-        
-        options = []
-        for opt in self.hw_combo.options:
-            if opt.key in supported:
-                options.append(opt)
-        self.hw_combo.options = options
-        try:
-            if self.page: self.page.update()
-            else: self.update()
-        except Exception:
-            pass
+        async def worker():
+            import asyncio
+            import subprocess
+            import os
+            
+            supported = ["cpu"]
+            
+            def test_encoder(enc):
+                try:
+                    res = subprocess.run(
+                        ["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=black:s=256x256", "-vframes", "1", "-c:v", enc, "-f", "null", "-"],
+                        capture_output=True,
+                        text=True,
+                        timeout=2,
+                        creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                    )
+                    return res.returncode == 0
+                except Exception:
+                    return False
+
+            if await asyncio.to_thread(test_encoder, "h264_nvenc"): supported.append("nvidia")
+            if await asyncio.to_thread(test_encoder, "h264_amf"): supported.append("amd")
+            if await asyncio.to_thread(test_encoder, "h264_qsv"): supported.append("intel")
+            if await asyncio.to_thread(test_encoder, "h264_videotoolbox"): supported.append("mac")
+
+            original_options = [
+                ft.dropdown.Option("cpu", "CPU (Lambat, Stabil)"),
+                ft.dropdown.Option("mac", "Mac (VideoToolbox)"),
+                ft.dropdown.Option("amd", "AMD (AMF)"),
+                ft.dropdown.Option("nvidia", "NVIDIA (NVENC)"),
+                ft.dropdown.Option("intel", "Intel (QuickSync)"),
+            ]
+            
+            options = [opt for opt in original_options if opt.key in supported]
+            self.hw_combo.options = options
+            
+            if self.hw_combo.value not in supported:
+                self.hw_combo.value = "cpu"
+                
+            try:
+                if self.page_ref: self.page_ref.update()
+                else: self.update()
+            except Exception:
+                pass
+
+        if self.page_ref:
+            self.page_ref.run_task(worker)
+        else:
+            import asyncio
+            import threading
+            threading.Thread(target=asyncio.run, args=(worker(),), daemon=True).start()
             
     def detect_libass(self) -> None:
         from core.utils import is_ffmpeg_libass_supported
@@ -261,7 +289,7 @@ class ClipConfig(ft.Container):
             self.subtitle_check.label = "Auto Subtitle"
             self.subtitle_check.tooltip = ""
         try:
-            if self.page: self.page.update()
+            if self.page_ref: self.page_ref.update()
             else: self.update()
         except Exception:
             pass
@@ -322,7 +350,7 @@ class ClipConfig(ft.Container):
             pass
             
         try:
-            if self.page: self.page.update()
+            if self.page_ref: self.page_ref.update()
             else: self.update()
         except Exception:
             pass
@@ -375,7 +403,7 @@ class ClipConfig(ft.Container):
         self.max_words_spin.disabled = not checked
         self.delay_spin.disabled = not checked
         try:
-            if self.page: self.page.update()
+            if self.page_ref: self.page_ref.update()
             else: self.update()
         except Exception:
             pass
@@ -383,7 +411,7 @@ class ClipConfig(ft.Container):
     def on_generate_intro_toggled(self, e) -> None:
         self.btn_intro.disabled = bool(self.generate_intro_check.value)
         try:
-            if self.page: self.page.update()
+            if self.page_ref: self.page_ref.update()
             else: self.update()
         except Exception:
             pass
@@ -463,7 +491,7 @@ class ClipConfig(ft.Container):
             self.btn_lock_all.style = ft.ButtonStyle(bgcolor=ft.Colors.INDIGO_800, color=ft.Colors.INDIGO_200)
             
         try:
-            if self.page: self.page.update()
+            if self.page_ref: self.page_ref.update()
             else: self.update()
         except Exception:
             pass

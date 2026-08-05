@@ -59,12 +59,9 @@ class InstagramConfig:
 import os
 import sys
 
-def get_user_data_dir() -> str:
-    if getattr(sys, 'frozen', False):
-        return os.path.join(os.path.dirname(sys.executable), "data")
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from core.utils import get_app_root
 
-APP_ROOT = get_user_data_dir()
+APP_ROOT = get_app_root()
 
 @dataclass
 class AppConfig:

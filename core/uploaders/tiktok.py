@@ -37,7 +37,7 @@ class TikTokUploader:
             
             caption = "\n\n".join(parts).strip()
                 
-            if event_hook: event_hook("log", f"[TikTok] Memulai upload menggunakan tiktok-uploader dari file {cookie_path}...")
+            logger.info( f"[TikTok] Memulai upload menggunakan tiktok-uploader dari file {cookie_path}...")
             logger.info(f"Mengunggah ke TikTok: {file_path}, caption: {caption}")
             
             # Use tiktok-uploader package and reuse instance
@@ -53,7 +53,7 @@ class TikTokUploader:
                     # metadata["publish_at"] format: "YYYY-MM-DDTHH:MM:SS.000Z"
                     time_str = metadata["publish_at"].replace(".000Z", "").replace("Z", "")
                     schedule = datetime.datetime.fromisoformat(time_str)
-                    if event_hook: event_hook("log", f"[TikTok] Menjadwalkan upload untuk {schedule}")
+                    logger.info( f"[TikTok] Menjadwalkan upload untuk {schedule}")
                 except Exception as e:
                     logger.warning(f"Gagal memparsing jadwal: {e}")
             
@@ -67,7 +67,7 @@ class TikTokUploader:
             
             if not success:
                 err_msg = f"Gagal upload video ke TikTok."
-                if event_hook: event_hook("log", f"[TikTok] ❌ {err_msg}")
+                logger.error( f"[TikTok] ❌ {err_msg}")
                 logger.error(err_msg)
                 return UploadResult(False, self.platform_name, error_msg=err_msg)
             
@@ -76,11 +76,11 @@ class TikTokUploader:
                 try:
                     from tiktok_uploader.auth import save_cookies
                     save_cookies(cookie_path, uploader.page.context.cookies()) # type: ignore
-                    if event_hook: event_hook("log", "[TikTok] Cookie berhasil diperbarui secara otomatis.")
+                    logger.info( "[TikTok] Cookie berhasil diperbarui secara otomatis.")
                 except Exception as e:
                     logger.warning(f"Gagal memperbarui cookie TikTok: {e}")
 
-            if event_hook: event_hook("log", "[TikTok] ✅ Upload berhasil!")
+            logger.info( "[TikTok] ✅ Upload berhasil!")
             return UploadResult(True, self.platform_name, url="https://www.tiktok.com/profile")
             
         except Exception as e:

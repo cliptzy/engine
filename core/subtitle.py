@@ -19,8 +19,11 @@ def get_whisper_model(whisper_model_name: str, event_hook: Optional[Callable[[st
             try: event_hook("stage", {"stage": "subtitle_model_load"})
             except Exception: pass
             
-        log.info(f"Loading Faster-Whisper model '{whisper_model_name}' (Global)...")
-        _global_whisper_model = WhisperModel(whisper_model_name, device="cpu", compute_type="int8")
+        from core.config import config
+        device = "cuda" if getattr(config, "hw_accel", "cpu").lower() in ["nvidia", "nvenc"] else "cpu"
+        
+        log.info(f"Loading Faster-Whisper model '{whisper_model_name}' (Global) on {device}...")
+        _global_whisper_model = WhisperModel(whisper_model_name, device=device, compute_type="int8")
         log.info("Model loaded successfully.")
     else:
         log.info(f"Using cached Faster-Whisper model '{whisper_model_name}'.")
@@ -77,9 +80,7 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
     audio_wav = video_file + ".wav"
 
     def load_and_transcribe():
-        if callable(event_hook):
-            try: event_hook("log", "[ffmpeg] Mengekstrak audio PCM murni (.wav) untuk memastikan subtitle sinkron 100%...")
-            except Exception: pass
+        log.info("[ffmpeg] Mengekstrak audio PCM murni (.wav) untuk memastikan subtitle sinkron 100%...")
             
         cmd_extract = [
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
@@ -110,9 +111,6 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
         for s in segments_gen:
             msg = f"[whisper-segment] {s.start:.2f}s - {s.end:.2f}s : {s.text}"
             log.info(msg)
-            if callable(event_hook):
-                try: event_hook("log", msg)
-                except Exception: pass
             segments.append(s)
             
             
@@ -190,11 +188,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                                 "end": max(0.0, w.end + config.subtitle.delay)
                             })
                     
-                    if callable(event_hook):
-                        try:
-                            event_hook("log", f"[whisper] {start_time} --> {end_time} : {text}")
-                        except Exception:
-                            pass
+                    log.info(f"[whisper] {start_time} --> {end_time} : {text}")
 
                     if config.subtitle.animation == "scale":
                         ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{{\\fscx50\\fscy50\\t(0,150,\\fscx100\\fscy100)}}{text}\n"
@@ -204,6 +198,62 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             
             # Combine all text for AI metadata generation
             full_transcript = " ".join([s.text.strip() for s in segments if s.text.strip()])
+            
+            # Analyze voice levels
+            def analyze_voice_levels(wav_path, words):
+                import wave, struct, math
+                if not os.path.exists(wav_path):
+                    return
+                try:
+                    with wave.open(wav_path, 'r') as w:
+                        rate = w.getframerate()
+                        nframes = w.getnframes()
+                        for word in words:
+                            start_f = min(int(word['start'] * rate), nframes-1)
+                            end_f = min(int(word['end'] * rate), nframes)
+                            num_f = end_f - start_f
+                            if num_f <= 0:
+                                word['rms'] = 0
+                                continue
+                            w.setpos(start_f)
+                            data = w.readframes(num_f)
+                            # Only unpack if 16-bit
+                            if w.getsampwidth() == 2:
+                                samples = struct.unpack(f'<{num_f}h', data)
+                                rms = math.sqrt(sum(s*s for s in samples)/num_f)
+                                word['rms'] = rms
+                            else:
+                                word['rms'] = 0
+                                
+                    rmss = [w['rms'] for w in words if w['rms'] > 0]
+                    if not rmss:
+                        return
+                    mean_rms = sum(rmss)/len(rmss)
+                    
+                    yelling_count = 0
+                    whispering_count = 0
+                    
+                    for word in words:
+                        r = word.get('rms', 0)
+                        if r > mean_rms * 2.0 and r > 3000:
+                            word['voice_level'] = 'yelling'
+                            yelling_count += 1
+                        elif r < mean_rms * 0.4 and r < 2000:
+                            word['voice_level'] = 'whispering'
+                            whispering_count += 1
+                        else:
+                            word['voice_level'] = 'normal'
+                        
+                        # Remove rms key as it's not needed anymore
+                        if 'rms' in word:
+                            del word['rms']
+                            
+                    log.info(f"[audio] Deteksi amplitudo selesai: {mean_rms:.1f} RMS rata-rata. Ditemukan {yelling_count} kata berteriak dan {whispering_count} kata berbisik.")
+                            
+                except Exception as ex:
+                    log.warning(f"Voice level analysis failed: {ex}")
+            
+            analyze_voice_levels(audio_wav, words_data)
                     
     except Exception as e:
         log.error(f"Failed to write subtitle file: {e}")
@@ -232,8 +282,6 @@ def transcribe_audio_file(audio_file: str, whisper_model: str = "small", event_h
             results.append(item)
             msg = f"[transcribe] {s.start:.2f}s - {s.end:.2f}s : {text_clean}"
             log.info(msg)
-            if callable(event_hook):
-                event_hook("log", msg)
 
     return results
 
@@ -316,7 +364,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{line_text}\n"
                         f.write(ass_line)
                         
-            if callable(event_hook):
-                event_hook("log", f"[subtitle] Berhasil menulis ulang ASS subtitle dengan {len(enriched_transcript)} kata yang diperkaya.")
+            log.info(f"[subtitle] Berhasil menulis ulang ASS subtitle dengan {len(enriched_transcript)} kata yang diperkaya.")
     except Exception as e:
         log.error(f"Failed to write enriched subtitle file: {e}")

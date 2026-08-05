@@ -164,13 +164,15 @@ class UploadDistribution(ft.Container):
         upload_panel = ft.Column([
             ft.Row([
                 self.platform_yt, self.platform_tt, self.platform_ig, 
-                self.upload_interval_input, 
+                self.upload_interval_input
+            ]),
+            self.upload_progress,
+            self.upload_status_text,
+            ft.Row([
                 ft.Container(expand=True), 
                 self.cancel_upload_btn,
                 self.upload_btn
-            ]),
-            self.upload_progress,
-            self.upload_status_text
+            ])
         ])
 
         self.content = ft.Column([

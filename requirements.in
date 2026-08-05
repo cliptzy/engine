@@ -20,3 +20,5 @@ flet-video
 pystray
 desktop-notifier
 certifi
+
+flet-audio
