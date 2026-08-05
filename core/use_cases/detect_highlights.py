@@ -20,15 +20,31 @@ class DetectHighlightsUseCase:
         5. Sends transcript to AI Highlight Detector (Ollama / Gemini / OpenAI).
         6. Returns detected highlights.
         """
-        video_id = extract_video_id(url)
-        if not video_id:
-            raise ValueError("URL YouTube tidak valid")
+        import os
+        is_local = os.path.isfile(url)
+        if is_local:
+            import hashlib
+            base_name = os.path.basename(url)
+            safe_name = "".join([c if c.isalnum() else "_" for c in base_name])
+            video_id = f"local_{safe_name}_{hashlib.md5(url.encode()).hexdigest()[:6]}"
+        else:
+            video_id = extract_video_id(url)
+            if not video_id:
+                raise ValueError("URL YouTube / File lokal tidak valid")
 
         job_dir = os.path.join("clips", video_id)
         os.makedirs(job_dir, exist_ok=True)
 
         transcript_cache_file = os.path.join(job_dir, "transcript.json")
+        ai_cache_file = os.path.join(job_dir, "ai_segments.json")
         transcript_segments = []
+
+        force_rescan = ai_config.get("force_rescan", False)
+
+        if not force_rescan and os.path.exists(ai_cache_file):
+            if self.reporter:
+                self.reporter.on_log(f"[AI] Menggunakan hasil AI Scan sebelumnya dari cache.")
+            return read_json(ai_cache_file)
 
         if os.path.exists(transcript_cache_file):
             transcript_segments = read_json(transcript_cache_file, default=[])
@@ -36,32 +52,35 @@ class DetectHighlightsUseCase:
                 self.reporter.on_log(f"[AI] Menggunakan {len(transcript_segments)} klausa transkrip audio dari cache (skip download & Whisper transcribing).")
 
         if not transcript_segments:
-            audio_file = os.path.join(job_dir, "audio_full.m4a")
-            if not os.path.exists(audio_file):
-                if self.reporter:
-                    self.reporter.on_progress("download", 0, 0)
-                    self.reporter.on_log("[AI] Mengunduh file audio video...")
-
-                import yt_dlp
-                from typing import Any
-                ydl_opts: dict[str, Any] = {
-                    'force_ipv4': True,
-                    'no_warnings': True,
-                    'format': 'ba[ext=m4a]/ba/b',
-                    'outtmpl': audio_file,
-                    'logger': create_yt_dlp_logger('[yt-dlp:ai-audio]'),
-                }
-                if config.youtube.session and os.path.exists(config.youtube.session):
-                    ydl_opts['cookiefile'] = config.youtube.session
-
-                try:
-                    with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
-                        ydl.download([f"https://youtu.be/{video_id}"])
-                except Exception as e:
-                    raise RuntimeError(f"Gagal mengunduh audio video untuk transkripsi AI: {e}")
-
+            if is_local:
+                audio_file = url
+            else:
+                audio_file = os.path.join(job_dir, "audio_full.m4a")
                 if not os.path.exists(audio_file):
-                    raise RuntimeError("Gagal mengunduh audio video untuk transkripsi AI (file tidak ditemukan).")
+                    if self.reporter:
+                        self.reporter.on_progress("download", 0, 0)
+                        self.reporter.on_log("[AI] Mengunduh file audio video...")
+
+                    import yt_dlp
+                    from typing import Any
+                    ydl_opts: dict[str, Any] = {
+                        'force_ipv4': True,
+                        'no_warnings': True,
+                        'format': 'ba[ext=m4a]/ba/b',
+                        'outtmpl': audio_file,
+                        'logger': create_yt_dlp_logger('[yt-dlp:ai-audio]'),
+                    }
+                    if config.youtube.session and os.path.exists(config.youtube.session):
+                        ydl_opts['cookiefile'] = config.youtube.session
+
+                    try:
+                        with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                            ydl.download([f"https://youtu.be/{video_id}"])
+                    except Exception as e:
+                        raise RuntimeError(f"Gagal mengunduh audio video untuk transkripsi AI: {e}")
+
+                    if not os.path.exists(audio_file):
+                        raise RuntimeError("Gagal mengunduh audio video untuk transkripsi AI (file tidak ditemukan).")
 
             if self.reporter:
                 self.reporter.on_progress("subtitle_transcribe", 0, 0)
@@ -98,7 +117,12 @@ class DetectHighlightsUseCase:
 
         highlights = ai_detector.detect_highlights(transcript_segments, ai_config, event_hook=ai_event_hook, video_id=video_id)
 
-        total_duration = get_video_duration(video_id)
+        if is_local:
+            from core.use_cases.preview_clip import PreviewClipUseCase
+            total_duration = PreviewClipUseCase().execute(url).get("duration", 0)
+        else:
+            total_duration = get_video_duration(video_id)
+            
         result = {
             "video_id": video_id,
             "duration": total_duration,

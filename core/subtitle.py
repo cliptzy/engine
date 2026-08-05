@@ -1,8 +1,31 @@
 import os
 import subprocess
-import gc  
 from typing import Callable, Any, Optional
 from core.logger import log
+
+_global_whisper_model = None
+
+def get_whisper_model(whisper_model_name: str, event_hook: Optional[Callable[[str, Any], None]] = None):
+    """Loads and caches the Whisper model globally to avoid repeated initializations and VAD state bugs."""
+    global _global_whisper_model
+    if _global_whisper_model is None:
+        try:
+            from faster_whisper import WhisperModel
+        except ImportError:
+            log.error("faster_whisper module not found. Please install it.")
+            return None
+
+        if callable(event_hook):
+            try: event_hook("stage", {"stage": "subtitle_model_load"})
+            except Exception: pass
+            
+        log.info(f"Loading Faster-Whisper model '{whisper_model_name}' (Global)...")
+        _global_whisper_model = WhisperModel(whisper_model_name, device="cpu", compute_type="int8")
+        log.info("Model loaded successfully.")
+    else:
+        log.info(f"Using cached Faster-Whisper model '{whisper_model_name}'.")
+
+    return _global_whisper_model
 
 def format_ass_time(seconds: float) -> str:
     """Converts seconds to ASS timestamp format (H:MM:SS.cs)."""
@@ -22,12 +45,9 @@ def format_ass_time(seconds: float) -> str:
     return f"{hours}:{minutes:02d}:{secs:02d}.{centis:02d}"
 
 def _transcribe_with_language_sync(model, audio_file: str, word_timestamps: bool, target_lang: Optional[str] = None):
-    prompt = "Berikut adalah cuplikan video dengan ucapan santai dan gaul yang diucapkan dengan cepat:" if target_lang == "id" else None
-    
     segments_gen, _ = model.transcribe(
         audio_file,
         language=target_lang,
-        initial_prompt=prompt,
         condition_on_previous_text=False,
         word_timestamps=word_timestamps,
         vad_filter=True,
@@ -46,6 +66,7 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
     except ImportError:
         log.error("faster_whisper module not found. Please install it.")
         return False, "", []
+
         
     from core.config import config
     from core.utils import get_preview_data
@@ -74,14 +95,11 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
             log.warning(f"Gagal mengekstrak .wav, fallback ke original video: {e}")
             current_audio = video_file
             
-        if callable(event_hook):
-            try: event_hook("stage", {"stage": "subtitle_model_load"})
-            except Exception: pass
-            
-        log.info(f"Loading Faster-Whisper model '{whisper_model}'...")
-        model = WhisperModel(whisper_model, device="cpu", compute_type="int8")
+        model = get_whisper_model(whisper_model, event_hook)
+        if not model:
+            return []
         
-        log.info("Model loaded. Transcribing audio...")
+        log.info("Transcribing audio...")
         if callable(event_hook):
             try: event_hook("stage", {"stage": "subtitle_transcribe"})
             except Exception: pass
@@ -90,13 +108,13 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
         
         segments = []
         for s in segments_gen:
+            msg = f"[whisper-segment] {s.start:.2f}s - {s.end:.2f}s : {s.text}"
+            log.info(msg)
             if callable(event_hook):
-                try: event_hook("log", f"[whisper-segment] {s.start:.2f}s - {s.end:.2f}s : {s.text}")
+                try: event_hook("log", msg)
                 except Exception: pass
             segments.append(s)
             
-        del model
-        gc.collect()
             
         return segments
 
@@ -197,17 +215,9 @@ def transcribe_audio_file(audio_file: str, whisper_model: str = "small", event_h
     """
     Transcribes audio file using Faster-Whisper and returns timestamped segment list.
     """
-    try:
-        from faster_whisper import WhisperModel
-    except ImportError:
-        log.error("faster_whisper module not found.")
+    model = get_whisper_model(whisper_model, event_hook)
+    if not model:
         return []
-
-    if callable(event_hook):
-        event_hook("stage", {"stage": "subtitle_model_load"})
-
-    log.info(f"Loading Faster-Whisper model '{whisper_model}' for audio transcription...")
-    model = WhisperModel(whisper_model, device="cpu", compute_type="int8")
 
     if callable(event_hook):
         event_hook("stage", {"stage": "subtitle_transcribe"})
@@ -220,8 +230,10 @@ def transcribe_audio_file(audio_file: str, whisper_model: str = "small", event_h
         if text_clean:
             item = {"start": round(s.start, 2), "end": round(s.end, 2), "text": text_clean}
             results.append(item)
+            msg = f"[transcribe] {s.start:.2f}s - {s.end:.2f}s : {text_clean}"
+            log.info(msg)
             if callable(event_hook):
-                event_hook("log", f"[transcribe] {s.start:.2f}s - {s.end:.2f}s : {text_clean}")
+                event_hook("log", msg)
 
     return results
 

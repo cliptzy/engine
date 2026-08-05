@@ -10,6 +10,14 @@ if len(sys.argv) >= 3 and sys.argv[1] == "-m" and sys.argv[2] == "yt_dlp":
     except SystemExit as e:
         sys.exit(e.code)
 
+import subprocess
+if sys.platform == "win32":
+    _original_popen = subprocess.Popen
+    def _patched_popen(*args, **kwargs):
+        if "creationflags" not in kwargs:
+            kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        return _original_popen(*args, **kwargs)
+    subprocess.Popen = _patched_popen
 
 from core import (
     config,

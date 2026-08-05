@@ -40,6 +40,7 @@ Struktur JSON yang wajib digunakan:
 ```
 
 Output Bahasa: {language}
+{custom_context}
 
 Transkrip Video:
 {transcript_text}
@@ -98,10 +99,14 @@ class AIHighlightDetector:
         provider_name = (ai_config.get("provider") or ai_config.get("ai_provider") or "ollama").lower()
         provider = AIProviderFactory.create(provider_name)
 
+        custom_prompt = ai_config.get("custom_prompt", "")
+        custom_context_str = f"\nKonteks Tambahan Pengguna:\n{custom_prompt}\n" if custom_prompt else ""
+
         for i, chunk_text in enumerate(chunks):
             template = DEFAULT_PROMPT_TEMPLATE
             prompt = template.replace("{transcript_text}", chunk_text)
             prompt = prompt.replace("{language}", language)
+            prompt = prompt.replace("{custom_context}", custom_context_str)
             
             if callable(event_hook):
                 if len(chunks) > 1:
@@ -216,7 +221,7 @@ WAJIB DITAATI:
    Tonton video aslinya di: {youtube_url} #shorts #windahbasudara #windah #mediashare
 3. Highlight adalah teks yang sangat singkat (maksimal 3-4 kata) yang memancing rasa penasaran, lucu, atau bombastis.
 4. Jika data `words_data` diberikan, tulis ulang data tersebut ke dalam key `enriched_transcript` dengan menambahkan field `emotion` dan `color` (gunakan kode Hex). WAJIB gunakan `#FFFF00` (Kuning) untuk kata yang bernada netral/biasa. Gunakan warna mencolok lain (misal `#FF0000` untuk marah/umpatan) hanya pada kata yang memiliki emosi/penekanan kuat. Jangan mengubah nilai `start` dan `end`.
-5. Tidak boleh ada emosi berulang kecuali emosi netral, emosi yang sama boleh muncul kembali setelah 5 detik
+5. Tidak boleh ada emosi bertumpuk kecuali emosi netral (tidak boleh: disgust -> marah -> happy, harus disgust -> netral (n detik) -> emosi lain), emosi yang sama boleh muncul kembali setelah 5 detik
 
 Teks Subtitle Klip Ini:
 {clip_text}

@@ -60,10 +60,10 @@ class SettingsView(ft.Container):
         
         yt_tab_content = ft.Container(
             content=ft.Column([
-                ft.Row([self.yt_client_id], expand=True), 
-                ft.Row([self.yt_client_secret], expand=True), 
-                ft.Row([self.yt_visibility], expand=True), 
-                ft.Row([self.yt_tags], expand=True)
+                ft.Row(cast(list[ft.Control], [self.yt_client_id]), expand=True), 
+                ft.Row(cast(list[ft.Control], [self.yt_client_secret]), expand=True), 
+                ft.Row(cast(list[ft.Control], [self.yt_visibility]), expand=True), 
+                ft.Row(cast(list[ft.Control], [self.yt_tags]), expand=True)
             ], spacing=10),
             padding=16
         )
@@ -83,9 +83,9 @@ class SettingsView(ft.Container):
         
         tt_tab_content = ft.Container(
             content=ft.Column([
-                ft.Row([self.tt_session, self.btn_import_tt_cookies], expand=True),
-                ft.Row([self.tt_privacy], expand=True),
-                ft.Row([self.tt_caption], expand=True)
+                ft.Row(cast(list[ft.Control], [self.tt_session, self.btn_import_tt_cookies]), expand=True),
+                ft.Row(cast(list[ft.Control], [self.tt_privacy]), expand=True),
+                ft.Row(cast(list[ft.Control], [self.tt_caption]), expand=True)
             ], spacing=10),
             padding=16
         )
@@ -99,8 +99,8 @@ class SettingsView(ft.Container):
         
         ig_tab_content = ft.Container(
             content=ft.Column([
-                ft.Row([self.ig_session, self.btn_import_ig_cookies], expand=True),
-                ft.Row([self.ig_caption], expand=True)
+                ft.Row(cast(list[ft.Control], [self.ig_session, self.btn_import_ig_cookies]), expand=True),
+                ft.Row(cast(list[ft.Control], [self.ig_caption]), expand=True)
             ], spacing=10),
             padding=16
         )
@@ -150,7 +150,7 @@ class SettingsView(ft.Container):
         platform_settings_layout = ft.Column([
             self.platform_tabs,
             ft.Container(height=10),
-            ft.Row([self.btn_check_all_auth], alignment=ft.MainAxisAlignment.START),
+            ft.Row(cast(list[ft.Control], [self.btn_check_all_auth]), alignment=ft.MainAxisAlignment.START),
             ft.Container(height=4),
             self.auth_check_progress,
             self.auth_check_result_text
@@ -599,7 +599,7 @@ class SettingsView(ft.Container):
             self.dep_status_text
         ], spacing=8)
 
-    def start_dependency_installation(self, e: Any) -> None:
+    def start_dependency_installation(self, e) -> None:
         from core.dependency_manager import install_dependencies
         from gui.state import app_state
         
@@ -640,7 +640,7 @@ class SettingsView(ft.Container):
             
         self._page.run_task(do_installation)
 
-    async def on_import_tt_cookies_clicked(self, e: Any) -> None:
+    async def on_import_tt_cookies_clicked(self, e) -> None:
         files = await self.tt_cookies_picker.pick_files(
             dialog_title="Pilih File Cookies TikTok (JSON/TXT)",
             allowed_extensions=["txt", "json"]
@@ -661,7 +661,7 @@ class SettingsView(ft.Container):
             except Exception as ex:
                 self._show_snackbar(f"Gagal mengimpor cookies: {ex}", ft.Colors.RED_700)
 
-    async def on_import_ig_cookies_clicked(self, e: Any) -> None:
+    async def on_import_ig_cookies_clicked(self, e) -> None:
         files = await self.ig_cookies_picker.pick_files(
             dialog_title="Pilih File Cookies Instagram (JSON/TXT)",
             allowed_extensions=["txt", "json"]
@@ -682,7 +682,7 @@ class SettingsView(ft.Container):
             except Exception as ex:
                 self._show_snackbar(f"Gagal mengimpor cookies: {ex}", ft.Colors.RED_700)
 
-    def check_all_platforms_auth(self, e: Any) -> None:
+    def check_all_platforms_auth(self, e) -> None:
         self.btn_check_all_auth.disabled = True
         self.auth_check_progress.visible = True
         self.auth_check_progress.value = None
@@ -734,12 +734,12 @@ class SettingsView(ft.Container):
 
     def _show_snackbar(self, message: str, color) -> None:
         """Tampilkan SnackBar notifikasi."""
-        snack = ft.SnackBar(ft.Text(message), bgcolor=color) # type: ignore
+        snack = ft.SnackBar(ft.Text(message, color=ft.Colors.WHITE), bgcolor=color) # type: ignore
         self._page.overlay.append(snack)
         snack.open = True
         self._page.update()
 
-    def on_ai_provider_changed(self, e: ft.ControlEvent | None) -> None:
+    def on_ai_provider_changed(self, e = None) -> None:
         provider = self.ai_provider_dropdown.value
         if provider == "ollama":
             self.ai_key_input.label = "Ollama Host"
@@ -767,7 +767,7 @@ class SettingsView(ft.Container):
             except Exception:
                 pass
 
-    def save_settings(self, e: Any) -> None:
+    def save_settings(self, e) -> None:
         provider = self.ai_provider_dropdown.value
         val = self.ai_key_input.value.strip() if self.ai_key_input.value else ""
         model_val = self.ai_model_input.value.strip() if self.ai_model_input.value else ""
@@ -831,7 +831,7 @@ class SettingsView(ft.Container):
 
         self._page.run_task(run_calc)
 
-    def clear_cache(self, e: Any) -> None:
+    def clear_cache(self, e) -> None:
         self.clear_cache_btn.disabled = True
         self.clear_cache_btn.content = ft.Text("🧹 Sedang membersihkan...") # type: ignore
         try:

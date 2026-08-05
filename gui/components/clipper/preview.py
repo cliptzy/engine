@@ -85,10 +85,22 @@ class Preview(ft.Container):
             style=ft.ButtonStyle(bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE),
             height=40
         )
+        self.force_rescan_checkbox = ft.Checkbox(label="Force Rescan (Abaikan Cache AI)")
+        
+        self.custom_prompt_input = ft.TextField(
+            label="Konteks Prompt Tambahan (Custom Context)", 
+            multiline=True, 
+            min_lines=2, 
+            max_lines=3, 
+            hint_text="Contoh: Fokus pada momen lucu atau komedi. Abaikan bagian yang membosankan.",
+            expand=True
+        )
+
         self.ai_segment_count_label = ft.Text("Segmen AI Highlight (Transkripsi Whisper + LLM):", color=ft.Colors.WHITE_54)
         self.ai_segment_list = ft.ListView(height=140, spacing=4)
         self.ai_view = ft.Column([
-            self.btn_run_ai_scan,
+            ft.Row([self.btn_run_ai_scan, self.force_rescan_checkbox]),
+            ft.Row([self.custom_prompt_input]),
             self.ai_segment_count_label,
             self.ai_segment_list
         ], visible=False)
@@ -137,14 +149,16 @@ class Preview(ft.Container):
 
     def on_run_ai_scan(self, e: Any) -> None:
         ai_config = {
-            "provider": getattr(config, "ai_provider", "ollama"),
-            "ollama_host": getattr(config, "ollama_host", "http://localhost:11434"),
-            "ollama_model": getattr(config, "ollama_model", "llama3"),
-            "gemini_key": getattr(config, "gemini_key", ""),
-            "gemini_model": getattr(config, "gemini_model", "gemini-1.5-flash"),
-            "openai_key": getattr(config, "openai_key", ""),
-            "openai_model": getattr(config, "openai_model", "gpt-4o-mini"),
-            "openai_base_url": getattr(config, "openai_base_url", ""),
+            "provider": getattr(config.ai, "provider", "ollama"),
+            "ollama_host": getattr(config.ai, "ollama_host", "http://localhost:11434"),
+            "ollama_model": getattr(config.ai, "ollama_model", "llama3"),
+            "gemini_key": getattr(config.ai, "gemini_key", ""),
+            "gemini_model": getattr(config.ai, "gemini_model", "gemini-1.5-flash"),
+            "openai_key": getattr(config.ai, "openai_key", ""),
+            "openai_model": getattr(config.ai, "openai_model", "gpt-4o-mini"),
+            "openai_base_url": getattr(config.ai, "openai_base_url", ""),
+            "custom_prompt": self.custom_prompt_input.value or "",
+            "force_rescan": self.force_rescan_checkbox.value
         }
         if self.on_ai_scan_requested:
             self.on_ai_scan_requested(ai_config)

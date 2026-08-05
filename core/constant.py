@@ -1,22 +1,22 @@
 SFX_MAP = {
     # Emosi Negatif / Low Energy
-    "sad": ["sad-violin.mp3", "fail.mp3"],
+    "sad": ["fail.mp3"],
     "bored": ["bruh.mp3", "fail.mp3"],
     
     # Emosi Kaget / Intensitas Tinggi
-    "shock": ["vine-boom.mp3", "metal-pipe-clang.mp3", "amongus.mp3", "anime-wow.mp3"],
+    "shock": ["vine-boom.mp3", "amongus.mp3", "anime-wow.mp3"],
     "fear": ["amongus.mp3", "vine-boom.mp3", "error.mp3"],
     
     # Emosi Frustrasi / Penolakan
-    "angry": ["halah-nyocot.mp3", "metal-pipe-clang.mp3", "vine-boom.mp3"],
-    "disgust": ["halah-nyocot.mp3", "bruh.mp3", "error.mp3"],
+    "angry": ["vine-boom.mp3"],
+    "disgust": ["bruh.mp3", "error.mp3"],
     
     # Emosi Kebingungan / Aneh
     "confused": ["bruh.mp3", "faaah.mp3", "error.mp3", "slip.mp3"],
     
     # Emosi Positif / High Energy
-    "happy": ["anime-wow.mp3", "cihuy.mp3", "ding.mp3", "rizz.mp3"],
-    "amused": ["hee-hee.mp3", "pop.mp3", "slip.mp3", "rizz.mp3"]
+    "happy": ["anime-wow.mp3", "ding.mp3", "rizz.mp3"],
+    "amused": ["pop.mp3", "slip.mp3", "rizz.mp3"]
 }
 
 SYNTH_SFX_MAP = {

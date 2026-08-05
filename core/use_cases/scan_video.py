@@ -12,9 +12,17 @@ class ScanVideoUseCase:
 
     def execute(self, url: str) -> Dict[str, Any]:
         """Scans YouTube video for heatmap segments and returns total duration and heatmap segments."""
-        video_id = extract_video_id(url)
-        if not video_id:
-            raise ValueError("URL YouTube tidak valid")
+        import os
+        is_local = os.path.isfile(url)
+        if is_local:
+            import hashlib
+            base_name = os.path.basename(url)
+            safe_name = "".join([c if c.isalnum() else "_" for c in base_name])
+            video_id = f"local_{safe_name}_{hashlib.md5(url.encode()).hexdigest()[:6]}"
+        else:
+            video_id = extract_video_id(url)
+            if not video_id:
+                raise ValueError("URL YouTube / File lokal tidak valid")
 
         if not is_ffmpeg_available():
             ok = check_dependencies(install_whisper=False, skip_update_ytdlp=True, fatal=False)
@@ -34,11 +42,17 @@ class ScanVideoUseCase:
                     "segments": data_cache.get("segments", [])
                 }
 
-        if self.reporter:
-            self.reporter.on_log("Memindai segmen most replayed...")
+        if is_local:
+            from core.use_cases.preview_clip import PreviewClipUseCase
+            preview = PreviewClipUseCase(reporter=self.reporter).execute(url)
+            total_duration = preview.get("duration", 0)
+            segments = []
+        else:
+            if self.reporter:
+                self.reporter.on_log("Memindai segmen most replayed...")
 
-        segments = fetch_most_replayed(video_id, config.min_score, config.max_duration)
-        total_duration = get_video_duration(video_id)
+            segments = fetch_most_replayed(video_id, config.min_score, config.max_duration)
+            total_duration = get_video_duration(video_id)
         
         write_json(cache_file, {"duration": total_duration, "segments": segments})
             

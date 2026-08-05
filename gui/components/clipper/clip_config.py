@@ -16,7 +16,8 @@ class ClipConfig(ft.Container):
         # type: ignore
         self.intro_picker = ft.FilePicker()
         self.outro_picker = ft.FilePicker()
-        self.page_ref.services.extend([self.intro_picker, self.outro_picker])
+        self.watermark_picker = ft.FilePicker()
+        self.page_ref.services.extend([self.intro_picker, self.outro_picker, self.watermark_picker])
         
         self.title = ft.Text("⚙️ Pengaturan Klip & Subtitle", size=18, weight=ft.FontWeight.BOLD)
         
@@ -143,13 +144,26 @@ class ClipConfig(ft.Container):
             expand=1
         )
         
+        self.watermark_pos_combo = ft.Dropdown(
+            label="Posisi Watermark",
+            options=[
+                ft.dropdown.Option("top", "Atas (Top)"),
+                ft.dropdown.Option("center", "Tengah (Center)"),
+                ft.dropdown.Option("bottom", "Bawah (Bottom)"),
+            ],
+            expand=1
+        )
+        
         # type: ignore
         self.btn_intro = ft.Button("🎬 Set Video Intro", on_click=self.on_intro_picked) # type: ignore
         # type: ignore
+        self.btn_watermark = ft.Button("💧 Set Watermark", on_click=self.on_watermark_picked) # type: ignore
+        # type: ignore
         self.btn_outro = ft.Button("🎬 Set Video Outro", on_click=self.on_outro_picked) # type: ignore
 
-        # Check outro
+        # Check outro and watermark
         self.on_toggle_outro_btn()
+        self.on_toggle_watermark_btn()
 
         # type: ignore
         self.btn_lock_all = ft.Button("🔒 Kunci dan Simpan Pengaturan", on_click=self.on_lock_all_toggled) # type: ignore
@@ -164,7 +178,8 @@ class ClipConfig(ft.Container):
             ft.Row(cast(list[ft.Control], [self.bg_combo, self.anim_combo])),
             ft.Row(cast(list[ft.Control], [self.max_words_spin, self.font_size_spin, self.hw_combo])),
             ft.Row(cast(list[ft.Control], [self.tts_lang_combo, self.tts_voice_combo])),
-            ft.Row(cast(list[ft.Control], [self.btn_intro, self.btn_outro]), alignment=ft.MainAxisAlignment.CENTER),
+            ft.Row(cast(list[ft.Control], [self.watermark_pos_combo]), alignment=ft.MainAxisAlignment.CENTER),
+            ft.Row(cast(list[ft.Control], [self.btn_intro, self.btn_watermark, self.btn_outro]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.btn_lock_all]), alignment=ft.MainAxisAlignment.CENTER),
         ])
         
@@ -195,6 +210,7 @@ class ClipConfig(ft.Container):
         
         self.tts_lang_combo.value = config.tts_language
         self.tts_voice_combo.value = config.tts_voice
+        self.watermark_pos_combo.value = config.watermark_position
         
         self.on_subtitle_toggled(None)
         
@@ -250,7 +266,7 @@ class ClipConfig(ft.Container):
         except Exception:
             pass
 
-    async def on_intro_picked(self, e: Any) -> None:
+    async def on_intro_picked(self, e) -> None:
         files = await self.intro_picker.pick_files(
             dialog_title="Pilih Video Intro",
             allowed_extensions=["mp4", "mkv", "mov"]
@@ -262,7 +278,7 @@ class ClipConfig(ft.Container):
             except Exception as ex:
                 self._show_snackbar(f"Gagal mengeset intro: {ex}", error=True)
 
-    async def on_outro_picked(self, e: Any) -> None:
+    async def on_outro_picked(self, e) -> None:
         files = await self.outro_picker.pick_files(
             dialog_title="Pilih Video Outro",
             allowed_extensions=["mp4", "mkv", "mov"]
@@ -275,7 +291,7 @@ class ClipConfig(ft.Container):
             except Exception as ex:
                 self._show_snackbar(f"Gagal mengeset outro: {ex}", error=True)
 
-    def on_clear_outro_picked(self, e: Any) -> None:
+    def on_clear_outro_picked(self, e) -> None:
         """Menghapus pilihan video outro dari konfigurasi."""
         try:
             controller.clear_outro_video()
@@ -288,16 +304,66 @@ class ClipConfig(ft.Container):
         if config.outro_video is not None:
             print(config.outro_video)
             if path.exists(config.outro_video):
-                self.btn_outro.content = ft.Text("🎬 Hapus Video Outro", color=ft.Colors.RED)
+                self.btn_outro.content = "🎬 Hapus Video Outro"
+                self.btn_outro.color = ft.Colors.RED
                 self.btn_outro.on_click = self.on_clear_outro_picked
             else:
-                self.btn_outro.content = ft.Text("🎬 Video Tidak Ditemukan", color=ft.Colors.RED)
+                self.btn_outro.content = "🎬 Video Tidak Ditemukan"
+                self.btn_outro.color = ft.Colors.RED
                 self.btn_outro.on_click = self.on_clear_outro_picked
         else:
-            self.btn_outro.content = ft.Text("🎬 Pilih Video Outro")
+            self.btn_outro.content = "🎬 Pilih Video Outro"
+            self.btn_outro.color = None
             self.btn_outro.on_click = self.on_outro_picked
+            
+        try:
+            self.btn_outro.update()
+        except Exception:
+            pass
+            
+        try:
+            if self.page: self.page.update()
+            else: self.update()
+        except Exception:
+            pass
 
-    def on_subtitle_toggled(self, e: Any) -> None:
+    async def on_watermark_picked(self, e) -> None:
+        files = await self.watermark_picker.pick_files(
+            dialog_title="Pilih Watermark Image",
+            allowed_extensions=["png", "jpg", "jpeg"]
+        )
+        if files and len(files) > 0 and files[0].path:
+            try:
+                dest = controller.set_watermark_image(files[0].path)
+                self.on_toggle_watermark_btn()
+                self._show_snackbar(f"Watermark berhasil diset:\n{dest}")
+            except Exception as ex:
+                self._show_snackbar(f"Gagal mengeset watermark: {ex}", error=True)
+
+    def on_clear_watermark_picked(self, e) -> None:
+        try:
+            controller.clear_watermark_image()
+            self.on_toggle_watermark_btn()
+            self._show_snackbar("Watermark berhasil dihapus.")
+        except Exception as ex:
+            self._show_snackbar(f"Gagal menghapus watermark: {ex}", error=True)
+
+    def on_toggle_watermark_btn(self) -> None:
+        if config.watermark_image is not None:
+            if path.exists(config.watermark_image):
+                self.btn_watermark.content = "💧 Hapus Watermark"
+                self.btn_watermark.color = ft.Colors.RED
+                self.btn_watermark.on_click = self.on_clear_watermark_picked
+            else:
+                self.btn_watermark.content = "💧 File Tidak Ditemukan"
+                self.btn_watermark.color = ft.Colors.RED
+                self.btn_watermark.on_click = self.on_clear_watermark_picked
+        else:
+            self.btn_watermark.content = "💧 Pilih Watermark"
+            self.btn_watermark.color = None
+            self.btn_watermark.on_click = self.on_watermark_picked
+
+    def on_subtitle_toggled(self, e) -> None:
         checked = bool(self.subtitle_check.value)
         self.whisper_combo.disabled = not checked
         self.font_combo.disabled = not checked
@@ -314,7 +380,7 @@ class ClipConfig(ft.Container):
         except Exception:
             pass
 
-    def on_generate_intro_toggled(self, e: Any) -> None:
+    def on_generate_intro_toggled(self, e) -> None:
         self.btn_intro.disabled = bool(self.generate_intro_check.value)
         try:
             if self.page: self.page.update()
@@ -322,7 +388,7 @@ class ClipConfig(ft.Container):
         except Exception:
             pass
 
-    def on_lock_all_toggled(self, e: Any) -> None:
+    def on_lock_all_toggled(self, e) -> None:
         locked = not self.btn_lock_all.data
         self.btn_lock_all.data = locked
         self._lock_ui(locked)
@@ -348,6 +414,7 @@ class ClipConfig(ft.Container):
             "max_duration": self.max_duration_spin.value,
             "tts_language": self.tts_lang_combo.value,
             "tts_voice": self.tts_voice_combo.value,
+            "watermark_position": self.watermark_pos_combo.value,
             "hw_accel": self.hw_combo.value,
             "ui_locked": locked
         }
@@ -369,6 +436,7 @@ class ClipConfig(ft.Container):
         self.hw_combo.disabled = locked
         self.tts_lang_combo.disabled = locked
         self.tts_voice_combo.disabled = locked
+        self.watermark_pos_combo.disabled = locked
         
         if not locked:
             self.detect_libass()
@@ -388,6 +456,7 @@ class ClipConfig(ft.Container):
             self.delay_spin.disabled = True
             self.tts_lang_combo.disabled = True
             self.tts_voice_combo.disabled = True
+            self.watermark_pos_combo.disabled = True
             
             # type: ignore
             self.btn_lock_all.text = "🔓 Buka Kunci Pengaturan"  # type: ignore
@@ -400,8 +469,8 @@ class ClipConfig(ft.Container):
             pass
 
     def _show_snackbar(self, message: str, error: bool = False) -> None:
-        color = ft.Colors.ERROR if error else ft.Colors.ON_SURFACE
-        sb = ft.SnackBar(ft.Text(message, color=color))
+        bgcolor = ft.Colors.RED_700 if error else ft.Colors.GREEN_700
+        sb = ft.SnackBar(ft.Text(message, color=ft.Colors.WHITE), bgcolor=bgcolor)
         sb.open = True
         self.page_ref.overlay.append(sb)
         self.page_ref.update()

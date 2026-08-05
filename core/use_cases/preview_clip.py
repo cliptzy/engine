@@ -25,6 +25,40 @@ class PreviewClipUseCase:
             if cached:
                 return cached
 
+        import os
+        if os.path.isfile(url_clean):
+            import subprocess
+            cmd = [
+                "ffprobe", "-v", "error", "-show_entries",
+                "format=duration", "-of",
+                "default=noprint_wrappers=1:nokey=1", url_clean
+            ]
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True)
+                dur = int(float(res.stdout.strip())) if res.stdout.strip() else 0
+            except Exception:
+                dur = 0
+                
+            import hashlib
+            base_name = os.path.basename(url_clean)
+            safe_name = "".join([c if c.isalnum() else "_" for c in base_name])
+            video_id = f"local_{safe_name}_{hashlib.md5(url_clean.encode()).hexdigest()[:6]}"
+
+            preview = {
+                "title": os.path.basename(url_clean),
+                "thumbnail": None,
+                "uploader": "Local Video",
+                "duration": dur,
+                "webpage_url": url_clean,
+                "id": video_id,
+                "language": "id"
+            }
+            with _preview_lock:
+                _preview_cache[url_clean] = preview
+                if len(_preview_cache) > 200:
+                    _preview_cache.clear()
+            return preview
+
         import yt_dlp
         from typing import Any
         ydl_opts: dict[str, Any] = {

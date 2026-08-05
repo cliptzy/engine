@@ -126,6 +126,7 @@ def stack_and_concat(
 ) -> None:
     has_intro = intro_to_use and os.path.isfile(intro_to_use)
     has_outro = config.outro_video and os.path.isfile(config.outro_video)
+    has_watermark = config.watermark_image and os.path.isfile(config.watermark_image)
     
     if has_intro and not _has_audio_stream(str(intro_to_use)):
         log.warning("Intro video lacks audio stream. Ignoring intro.")
@@ -135,11 +136,14 @@ def stack_and_concat(
         log.warning("Outro video lacks audio stream. Ignoring outro.")
         has_outro = False
         
-    if has_intro or has_outro:
+    if has_intro or has_outro or has_watermark:
         if callable(event_hook):
             try:
                 event_hook("stage", {"stage": "finalize", "clip_index": index})
-                event_hook("log", f"[concat] Adding intro/outro to clip {index}...")
+                if has_intro or has_outro:
+                    event_hook("log", f"[concat] Adding intro/outro/watermark to clip {index}...")
+                else:
+                    event_hook("log", f"[concat] Adding watermark to clip {index}...")
             except Exception:
                 pass
                 
@@ -170,12 +174,26 @@ def stack_and_concat(
             concat_parts += f"[v{i}][a{i}]"
         
         filter_complex += f"{concat_parts}concat=n={input_idx}:v=1:a=1[outv][outa]"
+        map_v = "[outv]"
+        
+        if has_watermark and config.watermark_image:
+            inputs.extend(["-i", config.watermark_image])
+            wm_idx = len(inputs) // 2 - 1
+            pos = getattr(config, 'watermark_position', 'center')
+            # Safe area constraints
+            y_expr = "(H-h)/2"
+            if pos == "top": y_expr = "H*0.15" 
+            elif pos == "bottom": y_expr = "H*0.75" 
+            
+            # Scale watermark to max 80% width or original size
+            filter_complex += f"; [{wm_idx}:v]scale='min(iw,{out_w}*0.8)':-1[wm_scaled]; [outv][wm_scaled]overlay=x=(W-w)/2:y={y_expr}[outv2]"
+            map_v = "[outv2]"
         
         cmd_concat = [
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "info"
         ] + inputs + [
             "-filter_complex", filter_complex,
-            "-map", "[outv]", "-map", "[outa]",
+            "-map", map_v, "-map", "[outa]",
         ] + get_video_codec_args() + [
             "-c:a", "aac", "-b:a", "128k",
             output_file

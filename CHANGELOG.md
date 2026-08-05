@@ -2,24 +2,34 @@
 
 Semua catatan pembaruan dari proyek Cliptzy akan didokumentasikan di dalam file ini.
 
+## [v3.0.6] - 2026-08-05
+
+### Changed
+
+- **Menyembunyikan Terminal Window di Windows:** Menyisipkan _monkey-patch_ pada `subprocess.Popen` di `main.py` sehingga semua proses latar belakang bawaan FFmpeg, ffprobe, dan yt-dlp tidak lagi memunculkan _jendela terminal (CMD)_ tambahan saat aplikasi beroperasi dalam versi _standalone GUI executable_.
+
+### Fixed
+
+- **Filter Watermark FFmpeg:** Memperbaiki galat (`Undefined constant or missing '(' in 'W*0.8)'`) pada algoritma filter `scale` saat memproses penambahan _watermark_ gambar. Variabel `W` telah diganti dengan referensi nilai konkrit `{out_w}` agar kalkulasi batas maksimal lebar 80% aman diproses oleh _FFmpeg filtergraph_ di `core/processing/stacker.py`.
+
 ## [v3.0.3] - 2026-08-04
 
 ### Added
 
-- **Efek Video & Audio Dinamis Berbasis Emosi AI:** Menambahkan logika FFmpeg _filtergraph_ tingkat lanjut (`geq`, `vignette`, `hue`, `vibrato`, `flanger`) di `core/processing/subtitle.py`. Fitur ini otomatis memberikan efek visual dan audio pada video sesuai transkrip emosi (contoh: Hitam Putih + Suara Redam saat 'sedih', Layar Bergetar + _Bass Boost_ saat 'kaget', dan _Zoom Out_ + _Alien Voice_ saat 'heran') tanpa mengacaukan sinkronisasi *framerate* menggunakan dukungan parameter _timeline_ FFmpeg (`enable='between(t,start,end)'`).
-- **Fallback Ekstraksi Frame FFmpeg:** Mengatasi bug OpenCV (`cv2.VideoCapture`) yang sering gagal membaca file kontainer `.mkv` (AV1/VP9) hasil `yt-dlp`. Sistem `face_tracker.py` sekarang secara otomatis mengalihkan tugas (*fallback*) penyedotan _frame_ ke *subprocess* FFmpeg asli, menjamin _full_face tracking_ tidak akan pernah gagal karena isu _codec_.
-- **Latar Belakang Blur pada `full_face`:** Mode _crop_ `full_face` sekarang tidak lagi menggunakan latar belakang warna hitam statis. Fitur ini di-*upgrade* menggunakan manipulasi `boxblur=20:20` berlapis sehingga menghasilkan estetika *background* video buram yang identik dengan mode `full`.
+- **Efek Video & Audio Dinamis Berbasis Emosi AI:** Menambahkan logika FFmpeg _filtergraph_ tingkat lanjut (`geq`, `vignette`, `hue`, `vibrato`, `flanger`) di `core/processing/subtitle.py`. Fitur ini otomatis memberikan efek visual dan audio pada video sesuai transkrip emosi (contoh: Hitam Putih + Suara Redam saat 'sedih', Layar Bergetar + _Bass Boost_ saat 'kaget', dan _Zoom Out_ + _Alien Voice_ saat 'heran') tanpa mengacaukan sinkronisasi _framerate_ menggunakan dukungan parameter _timeline_ FFmpeg (`enable='between(t,start,end)'`).
+- **Fallback Ekstraksi Frame FFmpeg:** Mengatasi bug OpenCV (`cv2.VideoCapture`) yang sering gagal membaca file kontainer `.mkv` (AV1/VP9) hasil `yt-dlp`. Sistem `face_tracker.py` sekarang secara otomatis mengalihkan tugas (_fallback_) penyedotan _frame_ ke _subprocess_ FFmpeg asli, menjamin _full_face tracking_ tidak akan pernah gagal karena isu _codec_.
+- **Latar Belakang Blur pada `full_face`:** Mode _crop_ `full_face` sekarang tidak lagi menggunakan latar belakang warna hitam statis. Fitur ini di-_upgrade_ menggunakan manipulasi `boxblur=20:20` berlapis sehingga menghasilkan estetika _background_ video buram yang identik dengan mode `full`.
 
 ### Changed
 
 - **UI Pengaturan Subtitle:** Memperbarui antarmuka pengguna pada Clipper. Label opsi animasi kini berubah menjadi "Timbul (Scale Up) Per Kata" untuk memperjelas fungsinya, serta memindahkan _input_ **Ukuran Font** agar bersebelahan langsung dengan **Subtitle Delay (ms)**.
 - **Warna Teks Netral:** Memperbarui _prompt_ kecerdasan buatan (`core/ai/detector.py`) untuk memaksakan pemakaian warna Kuning (`#FFFF00`) sebagai pewarnaan _default_ (netral) transkrip kata.
-- **Sensitivitas Pelacakan Wajah:** Menurunkan *threshold* skor keandalan model AI YuNet dari `0.8` menjadi `0.6` pada `face_tracker.py` untuk meningkatkan sensitivitas terhadap wajah manusia yang agak buram.
+- **Sensitivitas Pelacakan Wajah:** Menurunkan _threshold_ skor keandalan model AI YuNet dari `0.8` menjadi `0.6` pada `face_tracker.py` untuk meningkatkan sensitivitas terhadap wajah manusia yang agak buram.
 - **Pesan Log Pendeteksi Wajah:** Meningkatkan kualitas laporan diagnosis pada _log viewer_ untuk menyertakan alasan kegagalan spesifik jika wajah gagal dideteksi secara teknis maupun karena tidak ada wajah sama sekali.
 
 ### Fixed
 
-- **Audio Sync pada FFmpeg Concat:** Memperbaiki sistem penggabungan (*concat*) di `core/processing/stacker.py` yang sebelumnya menyebabkan eror _matches no streams_ atau ketidaksinkronan karena *hack* `anullsrc`. Skrip kini secara cerdas mengabaikan klip Intro/Outro yang tidak memiliki aliran *audio* (_audio stream_) dari daftar proses penggabungan.
+- **Audio Sync pada FFmpeg Concat:** Memperbaiki sistem penggabungan (_concat_) di `core/processing/stacker.py` yang sebelumnya menyebabkan eror _matches no streams_ atau ketidaksinkronan karena _hack_ `anullsrc`. Skrip kini secara cerdas mengabaikan klip Intro/Outro yang tidak memiliki aliran _audio_ (_audio stream_) dari daftar proses penggabungan.
 
 ## [v3.0.2] - 2026-08-03
 

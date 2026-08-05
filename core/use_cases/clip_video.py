@@ -88,9 +88,16 @@ class ClipVideoUseCase:
         max_clips = payload.get("max_clips") if payload.get("max_clips") is not None else 10
         mode = payload.get("mode") or "heatmap"
         
-        video_id = extract_video_id(url)
-        if not video_id:
-            raise ValueError("URL YouTube tidak valid")
+        is_local = os.path.isfile(url)
+        if is_local:
+            import hashlib
+            base_name = os.path.basename(url)
+            safe_name = "".join([c if c.isalnum() else "_" for c in base_name])
+            video_id = f"local_{safe_name}_{hashlib.md5(url.encode()).hexdigest()[:6]}"
+        else:
+            video_id = extract_video_id(url)
+            if not video_id:
+                raise ValueError("URL YouTube / File lokal tidak valid")
 
         config.subtitle.whisper_model = whisper_model
         config.ai.use_highlight = bool(payload.get("use_highlight", False))
@@ -112,6 +119,7 @@ class ClipVideoUseCase:
         job_dir = os.path.join("clips", video_id)
         os.makedirs(job_dir, exist_ok=True)
         config.job_dir = job_dir
+        preview = None
         
         try:
             preview = PreviewClipUseCase().execute(url)
@@ -124,7 +132,10 @@ class ClipVideoUseCase:
         if not ok:
             raise RuntimeError("FFmpeg tidak ditemukan di sistem")
 
-        total_duration = get_video_duration(video_id)
+        if is_local and preview is not None:
+            total_duration = preview.get("duration", 0)
+        else:
+            total_duration = get_video_duration(video_id)
 
         targets = []
         picked = payload.get("segments")
@@ -145,8 +156,14 @@ class ClipVideoUseCase:
         elif mode == "custom":
             start_s = parse_time_to_seconds(payload.get("start"))
             end_s = parse_time_to_seconds(payload.get("end"))
+            
+            if start_s is None and end_s is None:
+                start_s = 0
+                end_s = int(total_duration)
+                event_hook("log", f"Menggunakan rentang waktu kustom: memproses keseluruhan video (0s - {end_s}s)")
+
             if start_s is None or end_s is None:
-                raise ValueError("Waktu Mulai dan Selesai harus diisi")
+                raise ValueError("Waktu Mulai dan Selesai harus diisi, atau kosongkan keduanya untuk memproses seluruh video")
             if end_s <= start_s:
                 raise ValueError("Waktu Selesai harus lebih besar dari Waktu Mulai")
             targets = [{"start": float(start_s), "duration": float(end_s - start_s), "score": 1.0}]
@@ -175,7 +192,9 @@ class ClipVideoUseCase:
                 total_duration=total_duration,
                 crop_mode=crop,
                 use_subtitle=subtitle,
-                event_hook=event_hook
+                event_hook=event_hook,
+                source_url=url if is_local else None,
+                custom_prompt=payload.get("custom_prompt", "")
             )
 
             if ok_clip:
@@ -294,9 +313,16 @@ class ClipVideoUseCase:
         if not url:
             raise ValueError("URL YouTube tidak boleh kosong")
 
-        video_id = extract_video_id(url)
-        if not video_id:
-            raise ValueError("URL YouTube tidak valid")
+        is_local = os.path.isfile(url)
+        if is_local:
+            import hashlib
+            base_name = os.path.basename(url)
+            safe_name = "".join([c if c.isalnum() else "_" for c in base_name])
+            video_id = f"local_{safe_name}_{hashlib.md5(url.encode()).hexdigest()[:6]}"
+        else:
+            video_id = extract_video_id(url)
+            if not video_id:
+                raise ValueError("URL YouTube / File lokal tidak valid")
 
         def event_hook(event: str, data: Any = None):
             if self.reporter:
@@ -360,7 +386,11 @@ class ClipVideoUseCase:
             if start_s is not None:
                 start = float(start_s)
 
-        total_duration = get_video_duration(video_id)
+        if is_local:
+            from core.use_cases.preview_clip import PreviewClipUseCase
+            total_duration = PreviewClipUseCase().execute(url).get("duration", 0)
+        else:
+            total_duration = get_video_duration(video_id)
         test_item = {"start": start, "duration": 10.0, "score": 1.0}
 
         event_hook("log", f"[PREVIEW] Memproses sampel 10 detik ({int(start)}s - {int(start + 10)}s) dengan Subtitle Delay: {subtitle_delay}ms...")
@@ -372,7 +402,8 @@ class ClipVideoUseCase:
             total_duration=total_duration,
             crop_mode=crop,
             use_subtitle=True,
-            event_hook=event_hook
+            event_hook=event_hook,
+            source_url=url if is_local else None
         )
 
         if not ok:

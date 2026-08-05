@@ -21,7 +21,7 @@ class ClipperView(ft.Column):
         self.worker: Optional[BackgroundWorker] = None
         
         self.video_input = VideoInput(self.page_ref)
-        self.preview = Preview()
+        self.preview = Preview(on_ai_scan_requested=self.on_ai_scan_requested)
         self.clip_config = ClipConfig(self.page_ref)
         self.process_control = ProcessControl(self.page_ref)
         self.upload_distribution = UploadDistribution(self.page_ref)
@@ -96,7 +96,8 @@ class ClipperView(ft.Column):
             "subtitle_animation": self.clip_config.anim_combo.value,
             "subtitle_max_words": int(self.clip_config.max_words_spin.value or 3),
             "padding": int(self.clip_config.padding_spin.value or 0),
-            "max_duration": int(self.clip_config.max_duration_spin.value or 0)
+            "max_duration": int(self.clip_config.max_duration_spin.value or 0),
+            "custom_prompt": self.preview.custom_prompt_input.value or ""
         })
         
         self.set_processing(True)
@@ -180,6 +181,50 @@ class ClipperView(ft.Column):
                     
         if self.page:
             self.page.run_task(worker)
+            
+    def on_ai_scan_requested(self, ai_config: dict):
+        url = self.video_input.url_input.value
+        if not url:
+            from gui.state import app_state
+            app_state.append_log("Error: URL kosong, silakan Load Video terlebih dahulu.")
+            return
+
+        from gui.state import app_state
+        from core.controller import controller
+        from core.logger import log
+
+        self.preview.set_ai_scanning(True)
+        app_state.set_processing(True, "Menganalisa Highlights dengan AI (Transkripsi Whisper + LLM)...")
+        log.info(f"Memulai AI Scan untuk URL: {url}")
+
+        async def ai_scan_worker():
+            import asyncio
+            try:
+                # Gunakan to_thread agar I/O berat tidak memblokir UI thread Flet
+                ai_data = await asyncio.to_thread(controller.scan_ai_highlights, url, ai_config)
+                if ai_data and ai_data.get("segments"):
+                    self.preview.set_ai_scan_data(ai_data)
+                    log.info(f"AI Scan selesai: {len(ai_data['segments'])} klip ditemukan.")
+                else:
+                    log.warning("AI Scan selesai tapi tidak menemukan klip yang relevan.")
+                    app_state.append_log("Peringatan: AI tidak menemukan segmen highlight.")
+            except Exception as e:
+                import traceback
+                log.error(f"Error proses AI Scan: {e}\n{traceback.format_exc()}")
+                app_state.append_log(f"Error AI Scan: {e}")
+            finally:
+                self.preview.set_ai_scanning(False)
+                app_state.set_processing(False)
+                try:
+                    if self.page:
+                        self.page.update()
+                    else:
+                        self.update()
+                except Exception:
+                    pass
+
+        if self.page:
+            self.page.run_task(ai_scan_worker)
         
     def set_loading(self, loading: bool) -> None:
         self.video_input.set_loading(loading)
@@ -193,7 +238,7 @@ class ClipperView(ft.Column):
     def update_stage(self, stage_name: str, data: dict) -> None:
         self.process_control.update_stage(stage_name, data)
 
-    def on_test_subtitle(self, e: ft.ControlEvent) -> None:
+    def on_test_subtitle(self, e) -> None:
         event_bus.publish("test_subtitle_requested")
 
     def load_video_url(self, url: str) -> None:

@@ -19,7 +19,9 @@ def process_single_clip(
     total_duration: int,
     crop_mode: str = "default",
     use_subtitle: bool = False,
-    event_hook: Optional[Callable[[str, Any], None]] = None
+    event_hook: Optional[Callable[[str, Any], None]] = None,
+    source_url: Optional[str] = None,
+    custom_prompt: str = ""
 ) -> bool:
     """
     Downloads, crops, and exports a single vertical clip based on a heatmap segment.
@@ -87,17 +89,45 @@ def process_single_clip(
 
     try:
         if not os.path.exists(cropped_file):
-            try:
+            if source_url and os.path.isfile(source_url):
                 if callable(event_hook):
-                    event_hook("log", f"[yt-dlp] Downloading segment: {start}s - {end}s\n")
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
-                    ydl.download([f"https://youtu.be/{video_id}"])
-            except Exception as e:
-                log.info(f"Retrying download with fallback format for clip {index}: {e}")
-                if callable(event_hook):
-                    event_hook("log", f"[yt-dlp] Retrying download with fallback format...\n")
-                with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl: # type: ignore
-                    ydl.download([f"https://youtu.be/{video_id}"])
+                    event_hook("log", f"[ffmpeg] Memotong video lokal: {start}s - {end}s\n")
+                cmd_cut = [
+                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                    "-ss", str(start),
+                    "-t", str(end - start),
+                    "-i", source_url,
+                    "-c", "copy",
+                    "-avoid_negative_ts", "make_non_negative",
+                    temp_file
+                ]
+                res = subprocess.run(cmd_cut, capture_output=True, text=True)
+                if res.returncode != 0:
+                    log.warning(f"Copy stream gagal, mencoba re-encode untuk memotong: {res.stderr}")
+                    cmd_cut_enc = [
+                        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                        "-ss", str(start),
+                        "-t", str(end - start),
+                        "-i", source_url,
+                        "-c:v", "libx264", "-c:a", "aac",
+                        temp_file
+                    ]
+                    res_enc = subprocess.run(cmd_cut_enc, capture_output=True, text=True)
+                    if res_enc.returncode != 0:
+                        log.error(f"Gagal memotong video lokal: {res_enc.stderr}")
+                        return False
+            else:
+                try:
+                    if callable(event_hook):
+                        event_hook("log", f"[yt-dlp] Downloading segment: {start}s - {end}s\n")
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+                        ydl.download([f"https://youtu.be/{video_id}"])
+                except Exception as e:
+                    log.info(f"Retrying download with fallback format for clip {index}: {e}")
+                    if callable(event_hook):
+                        event_hook("log", f"[yt-dlp] Retrying download with fallback format...\n")
+                    with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl: # type: ignore
+                        ydl.download([f"https://youtu.be/{video_id}"])
 
             if not os.path.exists(temp_file):
                 log.error(f"Failed to download video segment for clip {index}.")
@@ -181,6 +211,7 @@ def process_single_clip(
                 channel_name=channel_name,
                 youtube_url=youtube_url,
                 ai_config=ai_config,
+                user_context=custom_prompt,
                 event_hook=event_hook,
                 language=preview_data.get("language", "Indonesia"),
                 words_data=words_data

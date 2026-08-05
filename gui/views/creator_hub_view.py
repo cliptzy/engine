@@ -253,7 +253,7 @@ class CreatorHubView(ft.Container):
         try:
             channel_manager.delete_channel(channel_id)
             self.load_channels()
-            snack = ft.SnackBar(ft.Text(f"Channel {channel_name} berhasil dihapus!"), bgcolor=ft.Colors.GREEN_700) # type: ignore
+            snack = ft.SnackBar(ft.Text(f"Channel {channel_name} berhasil dihapus!", color=ft.Colors.WHITE), bgcolor=ft.Colors.GREEN_700) # type: ignore
             if self.page:
                 self.page.overlay.append(snack)
                 snack.open = True

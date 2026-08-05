@@ -80,6 +80,8 @@ class AppConfig:
     
     intro_video: Optional[str] = None
     outro_video: Optional[str] = None
+    watermark_image: Optional[str] = None
+    watermark_position: str = "center"
     
     output_ratio: str = "9:16"
     out_width: Optional[int] = 720
@@ -146,6 +148,8 @@ class AppConfig:
             "yt_session": self.youtube.session,
             "intro_video": self.intro_video,
             "outro_video": self.outro_video,
+            "watermark_image": self.watermark_image,
+            "watermark_position": self.watermark_position,
             "output_ratio": self.output_ratio,
             "crop_mode": self.crop_mode,
             "merge_clips": self.merge_clips,
@@ -236,6 +240,10 @@ class AppConfig:
             self.intro_video = data["intro_video"]
         if "outro_video" in data:
             self.outro_video = data["outro_video"]
+        if "watermark_image" in data:
+            self.watermark_image = data["watermark_image"]
+        if "watermark_position" in data:
+            self.watermark_position = data["watermark_position"]
         if "output_ratio" in data and data["output_ratio"]:
             self.set_ratio_preset(data["output_ratio"])
         if "crop_mode" in data and data["crop_mode"]:
@@ -303,7 +311,10 @@ class AppConfig:
     def save_to_file(self, filepath: str = "config.json") -> bool:
         """Saves configuration to JSON file."""
         from core.utils import write_json
-        return write_json(filepath, self.to_dict(), indent=2)
+        w = write_json(filepath, self.to_dict(), indent=2)
+        if w:
+            self.load_from_file(filepath)
+        return w
 
     def load_from_file(self, filepath: str = "config.json") -> bool:
         """Loads configuration from JSON file."""

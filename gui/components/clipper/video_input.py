@@ -17,23 +17,33 @@ class VideoInput(ft.Container):
         )
         
         self.import_cookies_btn = ft.Button(
-            content=ft.Text("🔑 Import Cookies"), # type: ignore
+            content=ft.Text("🔑"), # type: ignore
             on_click=self.on_cookies_picked
         )
         
         self.fetch_btn = ft.Button(
-            content=ft.Text("🔍 Load Video"), # type: ignore
+            content=ft.Text("🔍"), # type: ignore
             style=ft.ButtonStyle(bgcolor=ft.Colors.INDIGO_600, color=ft.Colors.WHITE),
             on_click=self.on_fetch_clicked
         )
         
+        self.browse_video_btn = ft.Button(
+            content=ft.Text("📁"), # type: ignore
+            on_click=self.on_browse_video
+        )
+        
         # type: ignore
         self.cookies_picker = ft.FilePicker()
+        # type: ignore
+        self.video_picker = ft.FilePicker()
+        
         self.page_ref.services.append(self.cookies_picker)
+        self.page_ref.services.append(self.video_picker)
         
         self.content = ft.Row(
             controls=cast(list[ft.Control], [
                 self.url_input,
+                self.browse_video_btn,
                 self.import_cookies_btn,
                 self.fetch_btn
             ]),
@@ -51,6 +61,19 @@ class VideoInput(ft.Container):
                 self._show_snackbar("File cookies.txt berhasil diimpor!")
             except Exception as ex:
                 self._show_snackbar(f"Gagal mengimpor cookies: {ex}", error=True)
+                
+    async def on_browse_video(self, e: Any) -> None:
+        files = await self.video_picker.pick_files(
+            dialog_title="Pilih Video Lokal",
+            allowed_extensions=["mp4", "mkv", "avi", "mov", "webm"]
+        )
+        if files and len(files) > 0 and files[0].path:
+            self.url_input.value = files[0].path
+            try:
+                if self.page: self.page.update()
+                else: self.update()
+            except Exception:
+                pass
 
     def on_fetch_clicked(self, e: Any = None) -> None:
         url = self.url_input.value.strip() if self.url_input.value else ""
@@ -68,8 +91,8 @@ class VideoInput(ft.Container):
             pass
 
     def _show_snackbar(self, message: str, error: bool = False) -> None:
-        color = ft.Colors.ERROR if error else ft.Colors.ON_SURFACE
-        sb = ft.SnackBar(ft.Text(message, color=color))
+        bgcolor = ft.Colors.RED_700 if error else ft.Colors.GREEN_700
+        sb = ft.SnackBar(ft.Text(message, color=ft.Colors.WHITE), bgcolor=bgcolor)
         sb.open = True
         self.page_ref.overlay.append(sb)
         self.page_ref.update()

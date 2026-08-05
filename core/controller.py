@@ -121,6 +121,23 @@ class ClipController:
         config.outro_video = None
         config.save_to_file()
 
+    def set_watermark_image(self, file_path: str) -> str:
+        """Sets and copies watermark image to assets folder."""
+        if not os.path.exists(file_path):
+            raise FileNotFoundError("File watermark tidak ditemukan")
+        os.makedirs("assets", exist_ok=True)
+        ext = os.path.splitext(file_path)[1]
+        dest = os.path.join("assets", f"watermark{ext}")
+        shutil.copy2(file_path, dest)
+        config.watermark_image = dest
+        config.save_to_file()
+        return dest
+
+    def clear_watermark_image(self) -> None:
+        """Clears the configured watermark image."""
+        config.watermark_image = None
+        config.save_to_file()
+
     def get_available_fonts(self) -> List[str]:
         """Lists available fonts in fonts directory."""
         fonts = ["Arial", "Poppins", "Montserrat", "Impact", "Trebuchet MS"]

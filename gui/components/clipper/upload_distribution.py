@@ -429,7 +429,7 @@ class UploadDistribution(ft.Container):
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
             
-        snack = ft.SnackBar(ft.Text("Metadata berhasil disimpan!"), bgcolor=ft.Colors.GREEN_700) # type: ignore
+        snack = ft.SnackBar(ft.Text("Metadata berhasil disimpan!", color=ft.Colors.WHITE), bgcolor=ft.Colors.GREEN_700) # type: ignore
         self._page.overlay.append(snack)
         snack.open = True
         self._page.update()
@@ -469,7 +469,7 @@ class UploadDistribution(ft.Container):
                 pass
                 
         if not transcript and not youtube_title:
-            snack = ft.SnackBar(ft.Text("Tidak ada konteks video (transkrip/judul) untuk AI."), bgcolor=ft.Colors.RED_700) # type: ignore
+            snack = ft.SnackBar(ft.Text("Tidak ada konteks video (transkrip/judul) untuk AI.", color=ft.Colors.WHITE), bgcolor=ft.Colors.RED_700) # type: ignore
             self._page.overlay.append(snack)
             snack.open = True
             self._page.update()
@@ -535,7 +535,7 @@ class UploadDistribution(ft.Container):
     def handle_upload(self, e: Any) -> None:
         selected_clips = [chk.data for chk in self.clips_to_upload if chk.value]
         if not selected_clips:
-            snack = ft.SnackBar(ft.Text("Pilih setidaknya satu klip untuk di-upload!"), bgcolor=ft.Colors.RED_700) # type: ignore
+            snack = ft.SnackBar(ft.Text("Pilih setidaknya satu klip untuk di-upload!", color=ft.Colors.WHITE), bgcolor=ft.Colors.RED_700) # type: ignore
             self._page.overlay.append(snack)
             snack.open = True
             self._page.update()
@@ -547,7 +547,7 @@ class UploadDistribution(ft.Container):
         if self.platform_ig.value: platforms.append("Instagram Reels")
         
         if not platforms:
-            snack = ft.SnackBar(ft.Text("Pilih setidaknya satu platform tujuan upload!"), bgcolor=ft.Colors.RED_700) # type: ignore
+            snack = ft.SnackBar(ft.Text("Pilih setidaknya satu platform tujuan upload!", color=ft.Colors.WHITE), bgcolor=ft.Colors.RED_700) # type: ignore
             self._page.overlay.append(snack)
             snack.open = True
             self._page.update()
@@ -688,11 +688,11 @@ class UploadDistribution(ft.Container):
             if self._is_upload_cancelled:
                 self.upload_status_text.value = "⚠️ Upload Dibatalkan"
                 self.upload_status_text.color = ft.Colors.RED_400
-                snack_result = ft.SnackBar(ft.Text("Proses upload dibatalkan."), bgcolor=ft.Colors.RED_700) # type: ignore
+                snack_result = ft.SnackBar(ft.Text("Proses upload dibatalkan.", color=ft.Colors.WHITE), bgcolor=ft.Colors.RED_700) # type: ignore
             else:
                 self.upload_status_text.value = "✅ Upload Selesai"
                 self.upload_status_text.color = ft.Colors.GREEN_400
-                snack_result = ft.SnackBar(ft.Text("Semua klip telah diproses dalam antrean upload!"), bgcolor=ft.Colors.GREEN_700) # type: ignore
+                snack_result = ft.SnackBar(ft.Text("Semua klip telah diproses dalam antrean upload!", color=ft.Colors.WHITE), bgcolor=ft.Colors.GREEN_700) # type: ignore
                 
             self._page.overlay.append(snack_result)
             snack_result.open = True
