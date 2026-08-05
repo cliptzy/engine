@@ -13,11 +13,12 @@ if len(sys.argv) >= 3 and sys.argv[1] == "-m" and sys.argv[2] == "yt_dlp":
 import subprocess
 if sys.platform == "win32":
     _original_popen = subprocess.Popen
-    def _patched_popen(*args, **kwargs):
-        if "creationflags" not in kwargs:
-            kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-        return _original_popen(*args, **kwargs)
-    subprocess.Popen = _patched_popen
+    class _PatchedPopen(_original_popen):
+        def __init__(self, *args, **kwargs):
+            if "creationflags" not in kwargs:
+                kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            super().__init__(*args, **kwargs)
+    subprocess.Popen = _PatchedPopen
 
 from core import (
     config,
