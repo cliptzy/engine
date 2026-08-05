@@ -2,6 +2,14 @@
 
 Semua catatan pembaruan dari proyek Cliptzy akan didokumentasikan di dalam file ini.
 
+## [v3.0.8] - 2026-08-05
+
+### Fixed
+
+- **Deteksi Facecam di Frozen Bundle:** Memperbaiki bug pada `core/face_tracker.py` di mana aplikasi mencari model AI YuNet (`face_detection_yunet.onnx`) di folder sebelah biner executable (`sys.executable`) alih-alih di folder temporary ekstraksi runtime (`sys._MEIPASS`). Penambahan helper `get_app_root()` di `core/utils.py` menyelesaikan pencarian aset terbundel dengan benar, sehingga deteksi facecam berfungsi sepenuhnya secara offline tanpa perlu mengunduh ulang model dari GitHub.
+- **Penyatuan Folder Data (`data/`):** Menyematkan inisialisasi workdir otomatis `setup_workdir()` pada `main.py` dan `gui/app.py` untuk mengalihkan *Current Working Directory* (CWD) ke `<app_dir>/data/` **khusus saat aplikasi berjalan dalam mode bundled (frozen)**. Hal ini memastikan seluruh output, log (`logs/`), kredensial (`cred/`), konfigurasi (`config.json`), aset (`assets/`), dan model (`models/`) terisolasi di dalam folder data bawaan bundle Flet dan tidak memenuhi folder root aplikasi. Di mode development, CWD tetap menunjuk ke root folder project seperti biasa.
+- **Konsistensi Dokumentasi Flet:** Memperbaharui references PyQt6/QThread yang tersisa menjadi Flet/BackgroundWorker di `ARCHITECTURE.md`, `README.md`, dan `README_EN.md` sesuai dengan pedoman arsitektur terbaru.
+
 ## [v3.0.7] - 2026-08-05
 
 ### Added

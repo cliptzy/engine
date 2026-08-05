@@ -14,12 +14,7 @@ def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) 
 
     try:
         import sys
-        if getattr(sys, 'frozen', False):
-            app_root = os.path.dirname(sys.executable)
-        else:
-            app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            
-        model_dir = os.path.join(app_root, "models")
+        model_dir = "models"
         os.makedirs(model_dir, exist_ok=True)
         model_path = os.path.join(model_dir, "face_detection_yunet.onnx")
         

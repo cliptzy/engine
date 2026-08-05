@@ -1,6 +1,7 @@
-import argparse
-import os
+import core.bootstrap
 import sys
+import os
+import argparse
 
 if len(sys.argv) >= 3 and sys.argv[1] == "-m" and sys.argv[2] == "yt_dlp":
     import yt_dlp

@@ -8,24 +8,17 @@ Aplikasi dibangun dengan memisahkan UI dan Engine (Core) yang dihubungkan oleh C
 
 ### A. UI Layer (`gui/`)
 
-Bertanggung jawab murni atas antarmuka pengguna (tampilan), tata letak, penerimaan input dari user, dan pembaruan visual. Dibangun menggunakan **PyQt6**.
+Bertanggung jawab murni atas antarmuka pengguna (tampilan), tata letak, penerimaan input dari user, dan pembaruan visual. Dibangun menggunakan **Flet**.
 
-- **`app.py`**: Inisialisasi aplikasi Qt dan peluncuran main window.
-- **`main_window.py`**: Window utama aplikasi yang memuat layout dasar, sidebar, header, dan mengatur navigasi antar halaman (menggunakan `QStackedWidget`).
-- **`styles.py`**: Definisi CSS/stylesheet untuk tema gelap aplikasi.
-- **`utils.py`**: Fungsi utilitas UI seperti `get_app_icon`.
-- **`workers.py`**: Implementasi `QThread` (seperti `PreviewWorker`, `ScanWorker`, `ClipWorker`, `SubtitlePreviewWorker`, `AIScanWorker`) untuk menjalankan tugas I/O atau pemrosesan berat di latar belakang agar UI tetap responsif.
-- **`widgets/`**: Modul UI yang dipecah menjadi komponen lebih kecil.
-  - `ai_settings_widget.py`: Antarmuka khusus untuk konfigurasi layanan AI (Provider, Host/Key, Model Name).
-  - `auto_upload_widget.py`: Antarmuka untuk fitur auto upload dan distribusi.
-  - `creator_hub_widget.py`: Antarmuka untuk mencari dan memilih video dari berbagai kreator.
-  - `header_widget.py`: Navigasi bagian atas (top bar) atau status bar.
-  - `log_console_widget.py`: Widget untuk menampilkan log proses dan progres operasi (clipping/scanning).
-  - `media_player_widget.py`: Widget pemutar video untuk preview hasil klip.
-  - `preview_widget.py`: Widget untuk preview timeline, heatmap scan, dan deteksi segmen AI.
-  - `clip_config_widget.py`: Antarmuka konfigurasi (Mode crop, rasio, subtitle, aset video intro/outro).
-  - `sidebar_widget.py`: Navigasi menu samping aplikasi.
-  - `video_input_widget.py`: Input pencarian URL YouTube.
+- **`app.py`**: Inisialisasi aplikasi Flet dan tata letak dasar.
+- **`router.py`**: Navigasi dan routing view aplikasi.
+- **`state.py`**: Pengelolaan status reaktif aplikasi.
+- **`theme.py`**: Konfigurasi tema gelap Flet.
+- **`event_bus.py`**: Sistem komunikasi antar-komponen asinkron.
+- **`workers.py`**: Implementasi `BackgroundWorker` berbasis multi-threading Python yang thread-safe untuk UI update Flet.
+- **`layout/`**: Tata letak dasar (Header, Sidebar, MainLayout, StatusBar).
+- **`views/`**: Halaman utama aplikasi (LoginView, ClipperView, CreatorHubView, SettingsView).
+- **`components/`**: Komponen visual modular yang reusable (seperti LogViewer, ProgressIndicator, SpinBox, VideoCard, ClipConfig, Preview, dll.).
 
 ### B. Controller Layer (`core/controller.py`)
 
@@ -39,7 +32,7 @@ Bertindak sebagai penghubung antara UI Layer dan Engine Layer.
 
 ### C. Engine Layer (`core/`)
 
-Lapisan murni yang tidak memiliki ketergantungan pada UI (PyQt6). Berisi inti pemrosesan data, pengolahan file, dan operasi jaringan.
+Lapisan murni yang tidak memiliki ketergantungan pada UI (Flet). Berisi inti pemrosesan data, pengolahan file, dan operasi jaringan.
 
 - **`ai_detector.py`**: Logika deteksi _highlight_ menggunakan LLM (Ollama, Gemini API, OpenAI API).
 - **`channel_manager.py`**: Logika manajemen dan kurasi channel YouTube kreator.
@@ -57,7 +50,7 @@ Lapisan murni yang tidak memiliki ketergantungan pada UI (PyQt6). Berisi inti pe
 Cliptzy memiliki kebijakan **Non-Blocking UI**. Oleh karena itu:
 
 - Fungsi berat (seperti `yt-dlp` download, `Whisper` transkripsi, `FFmpeg` filter) **DILARANG** dijalankan di _Main Thread_ GUI.
-- **QThread (di `gui/workers.py`)**: Digunakan untuk mengeksekusi operasi tersebut. Setiap worker mengkomunikasikan progres, error, dan hasil akhirnya ke UI melalui sistem **Qt Signals & Slots**.
+- **BackgroundWorker (di `gui/workers.py`)**: Digunakan untuk mengeksekusi operasi tersebut secara asinkron menggunakan multi-threading Python yang aman untuk pembaruan UI Flet.
 - **Cancellation**: Controller dan Worker mendukung pengecekan flag `is_cancelled` untuk menghentikan pemrosesan (`yt-dlp`, FFmpeg subprocess) dengan aman dan membersihkan _temporary files_.
 
 ## 3. Direktori Penyimpanan Lokal (Local Storage & Cache)

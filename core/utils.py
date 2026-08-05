@@ -11,7 +11,7 @@ def open_dir(dir_path):
 
     try:
         if sysops == "Windows":
-            os.startfile(dir_path)
+            os.startfile(dir_path)  # type: ignore
         elif sysops == "Darwin":
             subprocess.Popen(["open", dir_path])
         else:

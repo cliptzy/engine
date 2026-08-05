@@ -1,8 +1,11 @@
+import core.bootstrap
+import os
+import sys
+
 import flet as ft
 from core.config import config
 from gui.theme import build_theme
 from gui.state import app_state
-import os
 
 w = 1024
 h = 768

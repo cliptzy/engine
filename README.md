@@ -2,13 +2,13 @@
 
 🇮🇩 **Bahasa Indonesia** | [🇺🇸 English](README_EN.md)
 
-Aplikasi Desktop Standalone native (berbasis Python & PyQt6) untuk mengambil momen paling ramah engangement (*Most Replayed / Heatmap*) dari video YouTube dan mengubahnya secara otomatis menjadi klip vertikal siap unggah untuk Shorts/Reels/TikTok — dilengkapi dengan animasi subtitle AI (Faster-Whisper), pemotong split-screen facecam, dan alur integrasi auto-upload.
+Aplikasi Desktop Standalone native (berbasis Python & Flet) untuk mengambil momen paling ramah engangement (*Most Replayed / Heatmap*) dari video YouTube dan mengubahnya secara otomatis menjadi klip vertikal siap unggah untuk Shorts/Reels/TikTok — dilengkapi dengan animasi subtitle AI (Faster-Whisper), pemotong split-screen facecam, dan alur integrasi auto-upload.
 
 ---
 
 ## 🌟 Keunggulan Standalone Desktop
 
-- ⚡ **Native GUI (PyQt6)**: Tanpa server Flask, tanpa browser eksternal, dan responsif 100%.
+- ⚡ **Native GUI (Flet)**: Tanpa server Flask, tanpa browser eksternal, dan responsif 100%.
 - 🎯 **Sidebar Navigation**: Navigasi intuitif untuk pemotong klip, kesiapan distribusi auto-upload, dan pengaturan.
 - 🎨 **Modern Dark Aesthetics**: Tampilan UI modern, navbar flat, dan kontrol visual yang presisi.
 - 📂 **Drag-and-Drop Native**: Tarik & lepas file `cookies.txt`, video Intro/Outro, atau link URL YouTube langsung ke jendela aplikasi.

@@ -61,7 +61,7 @@ import sys
 
 def get_user_data_dir() -> str:
     if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
+        return os.path.join(os.path.dirname(sys.executable), "data")
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 APP_ROOT = get_user_data_dir()

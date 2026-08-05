@@ -2,13 +2,13 @@
 
 [🇮🇩 Bahasa Indonesia](README.md) | 🇺🇸 **English**
 
-Native Standalone Desktop Application (Python & PyQt6) for extracting YouTube high-engagement moments (*Most Replayed / Heatmap*) and automatically generating vertical clips ready for Shorts/Reels/TikTok — powered by AI Subtitles (Faster-Whisper), split-screen facecam cropping, and auto-upload distribution workflow.
+Native Standalone Desktop Application (Python & Flet) for extracting YouTube high-engagement moments (*Most Replayed / Heatmap*) and automatically generating vertical clips ready for Shorts/Reels/TikTok — powered by AI Subtitles (Faster-Whisper), split-screen facecam cropping, and auto-upload distribution workflow.
 
 ---
 
 ## 🌟 Standalone Desktop Highlights
 
-- ⚡ **Native GUI (PyQt6)**: No Flask server, no external browser window, 100% responsive.
+- ⚡ **Native GUI (Flet)**: No Flask server, no external browser window, 100% responsive.
 - 🎯 **Sidebar Navigation**: Intuitive navigation panel for Clipper dashboard, distribution readiness, and settings.
 - 🎨 **Modern Dark Aesthetics**: Sleek UI theme, flat unrounded navbar, and precise visual controls.
 - 📂 **Native Drag-and-Drop**: Drag & drop `cookies.txt`, Intro/Outro videos, or YouTube URL links directly into the app window.
