@@ -22,7 +22,20 @@ class TikTokUploader:
             
         try:
             title = metadata.get("title", "")
-            caption = f"{title} {config.tiktok.caption}".strip()
+            description = metadata.get("description", "")
+            tags_raw = metadata.get("tags", "")
+            if isinstance(tags_raw, list):
+                tags_str = " ".join([f"#{t.strip().replace('#', '')}" for t in tags_raw if t.strip()])
+            else:
+                tags_str = " ".join([f"#{t.strip().replace('#', '')}" for t in tags_raw.split() if t.strip()])
+                
+            parts = []
+            if title: parts.append(title)
+            if description: parts.append(description)
+            if config.tiktok.caption: parts.append(config.tiktok.caption)
+            if tags_str: parts.append(tags_str)
+            
+            caption = "\n\n".join(parts).strip()
                 
             if event_hook: event_hook("log", f"[TikTok] Memulai upload menggunakan tiktok-uploader dari file {cookie_path}...")
             logger.info(f"Mengunggah ke TikTok: {file_path}, caption: {caption}")

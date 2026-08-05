@@ -41,7 +41,20 @@ class InstagramUploader:
                 return UploadResult(False, self.platform_name, error_msg="Tidak ditemukan cookie sessionid di dalam file tersebut.")
                 
             title = metadata.get("title", "")
-            caption = f"{title} {config.instagram.caption}".strip()
+            description = metadata.get("description", "")
+            tags_raw = metadata.get("tags", "")
+            if isinstance(tags_raw, list):
+                tags_str = " ".join([f"#{t.strip().replace('#', '')}" for t in tags_raw if t.strip()])
+            else:
+                tags_str = " ".join([f"#{t.strip().replace('#', '')}" for t in tags_raw.split() if t.strip()])
+                
+            parts = []
+            if title: parts.append(title)
+            if description: parts.append(description)
+            if config.instagram.caption: parts.append(config.instagram.caption)
+            if tags_str: parts.append(tags_str)
+            
+            caption = "\n\n".join(parts).strip()
                 
             if event_hook: event_hook("log", f"[Instagram] Memulai login via sessionid...")
             

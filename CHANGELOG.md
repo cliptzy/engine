@@ -2,6 +2,12 @@
 
 Semua catatan pembaruan dari proyek Cliptzy akan didokumentasikan di dalam file ini.
 
+## [v3.0.7] - 2026-08-05
+
+### Added
+
+- **Sinkronisasi Metadata Lintas Platform:** Menambahkan integrasi metadata (Judul, Deskripsi, dan Hashtag) yang konsisten secara serentak di TikTok dan Instagram Reels. Sebelumnya TikTok dan Instagram hanya membaca variabel Judul saja; sekarang keduanya mampu menyusun struktur *caption* yang utuh sesuai masukan dari UI. Selain itu, YouTube Shorts sekarang juga akan menyematkan daftar `hashtags` secara visual di dalam teks Deskripsinya untuk konsistensi tata letak *cross-platform*.
+
 ## [v3.0.6] - 2026-08-05
 
 ### Changed

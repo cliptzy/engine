@@ -63,9 +63,14 @@ class YouTubeUploader:
         else:
             tags_list = [t.strip().replace('#', '') for t in tags_raw.split() if t.strip()]
         
+        tags_str = " ".join([f"#{t}" for t in tags_list])
+        
         # Ensure #shorts is present for YouTube Shorts
         if "#shorts" not in description.lower() and "#shorts" not in title.lower():
-            description += "\n#shorts"
+            tags_str += " #shorts"
+            
+        if tags_str:
+            description = f"{description}\n\n{tags_str.strip()}".strip()
             
         if len(title) > 100:
             title = title[:97] + "..."
