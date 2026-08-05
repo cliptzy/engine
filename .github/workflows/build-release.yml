@@ -18,10 +18,10 @@ jobs:
           #   target: apk
           #   artifact_name: cliptzy-android
           #   file_extension: apk
-          - os: ubuntu-latest
-            target: linux
-            artifact_name: cliptzy-linux
-            file_extension: zip
+          # - os: ubuntu-latest
+          #   target: linux
+          #   artifact_name: cliptzy-linux
+          #   file_extension: zip
           - os: windows-latest
             target: windows
             artifact_name: cliptzy-windows
