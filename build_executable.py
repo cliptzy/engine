@@ -134,6 +134,7 @@ def main():
     ]
     cmd.append("--exclude")
     cmd.extend(exclude_list)
+    cmd.append("--no-compile-packages")
         
     print(f"[RUN] {' '.join(cmd)}")
     
