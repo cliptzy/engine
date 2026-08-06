@@ -1,6 +1,7 @@
 import os
 import random
 import subprocess
+import sys
 from typing import Optional, Callable
 from core.logger import log
 from core.config import config
@@ -62,12 +63,19 @@ def burn_subtitle_and_highlight(
         vf_chain = []
         af_chain = ["loudnorm=I=-14:LRA=11:TP=-1.5"]
         scheduled_external_sfx = []
+        scheduled_overlays = []
         
         try:
             from core.sfx import sfx_manager
             SFX_MAP = sfx_manager.sfx_map
         except ImportError:
             SFX_MAP = {}
+            
+        try:
+            from core.overlay import overlay_manager
+            OVERLAY_MAP = overlay_manager.overlay_map
+        except ImportError:
+            OVERLAY_MAP = {}
         
         enriched = metadata.get("enriched_transcript", [])
         visual_emotions = metadata.get("visual_emotions", [])
@@ -139,16 +147,38 @@ def burn_subtitle_and_highlight(
                         vf_chain.append(f"{vf_filter}:enable='{cond}'")
                     for af_filter in effect.get("af", []):
                         af_chain.append(f"{af_filter}:enable='{cond}'")
-                except Exception as e:
-                    log.warning(f"Gagal memuat efek visual untuk {emo}: {e}")
+                except Exception as ex_vfx:
+                    log.warning(f"Gagal memuat efek visual untuk {emo}: {ex_vfx}")
                 
+                # --- LAYERING / OVERLAY LOGIC ---
+                try:
+                    from core.overlay import overlay_manager
+                    overlay_info = overlay_manager.get_random_overlay(emo)
+                    if overlay_info and overlay_info.get("file"):
+                        overlay_file = os.path.join("assets", "overlay", overlay_info["file"])
+                        if os.path.exists(overlay_file):
+                            scheduled_overlays.append({
+                                "file": overlay_file,
+                                "start": s,
+                                "end": e,
+                                "effect": overlay_info.get("effect", "transparent"),
+                                "opacity": overlay_info.get("opacity", 0.5)
+                            })
+                        else:
+                            log.debug(f"File overlay dilewati karena tidak ditemukan: {overlay_file}")
+                except Exception as ex:
+                    log.warning(f"Gagal memuat overlay untuk {emo}: {ex}")
+
                 available_sfx_pool = []
                 
                 if emo in SFX_MAP:
                     files = SFX_MAP[emo].get("files", []) if isinstance(SFX_MAP[emo], dict) else SFX_MAP[emo]
                     for filename in files:
+                        if not filename or filename.lower() == "none":
+                            available_sfx_pool.append({"type": "empty", "data": None})
+                            continue
                         sfx_file = os.path.join("assets", "audio", filename)
-                        if os.path.exists(sfx_file):
+                        if os.path.exists(sfx_file) and os.path.isfile(sfx_file):
                             available_sfx_pool.append({"type": "external", "data": sfx_file})
                         else:
                             log.debug(f"File MP3 dilewati karena tidak ditemukan: {sfx_file}")
@@ -172,8 +202,22 @@ def burn_subtitle_and_highlight(
             # Tambahkan visual bounding box dari DeepFace ke video
             if isinstance(visual_emotions, list) and len(visual_emotions) > 0:
                 font_arg = ""
-                if os.path.exists("C:/Windows/Fonts/arial.ttf"):
-                    font_arg = "fontfile='C\\:/Windows/Fonts/arial.ttf':"
+                font_paths = []
+                if sys.platform == "win32":
+                    font_paths = ["C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/consola.ttf"]
+                elif sys.platform == "darwin":
+                    font_paths = ["/System/Library/Fonts/Helvetica.ttc", "/Library/Fonts/Arial.ttf"]
+                else:
+                    font_paths = [
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+                        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+                    ]
+                for fp in font_paths:
+                    if os.path.exists(fp):
+                        fp_esc = fp.replace(":", "\\:")
+                        font_arg = f"fontfile='{fp_esc}':"
+                        break
                     
                 for i, ve in enumerate(visual_emotions):
                     t = float(ve.get("time", 0.0))
@@ -190,39 +234,92 @@ def burn_subtitle_and_highlight(
         unique_sfx_files = list(dict.fromkeys([sfx for sfx, _ in scheduled_external_sfx]))
         total_sfx = len(scheduled_external_sfx)
         
-        if total_sfx > 0:
+        total_overlays = len(scheduled_overlays)
+        
+        if total_sfx > 0 or total_overlays > 0:
             cmd_subtitle = [
                 "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
                 "-i", cropped_file
             ]
             
+            sfx_input_offset = 1
             for sfx in unique_sfx_files:
                 cmd_subtitle.extend(["-i", sfx])
                 
+            overlay_input_offset = sfx_input_offset + len(unique_sfx_files)
+            for ov in scheduled_overlays:
+                ovf = ov["file"]
+                if ovf.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+                    cmd_subtitle.extend(["-loop", "1", "-i", ovf])
+                else:
+                    cmd_subtitle.extend(["-i", ovf])
+                
             fc_parts = []
             
-            fc_parts.append(f"[0:v]{','.join(vf_chain)}[vout]")
-            
+            # --- VIDEO FILTER CHAIN ---
+            if total_overlays > 0:
+                fc_parts.append(f"[0:v]{','.join(vf_chain)}[vout_0]")
+                last_v = "[vout_0]"
+                
+                for i, ov in enumerate(scheduled_overlays):
+                    ov_idx = overlay_input_offset + i
+                    ov_start = ov["start"]
+                    ov_end = ov["end"]
+                    effect = ov["effect"]
+                    opacity = ov["opacity"]
+                    
+                    ov_stream = f"[ov_processed_{i}]"
+                    duration = ov_end - ov_start
+                    if duration <= 0:
+                        duration = 1.0
+                        ov_end = ov_start + 1.0
+                        
+                    base_filter = f"[{ov_idx}:v]setpts=PTS-STARTPTS+{ov_start}/TB,format=argb"
+                    
+                    if effect == "transparent":
+                        fade_d = min(0.5, duration / 2)
+                        fade_st = ov_end - fade_d
+                        ov_filter = f"{base_filter},scale=720:-1,colorchannelmixer=aa={opacity},fade=t=out:st={fade_st}:d={fade_d}:alpha=1[ov_processed_{i}]"
+                    else:
+                        ov_filter = f"{base_filter},scale=720:-1[ov_processed_{i}]"
+                        
+                    fc_parts.append(ov_filter)
+                    
+                    next_v = f"[vout_{i+1}]"
+                    cond = f"between(t,{ov_start},{ov_end})"
+                    fc_parts.append(f"{last_v}{ov_stream}overlay=x=(W-w)/2:y=(H-h)/2:enable='{cond}'{next_v}")
+                    last_v = next_v
+                    
+                map_v = last_v
+            else:
+                fc_parts.append(f"[0:v]{','.join(vf_chain)}[vout]")
+                map_v = "[vout]"
+                
+            # --- AUDIO FILTER CHAIN ---
             if af_chain:
                 fc_parts.append(f"[0:a]{','.join(af_chain)}[main_a]")
                 main_a = "[main_a]"
             else:
                 main_a = "[0:a]"
                 
-            amix_inputs = main_a
-            mix_count = 1
-            
-            for i, (sfx_file, s_time) in enumerate(scheduled_external_sfx):
-                input_idx = unique_sfx_files.index(sfx_file) + 1
-                delay_ms = int(s_time * 1000)
-                fc_parts.append(f"[{input_idx}:a]adelay={delay_ms}|{delay_ms}[ext_sfx{i}]")
-                amix_inputs += f"[ext_sfx{i}]"
-                mix_count += 1
-
-            fc_parts.append(f"{amix_inputs}amix=inputs={mix_count}:duration=first:dropout_transition=0:normalize=0[aout]")
+            if total_sfx > 0:
+                amix_inputs = main_a
+                mix_count = 1
+                
+                for i, (sfx_file, s_time) in enumerate(scheduled_external_sfx):
+                    s_idx = unique_sfx_files.index(sfx_file) + sfx_input_offset
+                    delay_ms = int(s_time * 1000)
+                    fc_parts.append(f"[{s_idx}:a]adelay={delay_ms}|{delay_ms}[ext_sfx{i}]")
+                    amix_inputs += f"[ext_sfx{i}]"
+                    mix_count += 1
+    
+                fc_parts.append(f"{amix_inputs}amix=inputs={mix_count}:duration=first:dropout_transition=0:normalize=0[aout]")
+                map_a = "[aout]"
+            else:
+                map_a = main_a
             
             cmd_subtitle.extend(["-filter_complex", ";".join(fc_parts)])
-            cmd_subtitle.extend(["-map", "[vout]", "-map", "[aout]"])
+            cmd_subtitle.extend(["-map", map_v, "-map", map_a])
             
             cmd_subtitle.extend(get_video_codec_args())
             cmd_subtitle.extend(["-c:a", "aac", "-b:a", "128k"])
