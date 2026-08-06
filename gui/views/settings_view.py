@@ -48,6 +48,13 @@ class SettingsView(ft.Container):
         self._page.services.append(self.ig_cookies_picker)
 
         # --- Platform Settings ---
+        self.default_hashtags = ft.TextField(
+            label="Default Hashtags & Global Description", 
+            value=config.default_hashtags, 
+            hint_text="#Shorts #Viral #Cliptzy #fyp", 
+            expand=True
+        )
+
         self.yt_client_id = ft.TextField(label="Client ID (OAuth 2.0)", value=config.youtube.client_id, expand=True)
         self.yt_client_secret = ft.TextField(label="Client Secret", value=config.youtube.client_secret, password=True, can_reveal_password=True, expand=True)
         self.yt_visibility = ft.Dropdown(
@@ -56,14 +63,12 @@ class SettingsView(ft.Container):
             value=config.youtube.visibility or "Public",
             expand=True
         )
-        self.yt_tags = ft.TextField(label="Default Hashtags", value=config.youtube.tags, hint_text="#Shorts #Viral #Cliptzy", expand=True)
         
         yt_tab_content = ft.Container(
             content=ft.Column([
                 ft.Row(cast(list[ft.Control], [self.yt_client_id]), expand=True), 
                 ft.Row(cast(list[ft.Control], [self.yt_client_secret]), expand=True), 
-                ft.Row(cast(list[ft.Control], [self.yt_visibility]), expand=True), 
-                ft.Row(cast(list[ft.Control], [self.yt_tags]), expand=True)
+                ft.Row(cast(list[ft.Control], [self.yt_visibility]), expand=True)
             ], spacing=10),
             padding=16
         )
@@ -79,13 +84,11 @@ class SettingsView(ft.Container):
             value=config.tiktok.privacy or "Public (Semua Orang)",
             expand=True
         )
-        self.tt_caption = ft.TextField(label="Default Caption", value=config.tiktok.caption, hint_text="Cuplikan seru hari ini! #fyp #viral", expand=True)
         
         tt_tab_content = ft.Container(
             content=ft.Column([
                 ft.Row(cast(list[ft.Control], [self.tt_session, self.btn_import_tt_cookies]), expand=True),
-                ft.Row(cast(list[ft.Control], [self.tt_privacy]), expand=True),
-                ft.Row(cast(list[ft.Control], [self.tt_caption]), expand=True)
+                ft.Row(cast(list[ft.Control], [self.tt_privacy]), expand=True)
             ], spacing=10),
             padding=16
         )
@@ -95,12 +98,10 @@ class SettingsView(ft.Container):
             content=ft.Text("Import Cookies"),
             on_click=self.on_import_ig_cookies_clicked
         )
-        self.ig_caption = ft.TextField(label="Default Caption", value=config.instagram.caption, hint_text="Best moment clip #reels #instagram", expand=True)
         
         ig_tab_content = ft.Container(
             content=ft.Column([
-                ft.Row(cast(list[ft.Control], [self.ig_session, self.btn_import_ig_cookies]), expand=True),
-                ft.Row(cast(list[ft.Control], [self.ig_caption]), expand=True)
+                ft.Row(cast(list[ft.Control], [self.ig_session, self.btn_import_ig_cookies]), expand=True)
             ], spacing=10),
             padding=16
         )
@@ -148,6 +149,8 @@ class SettingsView(ft.Container):
         self.auth_check_result_text = ft.Text("", size=13, color=ft.Colors.GREY_400)
 
         platform_settings_layout = ft.Column([
+            ft.Row(cast(list[ft.Control], [self.default_hashtags]), expand=True),
+            ft.Container(height=10),
             self.platform_tabs,
             ft.Container(height=10),
             ft.Row(cast(list[ft.Control], [self.btn_check_all_auth]), alignment=ft.MainAxisAlignment.START),
@@ -787,18 +790,17 @@ class SettingsView(ft.Container):
         # System settings
         if self.output_dir_input.value: config.output_dir = self.output_dir_input.value
         
+        config.default_hashtags = self.default_hashtags.value or ""
+        
         # Platform settings
         config.youtube.client_id = self.yt_client_id.value or ""
         config.youtube.client_secret = self.yt_client_secret.value or ""
         config.youtube.visibility = self.yt_visibility.value or "Public"
-        config.youtube.tags = self.yt_tags.value or ""
         
         config.tiktok.session = self.tt_session.value or ""
         config.tiktok.privacy = self.tt_privacy.value or "Public (Semua Orang)"
-        config.tiktok.caption = self.tt_caption.value or ""
         
         config.instagram.session = self.ig_session.value or ""
-        config.instagram.caption = self.ig_caption.value or ""
 
         if config.save_to_file():
             self._show_snackbar("Pengaturan berhasil disimpan!", ft.Colors.GREEN_700)

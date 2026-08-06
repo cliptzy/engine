@@ -49,10 +49,9 @@ class InstagramUploader:
                 tags_str = " ".join([f"#{t.strip().replace('#', '')}" for t in tags_raw.split() if t.strip()])
                 
             parts = []
-            if title: parts.append(title)
+            if title and title not in description: parts.append(title)
             if description: parts.append(description)
-            if config.instagram.caption: parts.append(config.instagram.caption)
-            if tags_str: parts.append(tags_str)
+            if tags_str and tags_str not in description: parts.append(tags_str)
             
             caption = "\n\n".join(parts).strip()
                 

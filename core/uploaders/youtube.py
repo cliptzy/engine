@@ -70,7 +70,7 @@ class YouTubeUploader:
         if "#shorts" not in description.lower() and "#shorts" not in title.lower():
             tags_str += " #shorts"
             
-        if tags_str:
+        if tags_str and tags_str not in description:
             description = f"{description}\n\n{tags_str.strip()}".strip()
             
         if len(title) > 100:

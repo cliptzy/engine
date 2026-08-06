@@ -47,6 +47,7 @@ class ClipConfig(ft.Container):
         
         self.subtitle_check = ft.Checkbox(label="Auto Subtitle", on_change=self.on_subtitle_toggled)
         self.highlight_check = ft.Checkbox(label="Highlight Text")
+        self.emotion_check = ft.Checkbox(label="Deteksi Emosi Wajah Visual")
         self.generate_intro_check = ft.Checkbox(label="Generate Intro", on_change=self.on_generate_intro_toggled)
         self.merge_clips_check = ft.Checkbox(label="Merge Clips", tooltip="Gabungkan semua klip (split) menjadi satu video kompilasi panjang")
         
@@ -171,7 +172,7 @@ class ClipConfig(ft.Container):
         
         grid_controls = cast(list[ft.Control], [
             ft.Row(cast(list[ft.Control], [self.crop_combo, self.ratio_combo])),
-            ft.Row(cast(list[ft.Control], [self.subtitle_check, self.highlight_check, self.generate_intro_check, self.merge_clips_check]), alignment=ft.MainAxisAlignment.CENTER),
+            ft.Row(cast(list[ft.Control], [self.subtitle_check, self.highlight_check, self.emotion_check, self.generate_intro_check, self.merge_clips_check]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.whisper_combo, self.font_combo])),
             ft.Row(cast(list[ft.Control], [self.delay_spin, self.padding_spin, self.max_duration_spin]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.color_combo, self.location_combo])),
@@ -191,6 +192,7 @@ class ClipConfig(ft.Container):
         
         self.subtitle_check.value = config.subtitle.enabled
         self.highlight_check.value = config.ai.use_highlight
+        self.emotion_check.value = config.ai.use_emotion_detection
         self.generate_intro_check.value = config.ai.use_generate_intro
         self.merge_clips_check.value = config.merge_clips
         self.on_generate_intro_toggled(None)
@@ -426,6 +428,7 @@ class ClipConfig(ft.Container):
             "output_ratio": self.ratio_combo.value,
             "use_subtitle": bool(self.subtitle_check.value),
             "use_highlight": bool(self.highlight_check.value),
+            "use_emotion_detection": bool(self.emotion_check.value),
             "use_generate_intro": bool(self.generate_intro_check.value),
             "merge_clips": bool(self.merge_clips_check.value),
             "whisper_model": self.whisper_combo.value,
@@ -457,6 +460,7 @@ class ClipConfig(ft.Container):
         self.ratio_combo.disabled = locked
         self.subtitle_check.disabled = locked
         self.highlight_check.disabled = locked
+        self.emotion_check.disabled = locked
         self.generate_intro_check.disabled = locked
         self.merge_clips_check.disabled = locked
         self.padding_spin.disabled = locked

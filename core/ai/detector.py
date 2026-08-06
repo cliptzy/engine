@@ -184,7 +184,8 @@ class AIHighlightDetector:
         user_context: str = "",
         event_hook: Optional[Any] = None,
         language: str = "Indonesia",
-        words_data: Optional[List[Dict[str, Any]]] = None
+        words_data: Optional[List[Dict[str, Any]]] = None,
+        visual_emotions: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         if not clip_text or not clip_text.strip():
             log.warning("Teks subtitle klip kosong, tidak dapat men-generate metadata.")
@@ -212,63 +213,54 @@ class AIHighlightDetector:
         emotion_lines.append(f"{i}. \"neutral\" : Normal, datar, informatif biasa, atau tidak ada emosi yang menonjol.")
         emotion_str = "\n".join(emotion_lines)
         
+        visual_str = ""
+        if visual_emotions:
+            compact_vis = [f"{em['time']}s:{em['emotion']}" for em in visual_emotions]
+            visual_str = "\nVisual Emotion Timeline:\n" + ", ".join(compact_vis) + "\n"
+        
         prompt = f"""
-Anda adalah seorang Social Media Manager spesialis konten viral (TikTok, YouTube Shorts, Reels).
-Berdasarkan teks subtitle spesifik dari klip video berikut, dan informasi konteks video aslinya, buatkan Title (Judul menarik), Description (Deskripsi ringkas yang memancing interaksi), Tags (Hashtags yang relevan), dan Highlight (Teks lucu/menjual singkat maksimal 3 kata, misal: "gg gak ?", "kaget momen", atau "minus -1 kuping").
-Respons HANYA dalam bentuk JSON yang valid di dalam blok kode Markdown (```json ... ```) tanpa tambahan teks apapun.
-Gunakan bahasa sesuai dengan output yang diminta.
+Anda adalah Social Media Manager spesialis video vertikal viral.
+Tugas: Buat Title, Tags, Highlight (teks pop-up lucu maks 4 kata), dan `enriched_transcript`.
+Respons HARUS JSON Object valid dalam markdown (```json ... ```).
 
-Output Bahasa: {language}
+Bahasa: {language}
+Konteks Video: {channel_name} - {youtube_title} ({youtube_url})
+{context_str}{visual_str}
 
-Konteks Video Asli:
-- Channel: {channel_name}
-- Judul Video: {youtube_title}
-- Link YouTube: {youtube_url}
-{context_str}
+ATURAN:
+1. `highlight` sangat singkat (maks 3-4 kata).
+2. Jika `words_data` ada, tulis ulang ke `enriched_transcript` dengan menambah field `emotion` dan `color` (Hex: #FFFF00 untuk netral, warna mencolok untuk emosi kuat).
+3. FUSI & PRIORITAS EMOSI:
+   Anda memiliki 3 sumber: Wajah (Visual Emotion), Suara (voice_level: whispering/normal/yelling), dan Makna Teks.
+   Prioritas: Wajah (Visual) > Suara (voice_level) > Teks.
+   - Wajah dan Nada suara jarang berbohong (deteksi sarkasme). Jika Wajah="surprise" dan Suara="yelling", pastikan kata tersebut dilabeli emosi ekstrim (misal: "surprise"/"angry") dengan warna kuat (misal #FF0000).
+4. ATURAN COOLDOWN SFX:
+   DILARANG menumpuk emosi non-netral. Setelah satu emosi non-netral ditetapkan (misal "surprise"), Anda WAJIB memberikan jeda (emosi "neutral") minimal selama 5 detik sebelum menetapkan emosi non-netral berikutnya. Ini mencegah efek suara (SFX) yang tabrakan.
 
-WAJIB DITAATI: 
-1. Pada bagian `description`, HARUS cantumkan link YouTube asli di atas agar tetap mendukung kreator aslinya.
-2. Referensi / Contoh gaya bahasa pembuatan judul dan deskripsi:
-   Title: TABRAK HANTU MALAH KENA JUMPSCARE! Windah Basudara.
-   Description: Momen Bang Windah Lupa Disampingnya Ada Mamah Agnes
-   Tonton video aslinya di: {youtube_url} #shorts #windahbasudara #windah #mediashare
-3. Highlight adalah teks yang sangat singkat (maksimal 3-4 kata) yang memancing rasa penasaran, lucu, atau bombastis.
-4. Jika data `words_data` diberikan, tulis ulang data tersebut ke dalam key `enriched_transcript` dengan menambahkan field `emotion` dan `color` (gunakan kode Hex). WAJIB gunakan `#FFFF00` (Kuning) untuk kata yang bernada netral/biasa. Gunakan warna mencolok lain (misal `#FF0000` untuk marah/umpatan) hanya pada kata yang memiliki emosi/penekanan kuat. Jangan mengubah nilai `start` dan `end`.
-5. Gunakan informasi tingkat suara (`voice_level`: yelling, whispering, normal) pada setiap kata di dalam `words_data` untuk membantu menentukan `emotion` secara akurat (misal: yelling = marah/shock, whispering = fear/sedih/bored, normal = neutral/happy/dll).
-6. Tidak boleh ada emosi bertumpuk kecuali emosi netral (tidak boleh: disgust -> marah -> happy, harus disgust -> netral (n detik) -> emosi lain), emosi yang sama boleh muncul kembali setelah 5 detik
-
-Teks Subtitle Klip Ini:
-{clip_text}
-
-Data Kata (words_data) (Jika ada, gunakan untuk field enriched_transcript):
-{json.dumps(words_data) if words_data else "Tidak ada data kata."}
-
-KATEGORI EMOSI YANG DIIZINKAN (EMOTION_LIST):
-Hanya gunakan salah satu dari nilai di bawah ini untuk setiap segmen teks. Jika tidak ada emosi spesifik, gunakan "neutral".
-
+KATEGORI EMOSI VALID:
 {emotion_str}
 
-Format JSON yang wajib:
+Teks Subtitle:
+{clip_text}
+
+Input words_data:
+{json.dumps(words_data) if words_data else "Tidak ada."}
+
+Format Output JSON:
 ```json
 {{
-    "title": "Judul klip clickbait yang menarik",
-    "description": "Deskripsi klip yang interaktif beserta link youtube asli",
-    "tags": "#foryou #viral #dsb",
-    "highlight": "Teks highlight lucu/singkat",
+    "title": "...",
+    "tags": "#...",
+    "highlight": "...",
     "enriched_transcript": [
-        {{
-            "word": "kata",
-            "start": 0.0,
-            "end": 0.5,
-            "emotion": "kaget",
-            "color": "#FF0000"
-        }}
+        {{"word": "kata", "start": 0.0, "end": 0.5, "emotion": "surprise", "color": "#FF0000", "voice_level": "yelling"}}
     ]
 }}
 ```
 """
         provider_name = (ai_config.get("provider") or ai_config.get("ai_provider") or "ollama").lower()
         log.info( f"[AI] Mengirim permintaan metadata ke AI Provider: {provider_name.upper()}...")
+        log.debug(f"[AI] Prompt: {prompt}")
 
         try:
             provider = AIProviderFactory.create(provider_name)

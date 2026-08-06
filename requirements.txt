@@ -4,6 +4,10 @@
 #
 #    pip-compile requirements.in
 #
+absl-py
+    # via
+    #   keras
+    #   tensorflow
 aiohappyeyeballs
     # via aiohttp
 aiohttp
@@ -19,12 +23,18 @@ anyio
     #   google-genai
     #   httpx
     #   openai
+astunparse
+    # via tensorflow
 attrs
     # via aiohttp
 av
     # via faster-whisper
+beautifulsoup4
+    # via gdown
 bidict
     # via desktop-notifier
+blinker
+    # via flask
 certifi
     # via
     #   -r requirements.in
@@ -37,7 +47,9 @@ cffi
 charset-normalizer
     # via requests
 click
-    # via gtts
+    # via
+    #   flask
+    #   gtts
 colorama
     # via
     #   click
@@ -49,6 +61,8 @@ cryptography
     #   pyjwt
 ctranslate2
     # via faster-whisper
+deepface
+    # via -r requirements.in
 deprecation
     # via
     #   postgrest
@@ -64,9 +78,21 @@ edge-tts
 faster-whisper
     # via -r requirements.in
 filelock
-    # via huggingface-hub
+    # via
+    #   gdown
+    #   huggingface-hub
+fire
+    # via deepface
+flask
+    # via
+    #   deepface
+    #   flask-cors
+flask-cors
+    # via deepface
 flatbuffers
-    # via onnxruntime
+    # via
+    #   onnxruntime
+    #   tensorflow
 flet
     # via
     #   -r requirements.in
@@ -82,6 +108,12 @@ frozenlist
     #   aiosignal
 fsspec
     # via huggingface-hub
+gast
+    # via tensorflow
+gdown
+    # via
+    #   deepface
+    #   retina-face
 google-api-core
     # via google-api-python-client
 google-api-python-client
@@ -101,16 +133,26 @@ google-auth-oauthlib
     # via -r requirements.in
 google-genai
     # via -r requirements.in
+google-pasta
+    # via tensorflow
 googleapis-common-protos
     # via google-api-core
 greenlet
     # via playwright
+grpcio
+    # via tensorflow
 gtts
     # via -r requirements.in
+gunicorn
+    # via deepface
 h11
     # via httpcore
 h2
     # via httpx
+h5py
+    # via
+    #   keras
+    #   tensorflow
 hf-xet
     # via huggingface-hub
 hpack
@@ -146,23 +188,68 @@ idna
     #   yarl
 instagrapi
     # via -r requirements.in
+itsdangerous
+    # via flask
+jinja2
+    # via flask
 jiter
     # via openai
+joblib
+    # via mtcnn
+keras
+    # via
+    #   deepface
+    #   tensorflow
+libclang
+    # via tensorflow
+lightdsa
+    # via deepface
+lightecc
+    # via
+    #   lightdsa
+    #   lightphe
+lightphe
+    # via deepface
+lz4
+    # via mtcnn
 markdown-it-py
     # via rich
+markupsafe
+    # via
+    #   flask
+    #   jinja2
+    #   werkzeug
 mdurl
     # via markdown-it-py
+ml-dtypes
+    # via
+    #   keras
+    #   tensorflow
+mpmath
+    # via sympy
 msgpack
     # via flet
+mtcnn
+    # via deepface
 multidict
     # via
     #   aiohttp
     #   yarl
+namex
+    # via keras
 numpy
     # via
     #   ctranslate2
+    #   deepface
+    #   h5py
+    #   keras
+    #   ml-dtypes
     #   onnxruntime
+    #   opencv-python
     #   opencv-python-headless
+    #   pandas
+    #   retina-face
+    #   tensorflow
 oauthlib
     # via
     #   flet
@@ -171,18 +258,34 @@ onnxruntime
     # via faster-whisper
 openai
     # via -r requirements.in
+opencv-python
+    # via
+    #   deepface
+    #   retina-face
 opencv-python-headless
     # via -r requirements.in
+opt-einsum
+    # via tensorflow
+optree
+    # via keras
 packaging
     # via
     #   deprecation
     #   desktop-notifier
+    #   gunicorn
     #   huggingface-hub
+    #   keras
     #   onnxruntime
+    #   tensorflow
+    #   wheel
+pandas
+    # via deepface
 pillow
     # via
+    #   deepface
     #   instagrapi
     #   pystray
+    #   retina-face
 playwright
     # via
     #   -r requirements.in
@@ -201,6 +304,7 @@ protobuf
     #   googleapis-common-protos
     #   onnxruntime
     #   proto-plus
+    #   tensorflow
 psutil
     # via -r requirements.in
 pyasn1
@@ -232,11 +336,17 @@ pyjwt[crypto]
 pyparsing
     # via httplib2
 pysocks
-    # via instagrapi
+    # via
+    #   instagrapi
+    #   requests
 pystray
     # via -r requirements.in
+python-dateutil
+    # via pandas
 python-dotenv
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   deepface
 pytz
     # via tiktok-uploader
 pyyaml
@@ -247,29 +357,42 @@ realtime
     # via supabase
 repath
     # via flet
-requests
+requests[socks]
     # via
     #   -r requirements.in
+    #   deepface
+    #   gdown
     #   google-api-core
     #   google-auth
     #   google-genai
     #   gtts
     #   instagrapi
     #   requests-oauthlib
+    #   tensorflow
 requests-oauthlib
     # via google-auth-oauthlib
+retina-face
+    # via deepface
 rich
-    # via typer
+    # via
+    #   keras
+    #   typer
 shellingham
     # via typer
 six
     # via
+    #   astunparse
+    #   google-pasta
     #   pystray
+    #   python-dateutil
     #   repath
+    #   tensorflow
 sniffio
     # via
     #   google-genai
     #   openai
+soupsieve
+    # via beautifulsoup4
 storage3
     # via supabase
 strenum
@@ -280,11 +403,26 @@ supabase-auth
     # via supabase
 supabase-functions
     # via supabase
+sympy
+    # via
+    #   lightdsa
+    #   lightphe
 tabulate
     # via edge-tts
 tenacity
     # via google-genai
-tiktok-uploader
+tensorflow
+    # via
+    #   deepface
+    #   retina-face
+    #   tf-keras
+termcolor
+    # via
+    #   fire
+    #   tensorflow
+tf-keras
+    # via -r requirements.in
+tiktok-uploader @ git+https://github.com/BitCM581/tiktok-uploader
     # via -r requirements.in
 tokenizers
     # via faster-whisper
@@ -292,26 +430,37 @@ toml
     # via tiktok-uploader
 tqdm
     # via
+    #   deepface
     #   faster-whisper
+    #   gdown
     #   huggingface-hub
+    #   lightdsa
+    #   lightecc
+    #   lightphe
     #   openai
 typer
     # via huggingface-hub
 typing-extensions
     # via
+    #   beautifulsoup4
     #   desktop-notifier
     #   edge-tts
     #   google-genai
+    #   grpcio
     #   huggingface-hub
     #   openai
+    #   optree
     #   pydantic
     #   pydantic-core
     #   pyee
     #   realtime
+    #   tensorflow
     #   typing-inspection
     #   winrt-runtime
 typing-inspection
     # via pydantic
+tzdata
+    # via pandas
 uritemplate
     # via google-api-python-client
 urllib3
@@ -320,6 +469,12 @@ websockets
     # via
     #   google-genai
     #   realtime
+werkzeug
+    # via
+    #   flask
+    #   flask-cors
+wheel
+    # via astunparse
 winrt-runtime
     # via
     #   desktop-notifier
@@ -338,6 +493,8 @@ winrt-windows-foundation-collections
     # via desktop-notifier
 winrt-windows-ui-notifications
     # via desktop-notifier
+wrapt
+    # via tensorflow
 yarl
     # via
     #   aiohttp

@@ -159,6 +159,24 @@ def process_single_clip(
             log.info(f"Cropping video for clip {index}...")
             run_command_with_logging(cmd_crop, event_hook, prefix="[ffmpeg-crop]")
             
+            # --- DeepFace Emotion Analysis ---
+            # Kita menggunakan temp_file (raw clip) sebelum dihapus, dan memotong (crop) murni di koordinat wajah
+            # sesuai dengan hasil deteksi face_tracker (cx_norm, cy_norm) di memori Python.
+            visual_emotions = []
+            if config.ai.use_emotion_detection:
+                from core.processing.emotion_analyzer import analyze_video_emotions
+                visual_emotions = analyze_video_emotions(temp_file, cx_norm, cy_norm, interval_sec=1.0)
+            else:
+                log.info("Deteksi emosi visual dinonaktifkan di pengaturan. Melewati DeepFace.")
+            
+            import json
+            emotion_file = os.path.join(config.job_dir, f"emotion_{index}.json")
+            try:
+                with open(emotion_file, "w", encoding="utf-8") as f:
+                    json.dump(visual_emotions, f)
+            except Exception as e:
+                log.warning(f"Gagal menyimpan data emosi visual: {e}")
+            
             if os.path.exists(temp_file):
                 os.remove(temp_file)
         else:
@@ -191,6 +209,17 @@ def process_single_clip(
             youtube_title = preview_data.get("title", "Unknown")
             channel_name = preview_data.get("uploader", "Unknown")
             youtube_url = preview_data.get("webpage_url", f"https://youtu.be/{video_id}")
+
+            # --- DeepFace Emotion Analysis ---
+            visual_emotions = []
+            emotion_file = os.path.join(config.job_dir, f"emotion_{index}.json")
+            if os.path.exists(emotion_file):
+                try:
+                    import json
+                    with open(emotion_file, "r", encoding="utf-8") as f:
+                        visual_emotions = json.load(f)
+                except Exception:
+                    pass
             
             ai_config = config.to_dict()
             from core.ai.detector import ai_detector
@@ -203,7 +232,8 @@ def process_single_clip(
                 user_context=custom_prompt,
                 event_hook=event_hook,
                 language=preview_data.get("language", "Indonesia"),
-                words_data=words_data
+                words_data=words_data,
+                visual_emotions=visual_emotions
             )
             
             if metadata:

@@ -6,7 +6,6 @@ from core.uploaders.base import BaseUploader, UploadResult
 class TikTokUploader:
     def __init__(self):
         self.platform_name = "TikTok"
-        self.tt_uploader = None
         
     def upload(self, file_path: str, metadata: Dict[str, Any], event_hook=None) -> UploadResult:
         from core.config import config
@@ -30,67 +29,80 @@ class TikTokUploader:
                 tags_str = " ".join([f"#{t.strip().replace('#', '')}" for t in tags_raw.split() if t.strip()])
                 
             parts = []
-            if title: parts.append(title)
+            if title and title not in description: parts.append(title)
             if description: parts.append(description)
-            if config.tiktok.caption: parts.append(config.tiktok.caption)
-            if tags_str: parts.append(tags_str)
+            if tags_str and tags_str not in description: parts.append(tags_str)
             
             caption = "\n\n".join(parts).strip()
                 
             logger.info( f"[TikTok] Memulai upload menggunakan tiktok-uploader dari file {cookie_path}...")
             logger.info(f"Mengunggah ke TikTok: {file_path}, caption: {caption}")
             
-            # Use tiktok-uploader package and reuse instance
-            if self.tt_uploader is None:
-                self.tt_uploader = TTUploader(cookies=cookie_path, headless=False)
+            import threading
+            result_container = {}
             
-            uploader = self.tt_uploader
-            
-            import datetime
-            schedule = None
-            if "publish_at" in metadata:
+            def run_upload():
                 try:
-                    # metadata["publish_at"] format: "YYYY-MM-DDTHH:MM:SS.000Z"
-                    time_str = metadata["publish_at"].replace(".000Z", "").replace("Z", "")
-                    schedule = datetime.datetime.fromisoformat(time_str)
-                    logger.info( f"[TikTok] Menjadwalkan upload untuk {schedule}")
-                except Exception as e:
-                    logger.warning(f"Gagal memparsing jadwal: {e}")
+                    # Instansiasi uploader di dalam raw thread terisolasi agar Playwright tidak crash 
+                    # mendeteksi asyncio loop melalui contextvars
+                    uploader = TTUploader(cookies=cookie_path, headless=True)
+                    
+                    import datetime
+                    schedule = None
+                    if "publish_at" in metadata:
+                        try:
+                            # metadata["publish_at"] format: "YYYY-MM-DDTHH:MM:SS.000Z"
+                            time_str = metadata["publish_at"].replace(".000Z", "").replace("Z", "")
+                            schedule = datetime.datetime.fromisoformat(time_str)
+                            logger.info( f"[TikTok] Menjadwalkan upload untuk {schedule}")
+                        except Exception as e:
+                            logger.warning(f"Gagal memparsing jadwal: {e}")
+                    
+                    if schedule:
+                        # `tiktok_uploader` upload_video function with schedule
+                        success = uploader.upload_video(file_path, description=caption, schedule=schedule)
+                    else:
+                        success = uploader.upload_video(file_path, description=caption)
+        
+                    time.sleep(3)
+                    
+                    if not success:
+                        err_msg = f"Gagal upload video ke TikTok."
+                        logger.error( f"[TikTok] ❌ {err_msg}")
+                        result_container["result"] = UploadResult(False, self.platform_name, error_msg=err_msg)
+                        return
+                    
+                    # Save updated cookies
+                    if hasattr(uploader, 'page') and uploader.page and hasattr(uploader.page, 'context'):
+                        try:
+                            from tiktok_uploader.auth import save_cookies
+                            save_cookies(cookie_path, uploader.page.context.cookies()) # type: ignore
+                            logger.info( "[TikTok] Cookie berhasil diperbarui secara otomatis.")
+                        except Exception as e:
+                            logger.warning(f"Gagal memperbarui cookie TikTok: {e}")
+        
+                    uploader.close()
+                    logger.info( "[TikTok] ✅ Upload berhasil!")
+                    result_container["result"] = UploadResult(True, self.platform_name, url="https://www.tiktok.com/profile")
+                
+                except Exception as inner_e:
+                    logger.error(f"TikTok Upload inner error: {str(inner_e)}", exc_info=True)
+                    result_container["result"] = UploadResult(False, self.platform_name, error_msg=f"Gagal upload ke TikTok: {str(inner_e)}")
+
+            # Eksekusi fungsi di thread mentah murni tanpa contextvars
+            t = threading.Thread(target=run_upload)
+            t.start()
+            t.join()
             
-            if schedule:
-                # `tiktok_uploader` upload_video function with schedule
-                success = uploader.upload_video(file_path, description=caption, schedule=schedule)
+            if "result" in result_container:
+                return result_container["result"]
             else:
-                success = uploader.upload_video(file_path, description=caption)
-
-            time.sleep(3)
-            
-            if not success:
-                err_msg = f"Gagal upload video ke TikTok."
-                logger.error( f"[TikTok] ❌ {err_msg}")
-                logger.error(err_msg)
-                return UploadResult(False, self.platform_name, error_msg=err_msg)
-            
-            # Save updated cookies
-            if hasattr(uploader, 'page') and uploader.page and hasattr(uploader.page, 'context'):
-                try:
-                    from tiktok_uploader.auth import save_cookies
-                    save_cookies(cookie_path, uploader.page.context.cookies()) # type: ignore
-                    logger.info( "[TikTok] Cookie berhasil diperbarui secara otomatis.")
-                except Exception as e:
-                    logger.warning(f"Gagal memperbarui cookie TikTok: {e}")
-
-            logger.info( "[TikTok] ✅ Upload berhasil!")
-            return UploadResult(True, self.platform_name, url="https://www.tiktok.com/profile")
+                return UploadResult(False, self.platform_name, error_msg="Unknown error in isolated thread")
             
         except Exception as e:
             logger.error(f"TikTok Upload error: {str(e)}", exc_info=True)
             return UploadResult(False, self.platform_name, error_msg=f"Gagal upload ke TikTok: {str(e)}")
 
     def close(self):
-        if self.tt_uploader is not None:
-            try:
-                self.tt_uploader.close()
-            except Exception:
-                pass
-            self.tt_uploader = None
+        # Sudah ditutup di dalam upload()
+        pass

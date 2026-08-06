@@ -67,8 +67,7 @@ class UploadDistribution(ft.Container):
         
         # --- Metadata Editor ---
         self.meta_title = ft.TextField(label="Judul Video", expand=True)
-        self.meta_desc = ft.TextField(label="Deskripsi", multiline=True, min_lines=3, max_lines=5, expand=True)
-        self.meta_tags = ft.TextField(label="Hashtags (pisahkan dengan spasi)", value=config.youtube.tags, expand=True)
+        self.meta_tags = ft.TextField(label="Hashtags (pisahkan dengan spasi)", value=config.default_hashtags, expand=True)
         self.btn_save_meta = ft.Button("Simpan Metadata", icon=ft.Icons.SAVE, on_click=self.save_metadata)
         self.btn_ai_meta = ft.Button("Generate dengan AI", icon=ft.Icons.AUTO_AWESOME, on_click=self.generate_ai_metadata)
         
@@ -156,7 +155,6 @@ class UploadDistribution(ft.Container):
         meta_panel = ft.Column([
             ft.Text("Metadata Editor", weight=ft.FontWeight.BOLD),
             self.meta_title,
-            self.meta_desc,
             self.meta_tags,
             ft.Row([self.btn_save_meta, self.btn_ai_meta])
         ])
@@ -384,8 +382,7 @@ class UploadDistribution(ft.Container):
             
         # Load Metadata if exists
         self.meta_title.value = ""
-        self.meta_desc.value = ""
-        self.meta_tags.value = config.youtube.tags
+        self.meta_tags.value = ""
         
         if self.current_clip_index:
             meta_path = os.path.join(self.current_project_dir, f"metadata_{self.current_clip_index}.json")
@@ -394,17 +391,12 @@ class UploadDistribution(ft.Container):
                     with open(meta_path, "r", encoding="utf-8") as f:
                         data = json.load(f)
                         self.meta_title.value = data.get("title", "")
-                        self.meta_desc.value = data.get("description", "")
                         
                         tags = data.get("tags", [])
                         if isinstance(tags, list):
                             tags = " ".join(tags)
                         
-                        # Gabungkan default hashtags dengan tag dari file metadata
-                        default_tags = config.youtube.tags or ""
-                        combined_tags = set(default_tags.split())
-                        combined_tags.update(tags.split())
-                        self.meta_tags.value = " ".join(combined_tags)
+                        self.meta_tags.value = tags
                 except Exception as ex:
                     log.error(f"Gagal memuat metadata: {ex}")
                     
@@ -425,7 +417,6 @@ class UploadDistribution(ft.Container):
                 data = json.load(f)
                 
         data["title"] = self.meta_title.value
-        data["description"] = self.meta_desc.value
         data["tags"] = (self.meta_tags.value or "").split()
         
         with open(meta_path, "w", encoding="utf-8") as f:
@@ -503,16 +494,12 @@ class UploadDistribution(ft.Container):
                 )
                 if result:
                     self.meta_title.value = result.get("title", self.meta_title.value)
-                    self.meta_desc.value = result.get("description", self.meta_desc.value)
                     
                     new_tags = result.get("tags", [])
                     if isinstance(new_tags, list):
                         new_tags = " ".join(new_tags)
                         
-                    default_tags = config.youtube.tags or ""
-                    combined = set(default_tags.split())
-                    combined.update(new_tags.split())
-                    self.meta_tags.value = " ".join(combined)
+                    self.meta_tags.value = new_tags
                     
                     app_state.append_log("Berhasil men-generate metadata dengan AI.")
                     self.save_metadata(None)
@@ -598,7 +585,7 @@ class UploadDistribution(ft.Container):
                     idx = ""
                 
                 # Baca file metadata jika ada
-                meta = {"title": bname, "description": "", "tags": ""}
+                meta = {"title": bname, "tags": ""}
                 if idx:
                     meta_path = os.path.join(self.current_project_dir, f"metadata_{idx}.json")
                     if os.path.exists(meta_path):
@@ -612,6 +599,15 @@ class UploadDistribution(ft.Container):
                                     meta.update(saved_meta)
                         except Exception:
                             pass
+                
+                # Tambahkan default hashtags tanpa menimpa metadata tags
+                default_tags = (config.default_hashtags or "").split()
+                meta_tags = meta.get("tags", "").split()
+                for dt in default_tags:
+                    if dt not in meta_tags:
+                        meta_tags.append(dt)
+                meta["tags"] = " ".join(meta_tags)
+                
                 metadata_dict[clip_path] = meta
 
             total_tasks = len(selected_clips) * len(platforms)
@@ -636,9 +632,15 @@ class UploadDistribution(ft.Container):
                 clip_meta = metadata_dict.get(clip, {})
                 clip_name = os.path.basename(clip)
                 
+                # Konstruksi description menggunakan title + hashtags
+                title_val = clip_meta.get("title", "")
+                tags_val = clip_meta.get("tags", "")
+                clip_meta["description"] = f"{title_val}\n\n{tags_val}".strip()
+                
                 if interval_hours > 0:
                     publish_time = base_time + timedelta(hours=interval_hours * idx_clip)
-                    clip_meta["publish_at"] = publish_time.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+                    publish_time_utc = publish_time.astimezone(timezone.utc)
+                    clip_meta["publish_at"] = publish_time_utc.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
                 for uploader in uploaders:
                     if self._is_upload_cancelled:

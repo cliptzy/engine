@@ -28,6 +28,7 @@ class AIConfig:
     openai_base_url: str = ""
     use_highlight: bool = False
     use_generate_intro: bool = False
+    use_emotion_detection: bool = True
 
 @dataclass
 class YoutubeConfig:
@@ -36,7 +37,6 @@ class YoutubeConfig:
     client_id: str = ""
     client_secret: str = ""
     visibility: str = "Public"
-    tags: str = "#Shorts #Viral #Cliptzy"
     auto_upload: bool = False
 
 @dataclass
@@ -44,7 +44,6 @@ class TikTokConfig:
     upload: bool = False
     session: str = "cred/tiktok_cookies.txt"
     privacy: str = "Public (Semua Orang)"
-    caption: str = "Cuplikan seru hari ini! #fyp #viral"
     auto_upload: bool = False
 
 @dataclass
@@ -53,7 +52,6 @@ class InstagramConfig:
     business_id: str = ""
     access_token: str = ""
     session: str = "cred/instagram_cookies.txt"
-    caption: str = "Best moment clip #reels #instagram"
     auto_upload: bool = False
 
 import os
@@ -96,6 +94,8 @@ class AppConfig:
     tts_language: str = "default"
     tts_voice: str = "female"
     
+    default_hashtags: str = "#Shorts #Viral #Cliptzy #fyp"
+    
     subtitle: SubtitleConfig = field(default_factory=SubtitleConfig)
     ai: AIConfig = field(default_factory=AIConfig)
     youtube: YoutubeConfig = field(default_factory=YoutubeConfig)
@@ -130,6 +130,7 @@ class AppConfig:
             "use_subtitle": self.subtitle.enabled,
             "use_highlight": self.ai.use_highlight,
             "use_generate_intro": self.ai.use_generate_intro,
+            "use_emotion_detection": self.ai.use_emotion_detection,
             "whisper_model": self.subtitle.whisper_model,
             "subtitle_font": self.subtitle.font,
             "subtitle_fonts_dir": self.subtitle.fonts_dir,
@@ -151,6 +152,7 @@ class AppConfig:
             "crop_mode": self.crop_mode,
             "merge_clips": self.merge_clips,
             "ui_locked": self.ui_locked,
+            "default_hashtags": self.default_hashtags,
             
             "upload_youtube": self.youtube.upload,
             "upload_tiktok": self.tiktok.upload,
@@ -159,18 +161,15 @@ class AppConfig:
             "yt_client_id": self.youtube.client_id,
             "yt_client_secret": self.youtube.client_secret,
             "yt_visibility": self.youtube.visibility,
-            "yt_tags": self.youtube.tags,
             "yt_auto_upload": self.youtube.auto_upload,
             
             "tt_session": self.tiktok.session,
             "tt_privacy": self.tiktok.privacy,
-            "tt_caption": self.tiktok.caption,
             "tt_auto_upload": self.tiktok.auto_upload,
             
             "ig_business_id": self.instagram.business_id,
             "ig_access_token": self.instagram.access_token,
             "ig_session": self.instagram.session,
-            "ig_caption": self.instagram.caption,
             "ig_auto_upload": self.instagram.auto_upload,
             
             "ai_provider": self.ai.provider,
@@ -207,6 +206,8 @@ class AppConfig:
             self.ai.use_highlight = bool(data["use_highlight"])
         if "use_generate_intro" in data:
             self.ai.use_generate_intro = bool(data["use_generate_intro"])
+        if "use_emotion_detection" in data:
+            self.ai.use_emotion_detection = bool(data["use_emotion_detection"])
             
         if "whisper_model" in data and data["whisper_model"]:
             self.subtitle.whisper_model = data["whisper_model"]
@@ -249,6 +250,8 @@ class AppConfig:
             self.merge_clips = bool(data["merge_clips"])
         if "ui_locked" in data:
             self.ui_locked = bool(data["ui_locked"])
+        if "default_hashtags" in data:
+            self.default_hashtags = data["default_hashtags"]
             
         if "upload_youtube" in data:
             self.youtube.upload = bool(data["upload_youtube"])
@@ -260,18 +263,15 @@ class AppConfig:
         if "yt_client_id" in data: self.youtube.client_id = data["yt_client_id"]
         if "yt_client_secret" in data: self.youtube.client_secret = data["yt_client_secret"]
         if "yt_visibility" in data: self.youtube.visibility = data["yt_visibility"]
-        if "yt_tags" in data: self.youtube.tags = data["yt_tags"]
         if "yt_auto_upload" in data: self.youtube.auto_upload = bool(data["yt_auto_upload"])
 
         if "tt_session" in data: self.tiktok.session = data["tt_session"]
         if "tt_privacy" in data: self.tiktok.privacy = data["tt_privacy"]
-        if "tt_caption" in data: self.tiktok.caption = data["tt_caption"]
         if "tt_auto_upload" in data: self.tiktok.auto_upload = bool(data["tt_auto_upload"])
 
         if "ig_business_id" in data: self.instagram.business_id = data["ig_business_id"]
         if "ig_access_token" in data: self.instagram.access_token = data["ig_access_token"]
         if "ig_session" in data: self.instagram.session = data["ig_session"]
-        if "ig_caption" in data: self.instagram.caption = data["ig_caption"]
         if "ig_auto_upload" in data: self.instagram.auto_upload = bool(data["ig_auto_upload"])
         
         if "ai_provider" in data and data["ai_provider"]:
