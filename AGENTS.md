@@ -164,4 +164,22 @@ Daftar ini adalah _lesson learned_ dari riwayat proyek. AI Model **WAJIB** memba
 
 ---
 
+## 🎭 9. ATURAN PENGELOLAAN SFX & VFX (EFEK AUDIO & VISUAL)
+
+Sistem efek suara (SFX) dan efek visual (VFX) pada Cliptzy dikelola secara dinamis berbasis JSON dan tersentralisasi untuk sinkronisasi otomatis antara prompt AI Detector dan rantai filter (filter chain) FFmpeg.
+
+1. **Sentralisasi Melalui Manager (`core/sfx.py` & `core/vfx.py`)**:
+   - Dilarang keras melakukan _hardcode_ pencocokan emosi (seperti `if emo == "sad": ...`) langsung di dalam `core/processing/subtitle.py` atau tempat lain.
+   - Penambahan, pengurangan, atau pengubahan emosi beserta deskripsinya **WAJIB** dilakukan melalui fungsi pemetaan (seperti `_load_default()`) pada kelas managernya. `core/processing/subtitle.py` akan otomatis beradaptasi dengan daftar emosi ini.
+2. **Kesesuaian Filter FFmpeg (Timeline Support)**:
+   - Opsi filter FFmpeg (`vf` dan `af`) yang ditambahkan pada konfigurasi VFX **WAJIB** mendukung evaluasi timeline/waktu (`enable='between(...)'`).
+   - Hindari filter yang menyebabkan _crash_ karena tidak mendukung `enable` (misal: `aphaser`). Gunakan filter yang terbukti aman seperti `tremolo`, `bass`, `lowpass`, `eq`, `geq`, `hue`, `vignette`, dll.
+3. **Pembaruan Konfigurasi Sinkron**:
+   - Setiap kali memodifikasi `_load_default()` di kode sumber, Anda **WAJIB** menghapus file konfigurasi eksternal yang sudah ada (yaitu `sfx.json` dan `vfx.json`) melalui terminal agar saat aplikasi dijalankan kembali, sistem meregenerasi file JSON tersebut dengan pengaturan standar yang baru.
+4. **Skema Pengujian (Testing Scheme)**:
+   - **Verifikasi Substring Emosi**: Ujicoba logika `map_emotion` menggunakan script Python singkat untuk memastikan string respon AI (meski kotor/bercampur kata lain) dapat dipetakan dengan tepat ke *key* di manager.
+   - **Verifikasi Keutuhan Render FFmpeg (Kritis)**: Lakukan uji coba rendering untuk melihat apakah command string FFmpeg gagal terbentuk atau ditolak oleh *binary* FFmpeg (contoh: error sintaks filter, argumen tidak dikenali, atau *timeline not supported*). Pastikan log tidak memunculkan "FFmpeg subtitle filter failed".
+
+---
+
 _Peraturan dalam AGENTS.md ini mengikat untuk semua aktivitas pengembangan proyek Cliptzy. Pelanggaran terhadap Larangan 1.4 (`sys.executable`) dianggap **bug kritis** dan mengharuskan perbaikan segera._

@@ -162,10 +162,11 @@ def process_single_clip(
             # --- DeepFace Emotion Analysis ---
             # Kita menggunakan temp_file (raw clip) sebelum dihapus, dan memotong (crop) murni di koordinat wajah
             # sesuai dengan hasil deteksi face_tracker (cx_norm, cy_norm) di memori Python.
+            # Bounding box akan dipetakan ke koordinat output akhir di dalam emotion_analyzer.py.
             visual_emotions = []
             if config.ai.use_emotion_detection:
                 from core.processing.emotion_analyzer import analyze_video_emotions
-                visual_emotions = analyze_video_emotions(temp_file, cx_norm, cy_norm, interval_sec=1.0)
+                visual_emotions = analyze_video_emotions(temp_file, cx_norm, cy_norm, interval_sec=1.0, crop_mode=crop_mode)
             else:
                 log.info("Deteksi emosi visual dinonaktifkan di pengaturan. Melewati DeepFace.")
             

@@ -74,16 +74,25 @@ def burn_subtitle_and_highlight(
         blocks = []
         
         def map_emotion(emotion_str: str) -> str:
-            emotion_str = emotion_str.lower()
-            if any(e in emotion_str for e in ["sedih", "sad", "nangis"]): return "sad"
-            if any(e in emotion_str for e in ["bosan", "bored", "capek", "lelah", "garing"]): return "bored"
-            if any(e in emotion_str for e in ["kaget", "shock", "terkejut", "surprise"]): return "shock"
-            if any(e in emotion_str for e in ["takut", "fear", "panik", "seram"]): return "fear"
-            if any(e in emotion_str for e in ["marah", "angry", "kesal", "emosi", "frustrasi"]): return "angry"
-            if any(e in emotion_str for e in ["jijik", "disgust", "ew", "najis", "bau"]): return "disgust"
-            if any(e in emotion_str for e in ["heran", "confused", "janggal", "bingung"]): return "confused"
-            if any(e in emotion_str for e in ["senang", "happy", "joy", "excited", "keren", "mantap"]): return "happy"
-            if any(e in emotion_str for e in ["lucu", "amused", "haha", "wkwk", "ngakak"]): return "amused"
+            emotion_str = emotion_str.lower().strip()
+            if not emotion_str:
+                return "neutral"
+                
+            if emotion_str in SFX_MAP:
+                return emotion_str
+                
+            for key in SFX_MAP:
+                if key in emotion_str:
+                    return key
+                    
+            for key, data in SFX_MAP.items():
+                desc = data.get("desc", "").lower() if isinstance(data, dict) else ""
+                desc_words = [w.strip(".,/()\"'") for w in desc.split()]
+                for word in emotion_str.split():
+                    word_clean = word.strip(".,/()\"'")
+                    if word_clean and word_clean in desc_words:
+                        return key
+                        
             return "neutral"
             
         if isinstance(enriched, list) and len(enriched) > 0:
@@ -123,31 +132,15 @@ def burn_subtitle_and_highlight(
                 e = e + 0.3
                 cond = f"between(t,{s},{e})"
                 
-                if emo == "sad":
-                    vf_chain.append(f"hue=s=0:enable='{cond}'")
-                    af_chain.append(f"lowpass=f=500:enable='{cond}'")
-                elif emo == "bored":
-                    vf_chain.append(f"hue=s=0.2:enable='{cond}'")
-                elif emo == "shock":
-                    vf_chain.append(f"geq=p(X+15*sin(T*50)\\,Y+15*cos(T*60)):enable='{cond}'")
-                    vf_chain.append(f"eq=brightness=0.3:enable='{cond}'")
-                    af_chain.append(f"bass=g=5:enable='{cond}'")
-                    af_chain.append(f"tremolo=f=10:d=0.5:enable='{cond}'")
-                elif emo == "fear":
-                    vf_chain.append(f"geq=p(X+5*sin(T*100)\\,Y+5*cos(T*110)):enable='{cond}'")
-                    vf_chain.append(f"vignette=PI/2:enable='{cond}'")
-                elif emo == "angry":
-                    vf_chain.append(f"eq=gamma_r=1.5:gamma_g=0.8:gamma_b=0.8:enable='{cond}'")
-                elif emo == "disgust":
-                    vf_chain.append(f"eq=gamma_g=1.5:gamma_r=0.8:gamma_b=0.8:enable='{cond}'")
-                elif emo == "confused":
-                    vf_chain.append(f"geq=p(X/1.15+W/2*(1-1/1.15)\\,Y/1.15+H/2*(1-1/1.15)):enable='{cond}'")
-                    vf_chain.append(f"vignette=PI/3:enable='{cond}'")
-                    vf_chain.append(f"hue=s=0.5:enable='{cond}'")
-                elif emo == "happy":
-                    vf_chain.append(f"eq=saturation=1.5:brightness=0.05:enable='{cond}'")
-                elif emo == "amused":
-                    vf_chain.append(f"eq=contrast=1.3:enable='{cond}'")
+                try:
+                    from core.vfx import vfx_manager
+                    effect = vfx_manager.get_random_effect(emo)
+                    for vf_filter in effect.get("vf", []):
+                        vf_chain.append(f"{vf_filter}:enable='{cond}'")
+                    for af_filter in effect.get("af", []):
+                        af_chain.append(f"{af_filter}:enable='{cond}'")
+                except Exception as e:
+                    log.warning(f"Gagal memuat efek visual untuk {emo}: {e}")
                 
                 available_sfx_pool = []
                 
@@ -175,6 +168,24 @@ def burn_subtitle_and_highlight(
             if write_debug_ass_file(metadata, debug_file):
                 debug_file_fwd = debug_file.replace("\\", "/")
                 vf_chain.append(f"subtitles=filename='{debug_file_fwd}'")
+                
+            # Tambahkan visual bounding box dari DeepFace ke video
+            if isinstance(visual_emotions, list) and len(visual_emotions) > 0:
+                font_arg = ""
+                if os.path.exists("C:/Windows/Fonts/arial.ttf"):
+                    font_arg = "fontfile='C\\:/Windows/Fonts/arial.ttf':"
+                    
+                for i, ve in enumerate(visual_emotions):
+                    t = float(ve.get("time", 0.0))
+                    box = ve.get("box")
+                    if box and isinstance(box, dict):
+                        bx, by, bw, bh = box.get('x', 0), box.get('y', 0), box.get('w', 0), box.get('h', 0)
+                        next_t = float(visual_emotions[i+1].get("time", t + 1.0)) if i+1 < len(visual_emotions) else t + 1.0
+                        emo_text = f"{ve.get('emotion')} ({ve.get('score')})"
+                        cond = f"between(t,{t},{next_t})"
+                        
+                        vf_chain.append(f"drawbox=x={bx}:y={by}:w={bw}:h={bh}:color=red@0.8:thickness=4:enable='{cond}'")
+                        vf_chain.append(f"drawtext={font_arg}text='{emo_text}':x={bx}:y={by}-30:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.6:boxborderw=5:enable='{cond}'")
         
         unique_sfx_files = list(dict.fromkeys([sfx for sfx, _ in scheduled_external_sfx]))
         total_sfx = len(scheduled_external_sfx)
