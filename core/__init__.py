@@ -1,4 +1,4 @@
-__version__ = "v3.0.11"
+__version__ = "v3.0.12"
 
 from core.logger import log, setup_logger
 from core.config import config, AppConfig
@@ -23,4 +23,3 @@ __all__ = [
     "controller",
     "ClipController",
 ]
-
