@@ -237,6 +237,7 @@ def process_single_clip(
             )
             
             if metadata:
+                metadata["visual_emotions"] = visual_emotions
                 enriched_transcript = metadata.get("enriched_transcript")
                 if enriched_transcript and isinstance(enriched_transcript, list):
                     from core.subtitle import write_enriched_ass_file

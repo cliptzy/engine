@@ -91,6 +91,8 @@ class AppConfig:
     upload_interval: float = 0.0
     hw_accel: str = "cpu"
     
+    debug_mode: bool = False
+    
     tts_language: str = "default"
     tts_voice: str = "female"
     

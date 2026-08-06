@@ -70,35 +70,29 @@ def burn_subtitle_and_highlight(
             SFX_MAP = {}
         
         enriched = metadata.get("enriched_transcript", [])
+        visual_emotions = metadata.get("visual_emotions", [])
+        blocks = []
+        
+        def map_emotion(emotion_str: str) -> str:
+            emotion_str = emotion_str.lower()
+            if any(e in emotion_str for e in ["sedih", "sad", "nangis"]): return "sad"
+            if any(e in emotion_str for e in ["bosan", "bored", "capek", "lelah", "garing"]): return "bored"
+            if any(e in emotion_str for e in ["kaget", "shock", "terkejut", "surprise"]): return "shock"
+            if any(e in emotion_str for e in ["takut", "fear", "panik", "seram"]): return "fear"
+            if any(e in emotion_str for e in ["marah", "angry", "kesal", "emosi", "frustrasi"]): return "angry"
+            if any(e in emotion_str for e in ["jijik", "disgust", "ew", "najis", "bau"]): return "disgust"
+            if any(e in emotion_str for e in ["heran", "confused", "janggal", "bingung"]): return "confused"
+            if any(e in emotion_str for e in ["senang", "happy", "joy", "excited", "keren", "mantap"]): return "happy"
+            if any(e in emotion_str for e in ["lucu", "amused", "haha", "wkwk", "ngakak"]): return "amused"
+            return "neutral"
+            
         if isinstance(enriched, list) and len(enriched) > 0:
             current_emotion = None
             start_t = 0.0
             end_t = 0.0
-            blocks = []
             
             for w in enriched:
-                emotion = str(w.get("emotion", "")).lower()
-                
-                if any(e in emotion for e in ["sedih", "sad", "nangis"]):
-                    mapped = "sad"
-                elif any(e in emotion for e in ["bosan", "bored", "capek", "lelah", "garing"]):
-                    mapped = "bored"
-                elif any(e in emotion for e in ["kaget", "shock", "terkejut"]):
-                    mapped = "shock"
-                elif any(e in emotion for e in ["takut", "fear", "panik", "seram"]):
-                    mapped = "fear"
-                elif any(e in emotion for e in ["marah", "angry", "kesal", "emosi", "frustrasi"]):
-                    mapped = "angry"
-                elif any(e in emotion for e in ["jijik", "disgust", "ew", "najis", "bau"]):
-                    mapped = "disgust"
-                elif any(e in emotion for e in ["heran", "confused", "janggal", "bingung"]):
-                    mapped = "confused"
-                elif any(e in emotion for e in ["senang", "happy", "joy", "excited", "keren", "mantap"]):
-                    mapped = "happy"
-                elif any(e in emotion for e in ["lucu", "amused", "haha", "wkwk", "ngakak"]):
-                    mapped = "amused"
-                else:
-                    mapped = "neutral"
+                mapped = map_emotion(str(w.get("emotion", "")))
                     
                 w_s = float(w.get("start", 0.0))
                 w_e = float(w.get("end", 0.0))
@@ -114,6 +108,16 @@ def burn_subtitle_and_highlight(
                     
             if current_emotion and current_emotion != "neutral":
                 blocks.append((current_emotion, start_t, end_t))
+                
+        if isinstance(visual_emotions, list) and len(visual_emotions) > 0:
+            for ve in visual_emotions:
+                mapped = map_emotion(str(ve.get("emotion", "")))
+                    
+                if mapped != "neutral":
+                    t = float(ve.get("time", 0.0))
+                    blocks.append((mapped, t, t + 2.0))
+                    
+        if len(blocks) > 0:
                 
             for emo, s, e in blocks:
                 e = e + 0.3
@@ -164,6 +168,13 @@ def burn_subtitle_and_highlight(
 
         subtitle_file_fwd = subtitle_file.replace("\\", "/")
         vf_chain.append(f"subtitles=filename='{subtitle_file_fwd}'{fontsdir_arg}")
+        
+        if getattr(config, "debug_mode", False):
+            from core.subtitle import write_debug_ass_file
+            debug_file = subtitle_file.replace(".ass", "_debug.ass")
+            if write_debug_ass_file(metadata, debug_file):
+                debug_file_fwd = debug_file.replace("\\", "/")
+                vf_chain.append(f"subtitles=filename='{debug_file_fwd}'")
         
         unique_sfx_files = list(dict.fromkeys([sfx for sfx, _ in scheduled_external_sfx]))
         total_sfx = len(scheduled_external_sfx)

@@ -367,3 +367,77 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             log.info(f"[subtitle] Berhasil menulis ulang ASS subtitle dengan {len(enriched_transcript)} kata yang diperkaya.")
     except Exception as e:
         log.error(f"Failed to write enriched subtitle file: {e}")
+
+def write_debug_ass_file(metadata: dict, debug_file: str) -> bool:
+    """Writes an ASS file containing debug information (emotion and voice level) per second."""
+    from core.config import config
+    
+    ass_header = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: 720
+PlayResY: 1280
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: DebugInfo,Consolas,35,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,3,3,0,8,10,10,100,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    try:
+        with open(debug_file, "w", encoding="utf-8") as f:
+            f.write(ass_header)
+            
+            enriched = metadata.get("enriched_transcript", [])
+            visual_emotions = metadata.get("visual_emotions", [])
+            
+            timeline = {}
+            
+            def add_to_timeline(start_s, end_s, text):
+                start_sec = int(start_s)
+                end_sec = int(end_s)
+                if end_sec < start_sec: end_sec = start_sec
+                for sec in range(start_sec, end_sec + 1):
+                    if sec not in timeline:
+                        timeline[sec] = []
+                    if text not in timeline[sec]:
+                        timeline[sec].append(text)
+            
+            for w in enriched:
+                s = float(w.get("start", 0))
+                e = float(w.get("end", 0))
+                emo = w.get("emotion", "neutral")
+                voice = w.get("voice_level", "normal")
+                info = f"TEKS: emo={emo}, nada={voice}"
+                add_to_timeline(s, e, info)
+                    
+            for ve in visual_emotions:
+                s = float(ve.get("time", 0))
+                emo = ve.get("emotion", "neutral")
+                score = ve.get("score")
+                if score is not None:
+                    info = f"VISUAL: emo={emo} ({score}%)"
+                else:
+                    info = f"VISUAL: emo={emo}"
+                add_to_timeline(s, s + 1.0, info)
+                
+            max_sec = max(timeline.keys()) if timeline else 0
+            for sec in range(0, max_sec + 1):
+                if sec not in timeline:
+                    timeline[sec] = ["VISUAL: emo=neutral | TEKS: emo=neutral, nada=normal"]
+                    
+            for sec in sorted(timeline.keys()):
+                infos = " | ".join(timeline[sec])
+                text = f"Detik {sec:02d}: {infos}"
+                
+                start_time = format_ass_time(sec)
+                end_time = format_ass_time(sec + 0.99)
+                
+                ass_line = f"Dialogue: 9,{start_time},{end_time},DebugInfo,,0,0,0,,{text}\n"
+                f.write(ass_line)
+                
+        return True
+    except Exception as e:
+        from core.logger import log
+        log.error(f"Failed to write debug subtitle file: {e}")
+        return False
