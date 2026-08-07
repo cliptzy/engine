@@ -1,4 +1,4 @@
-__version__ = "v3.0.12"
+__version__ = "v3.0.13"
 
 from core.logger import log, setup_logger
 from core.config import config, AppConfig
