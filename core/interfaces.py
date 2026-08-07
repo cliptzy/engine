@@ -39,14 +39,3 @@ class AIProvider(Protocol):
         ...
 
 
-class BaseUploader(Protocol):
-    """
-    Protocol for social media video uploaders.
-    """
-
-    def upload(self, video_path: Path, title: str, description: str, tags: List[str]) -> bool:
-        """
-        Uploads a video to the target platform.
-        Returns True if successful, False otherwise.
-        """
-        ...

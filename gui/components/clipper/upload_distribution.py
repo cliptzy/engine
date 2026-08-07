@@ -90,6 +90,12 @@ class UploadDistribution(ft.Container):
             style=ft.ButtonStyle(bgcolor=ft.Colors.RED_700, color=ft.Colors.WHITE),
             visible=False
         )
+        
+        self.render_btn = ft.Button(
+            content=ft.Text("🎬 Render Terpilih"), # type: ignore
+            on_click=self.handle_render,
+            style=ft.ButtonStyle(bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE)
+        )
         self.upload_progress = ft.ProgressBar(visible=False)
         self.upload_status_text = ft.Text("", size=13, color=ft.Colors.GREY_400)
         
@@ -169,6 +175,7 @@ class UploadDistribution(ft.Container):
             ft.Row([
                 ft.Container(expand=True), 
                 self.cancel_upload_btn,
+                self.render_btn,
                 self.upload_btn
             ])
         ])
@@ -306,37 +313,77 @@ class UploadDistribution(ft.Container):
             return
             
         self.current_project_dir = os.path.join(config.output_dir, project_name)
-        clip_files = glob.glob(os.path.join(self.current_project_dir, "*.mp4"))
-        clip_files = [f for f in clip_files if re.match(r'^(clip_\d+|merged)\.mp4$', os.path.basename(f))]
         
-        def natural_sort_key(s: str) -> list:
-            return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
-            
-        clip_files.sort(key=natural_sort_key)
+        meta_files = glob.glob(os.path.join(self.current_project_dir, "metadata_*.json"))
+        mp4_files = glob.glob(os.path.join(self.current_project_dir, "*.mp4"))
+        
+        clip_indices = []
+        for mf in meta_files:
+            bname = os.path.basename(mf)
+            if bname.startswith("metadata_") and bname != "metadata_merge.json":
+                idx_str = bname.replace("metadata_", "").replace(".json", "")
+                if idx_str.isdigit():
+                    clip_indices.append(int(idx_str))
+                    
+        for mf in mp4_files:
+            if os.path.basename(mf) == "merged.mp4":
+                clip_indices.append("merge")
+                
+        clip_indices = list(set(clip_indices))
+        
+        def sort_key(x):
+            if isinstance(x, int): return x
+            return 9999
+        clip_indices.sort(key=sort_key)
         
         self.clip_list.controls.clear()
         self.clips_to_upload.clear()
         
-        for cf in clip_files:
-            size_mb = os.path.getsize(cf) / (1024 * 1024)
-            bname = os.path.basename(cf)
-            
-            # Checkbox for upload
-            chk = ft.Checkbox(value=False, data=cf)
+        first_clip_path = None
+        first_clip_name = None
+        
+        for idx in clip_indices:
+            if idx == "merge":
+                display_name = "merged.mp4"
+                video_path = os.path.join(self.current_project_dir, "merged.mp4")
+                status = "✅ Rendered"
+            else:
+                display_name = f"clip_{idx}.mp4"
+                video_path = os.path.join(self.current_project_dir, f"clip_{idx}.mp4")
+                
+                # Search for nosub file with any timestamp/crop_mode suffix
+                nosub_matches = glob.glob(os.path.join(self.current_project_dir, f"clip_{idx}_*_nosub.mp4"))
+                nosub_path = nosub_matches[0] if nosub_matches else os.path.join(self.current_project_dir, f"clip_{idx}_nosub.mp4")
+                
+                if os.path.exists(video_path):
+                    status = "✅ Rendered"
+                else:
+                    video_path = nosub_path # Fallback to preview nosub
+                    status = "🕒 Perlu Render"
+                    
+            if not first_clip_path:
+                first_clip_path = video_path
+                first_clip_name = display_name
+                
+            # Checkbox for upload/render
+            chk = ft.Checkbox(value=False, data={"index": idx, "path": video_path, "status": status})
             self.clips_to_upload.append(chk)
             
             # Clickable row to load video
-            def make_on_click(path=cf, name=bname):
+            def make_on_click(path=video_path, name=display_name):
                 return lambda e: self.load_clip_data(path, name)
                 
+            status_color = ft.Colors.GREEN_400 if "Rendered" in status else ft.Colors.ORANGE_400
+            
             row = ft.Row([
                 chk,
-                ft.TextButton(f"{bname} ({size_mb:.1f} MB)", on_click=make_on_click())
+                ft.TextButton(f"{display_name}", on_click=make_on_click()),
+                ft.Text(f"[{status}]", color=status_color, size=12)
             ])
             self.clip_list.controls.append(row)
             
-        if clip_files:
-            self.load_clip_data(clip_files[0], os.path.basename(clip_files[0]))
+        if first_clip_path and first_clip_name:
+            self.load_clip_data(first_clip_path, first_clip_name)
         else:
             # Tidak ada klip — tampilkan placeholder
             self._show_video_placeholder()
@@ -703,3 +750,101 @@ class UploadDistribution(ft.Container):
             self._page.update()
 
         self._page.run_task(run_uploader_task)
+    def handle_render(self, e: Any) -> None:
+        """Handler for Render Project button."""
+        selected_items = [chk.data for chk in self.clips_to_upload if chk.value]
+        if not selected_items:
+            from gui.state import app_state
+            app_state.append_log("Pilih minimal satu klip untuk di-render.")
+            return
+            
+        project_name = self.project_dropdown.value
+        if not project_name: return
+        
+        segments = []
+        for item in selected_items:
+            idx = item["index"]
+            if idx == "merge": continue
+            segments.append({"original_index": idx, "start": 0, "duration": 0})
+            
+        if not segments:
+            from gui.state import app_state
+            app_state.append_log("Tidak ada klip individual yang dipilih untuk dirender.")
+            return
+
+        payload = {
+            "video_id": project_name,
+            "segments": segments,
+            "subtitle": True
+        }
+        
+        from gui.state import app_state
+        from core.controller import controller
+        from core.logger import log
+        
+        self._is_upload_cancelled = False
+        app_state.set_processing(True, "Merender klip...")
+        self.upload_progress.visible = True
+        self.upload_progress.value = None
+        self.upload_status_text.value = f"Merender {len(segments)} klip..."
+        self.cancel_upload_btn.visible = True
+        
+        try:
+            self.update()
+        except Exception:
+            pass
+
+        class FletProgressReporter:
+            def __init__(self, view):
+                self.view = view
+            def on_progress(self, label: str, current: int, total: int) -> None:
+                if label == "total_targets":
+                    self.view.upload_status_text.value = f"Total target: {total}"
+                else:
+                    self.view.upload_status_text.value = f"{label}: klip {current}/{total}"
+                try:
+                    self.view.update()
+                except Exception: pass
+            def on_log(self, message: str) -> None:
+                app_state.append_log(message)
+            def on_error(self, error: str) -> None:
+                app_state.append_log(f"Error: {error}")
+            def on_finished(self, result: Any) -> None:
+                pass
+
+        controller.reporter = FletProgressReporter(self)
+        controller.render_uc.reporter = controller.reporter
+
+        async def render_worker():
+            import asyncio
+            try:
+                def check_cancelled():
+                    return self._is_upload_cancelled
+
+                log.info(f"Memulai render untuk project: {project_name}")
+                res = await asyncio.to_thread(controller.execute_rendering, payload, check_cancelled)
+
+                if self._is_upload_cancelled:
+                    log.warning("Proses render dibatalkan.")
+                    app_state.append_log("Render dibatalkan.")
+                else:
+                    success = res.get("success", 0)
+                    log.info(f"Render selesai! Berhasil merender {success} klip.")
+                    app_state.append_log(f"Render Selesai: {success} klip dirender.")
+                    self.on_project_selected(None) # Refresh list
+            except Exception as e:
+                log.error(f"Error render: {e}")
+                app_state.append_log(f"Error render: {e}")
+            finally:
+                app_state.set_processing(False)
+                self.upload_progress.visible = False
+                self.upload_status_text.value = ""
+                self.cancel_upload_btn.visible = False
+                try:
+                    if self.page: self.page.update()
+                    else: self.update()
+                except Exception:
+                    pass
+
+        if self.page:
+            self.page.run_task(render_worker)

@@ -21,7 +21,8 @@ def process_single_clip(
     use_subtitle: bool = False,
     event_hook: Optional[Callable[[str, Any], None]] = None,
     source_url: Optional[str] = None,
-    custom_prompt: str = ""
+    custom_prompt: str = "",
+    phase1_only: bool = False
 ) -> bool:
     """
     Downloads, crops, and exports a single vertical clip based on a heatmap segment.
@@ -253,6 +254,15 @@ def process_single_clip(
                     log.warning(f"Failed to save metadata for clip {index}: {e}")
 
         # --- Subtitle & Highlight Burning Logic ---
+        if phase1_only:
+            log.info(f"Phase 1 complete for clip {index}. Skipping rendering (Phase 2).")
+            if callable(event_hook):
+                try:
+                    event_hook("stage", {"stage": "done_clip", "clip_index": index})
+                except Exception as e:
+                    log.debug(f"Event hook error: {e}")
+            return True
+
         current_clip = burn_subtitle_and_highlight(
             cropped_file, subbed_file, subtitle_file, metadata,
             start, end, index, use_subtitle, subtitle_generated, event_hook
@@ -280,3 +290,68 @@ def process_single_clip(
         log.error(f"Failed to generate clip {index}.")
         log.exception(f"Exception: {str(e)}")
         return False
+
+def render_single_clip(
+    job_dir: str,
+    index: int,
+    item: dict,
+    use_subtitle: bool = True,
+    event_hook: Optional[Callable] = None
+) -> bool:
+    """
+    Executes Phase 2: Reads metadata, regenerates ASS, and renders the final clip.
+    """
+    import os
+    import json
+    from core.config import config
+    from core.logger import log
+    
+    import glob
+    start = float(item.get("start", 0))
+    end = start + float(item.get("duration", 0))
+    
+    nosub_matches = glob.glob(os.path.join(job_dir, f"clip_{index}_*_nosub.mp4"))
+    cropped_file = nosub_matches[0] if nosub_matches else os.path.join(job_dir, f"clip_{index}_nosub.mp4")
+    
+    subbed_file = os.path.join(job_dir, f"clip_{index}_sub.mp4")
+    output_file = os.path.join(job_dir, f"clip_{index}.mp4")
+    subtitle_file = os.path.join(job_dir, f"subtitle_{index}.ass")
+    metadata_file = os.path.join(job_dir, f"metadata_{index}.json")
+    
+    if not os.path.exists(cropped_file):
+        log.error(f"File video mentah (nosub) tidak ditemukan untuk klip {index}")
+        return False
+        
+    metadata = {}
+    if os.path.exists(metadata_file):
+        try:
+            with open(metadata_file, "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+        except Exception as e:
+            log.warning(f"Gagal membaca metadata untuk klip {index}: {e}")
+            
+    # Regenerate ASS from current metadata
+    enriched_transcript = metadata.get("enriched_transcript")
+    subtitle_generated = False
+    if enriched_transcript and isinstance(enriched_transcript, list):
+        from core.subtitle import write_enriched_ass_file
+        write_enriched_ass_file(enriched_transcript, subtitle_file, event_hook=event_hook)
+        subtitle_generated = True
+        
+    if callable(event_hook):
+        event_hook("stage", {"stage": "rendering", "clip_index": index})
+        
+    current_clip = burn_subtitle_and_highlight(
+        cropped_file, subbed_file, subtitle_file, metadata,
+        start, end, index, use_subtitle, subtitle_generated, event_hook
+    )
+    
+    intro_to_use = generate_intro(index, metadata, event_hook)
+    
+    stack_and_concat(current_clip, output_file, intro_to_use, index, event_hook)
+    
+    log.info(f"Render klip {index} berhasil.")
+    if callable(event_hook):
+        event_hook("stage", {"stage": "done_clip", "clip_index": index})
+        
+    return True

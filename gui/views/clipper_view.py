@@ -9,64 +9,104 @@ from gui.components.clipper import (
     ProcessControl,
     UploadDistribution
 )
+from gui.components.clipper.editor_tab import EditorTab
 
 class ClipperView(ft.Column):
     def __init__(self, page: ft.Page):
         super().__init__()
         self.page_ref = page
         self.spacing = 20
-        # type: ignore
-        self.scroll = ft.ScrollMode.AUTO
-        
+
         self.worker: Optional[BackgroundWorker] = None
-        
+
         self.video_input = VideoInput(self.page_ref)
         self.preview = Preview(on_ai_scan_requested=self.on_ai_scan_requested)
         self.clip_config = ClipConfig(self.page_ref)
         self.process_control = ProcessControl(self.page_ref)
         self.upload_distribution = UploadDistribution(self.page_ref)
-        
-        self.controls = [
+
+        # Tab Clipper Layout
+        self.clipper_tab_content = ft.Column([
             self.video_input,
             self.preview,
             self.clip_config,
             self.process_control,
+        ], spacing=20, scroll=ft.ScrollMode.AUTO)
+
+        # Tab Editor Layout
+        self.editor_tab_content = EditorTab(self.page_ref)
+
+        # Tab Publisher Layout
+        self.publisher_tab_content = ft.Column([
+            ft.Text("Publisher & Render Phase", size=20, weight=ft.FontWeight.BOLD),
+            ft.Text("Render final video dan bagikan karya ke berbagai platform.", color=ft.Colors.WHITE_70),
             self.upload_distribution
+        ], spacing=20, scroll=ft.ScrollMode.AUTO)
+
+        self.tabs = ft.Tabs(
+            length=3,
+            selected_index=0,
+            content=ft.Column(
+                controls=[
+                    ft.TabBar(
+                        tabs=[
+                            ft.Tab(label="Clipper", icon=ft.Icons.MOVIE),
+                            ft.Tab(label="Editor", icon=ft.Icons.TUNE),
+                            ft.Tab(label="Publisher", icon=ft.Icons.PUBLISH),
+                        ]
+                    ),
+                    ft.TabBarView(
+                        controls=[
+                            ft.Container(content=self.clipper_tab_content, padding=20),
+                            ft.Container(content=self.editor_tab_content, padding=20),
+                            ft.Container(content=self.publisher_tab_content, padding=20),
+                        ],
+                        expand=1
+                    )
+                ],
+                expand=1
+            ),
+            expand=1,
+        )
+
+        self.controls = [
+            self.tabs
         ]
-        
+        self.expand = True
+
         self.clip_config.load_from_config()
         self.clip_config.detect_hw_accel()
         self.clip_config.detect_libass()
-        
+
     def did_mount(self):
         event_bus.subscribe("fetch_requested", self.on_fetch_requested)
         event_bus.subscribe("start_process_requested", self.on_start_process_requested)
         event_bus.subscribe("cancel_process_requested", self.on_cancel_process_requested)
-        
+
     def will_unmount(self):
         event_bus.unsubscribe("fetch_requested", self.on_fetch_requested)
         event_bus.unsubscribe("start_process_requested", self.on_start_process_requested)
         event_bus.unsubscribe("cancel_process_requested", self.on_cancel_process_requested)
-        
+
     def on_cancel_process_requested(self, *args, **kwargs):
         self._cancel_flag = True
         from core.logger import log
         log.info("Membatalkan proses klip...")
-        
+
     def on_start_process_requested(self, *args, **kwargs):
         from gui.state import app_state
         from core.controller import controller
         from core.logger import log
-        
+
         url = self.video_input.url_input.value
         if not url:
             app_state.append_log("Error: URL kosong, silakan Load Video terlebih dahulu.")
             return
-            
+
         mode = self.preview.get_selected_mode()
         segments = []
         payload = {}
-        
+
         if mode == "custom":
             start_val, end_val = self.preview.get_custom_range()
             payload["start"] = start_val
@@ -77,7 +117,7 @@ class ClipperView(ft.Column):
                 app_state.append_log(f"Error: Tidak ada segmen yang dipilih untuk mode {mode}")
                 return
             payload["segments"] = segments
-            
+
         payload.update({
             "url": url,
             "mode": mode,
@@ -97,12 +137,13 @@ class ClipperView(ft.Column):
             "subtitle_max_words": int(self.clip_config.max_words_spin.value or 3),
             "padding": int(self.clip_config.padding_spin.value or 0),
             "max_duration": int(self.clip_config.max_duration_spin.value or 0),
-            "custom_prompt": self.preview.custom_prompt_input.value or ""
+            "custom_prompt": self.preview.custom_prompt_input.value or "",
+            "phase1_only": True
         })
-        
+
         self.set_processing(True)
         self._cancel_flag = False
-        
+
         class FletProgressReporter:
             def __init__(self, view):
                 self.view = view
@@ -117,19 +158,19 @@ class ClipperView(ft.Column):
                 app_state.append_log(f"Error: {error}")
             def on_finished(self, result: Any) -> None:
                 pass
-                
+
         controller.reporter = FletProgressReporter(self)
         controller.clip_uc.reporter = controller.reporter
-        
+
         async def clip_worker():
             import asyncio
             try:
                 def check_cancelled():
                     return self._cancel_flag
-                
+
                 log.info(f"Memulai proses clipping untuk URL: {url} (Mode: {mode})")
                 res = await asyncio.to_thread(controller.execute_clipping, payload, check_cancelled)
-                
+
                 if self._cancel_flag:
                     log.warning("Proses clipping dibatalkan oleh pengguna.")
                     app_state.append_log("Proses dibatalkan.")
@@ -137,7 +178,7 @@ class ClipperView(ft.Column):
                     success = res.get("success", 0)
                     log.info(f"Proses clipping selesai! Berhasil memproses {success} klip.")
                     app_state.append_log(f"Selesai: {success} klip diproses.")
-                    
+
                     if success > 0:
                         self.upload_distribution.load_projects(None)
             except Exception as e:
@@ -147,18 +188,18 @@ class ClipperView(ft.Column):
             finally:
                 self.set_processing(False)
                 self.process_control.update_stage("Idle", {})
-                
+
         if self.page:
             self.page.run_task(clip_worker)
-            
+
     def on_fetch_requested(self, url: str):
         from gui.state import app_state
         from core.controller import controller
         import threading
-        
+
         self.video_input.set_loading(True)
         app_state.set_processing(True, "Menganalisa URL Video...")
-        
+
         async def worker():
             import asyncio
             from core.logger import log
@@ -169,19 +210,19 @@ class ClipperView(ft.Column):
                 preview_data = await asyncio.to_thread(controller.get_preview, url)
                 self.preview.set_preview_data(preview_data)
                 log.info(f"Metadata berhasil didapatkan: {preview_data.get('title')}")
-                
+
                 # 2. Fetch segments/heatmap
                 app_state.set_processing(True, "Menganalisa Heatmap Video...")
                 log.info(f"Memindai Heatmap (Most Replayed) dari YouTube...")
                 scan_data = await asyncio.to_thread(controller.scan_segments, url)
                 self.preview.set_scan_data(scan_data)
                 log.info(f"Heatmap selesai: {len(scan_data.get('segments', []))} klip ditemukan.")
-                
+
                 # Check for cached AI segments
                 ai_cache = await asyncio.to_thread(controller.get_cached_ai_highlights, url)
                 if ai_cache:
                     self.preview.set_ai_scan_data(ai_cache)
-                    
+
             except Exception as e:
                 from core.logger import log
                 log.error(f"Gagal memuat video: {e}")
@@ -196,10 +237,10 @@ class ClipperView(ft.Column):
                         self.update()
                 except Exception:
                     pass
-                    
+
         if self.page:
             self.page.run_task(worker)
-            
+
     def on_ai_scan_requested(self, ai_config: dict):
         url = self.video_input.url_input.value
         if not url:
@@ -243,7 +284,7 @@ class ClipperView(ft.Column):
 
         if self.page:
             self.page.run_task(ai_scan_worker)
-        
+
     def set_loading(self, loading: bool) -> None:
         self.video_input.set_loading(loading)
 

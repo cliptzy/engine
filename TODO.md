@@ -1,33 +1,29 @@
-# 🚀 Cliptzy Desktop - TODO & Future Enhancements
+# Cliptzy Refactoring Plan - 3 Stage Workflow (Clipper, Editor, Publisher)
 
-Berikut adalah daftar ide fitur dan peningkatan yang bisa kita kembangkan selanjutnya untuk membuat Cliptzy semakin _powerful_ dan profesional:
+## 1. GUI Modifications (Clipper View to Tabbed View)
+- [x] Refactor `gui/views/clipper_view.py` to use `ft.Tabs` containing 3 main tabs: **Clipper**, **Editor**, and **Publisher**.
+- [x] Pindahkan komponen yang ada (seperti `VideoInput`, `Preview`, `ClipConfig`, `ProcessControl`) ke dalam tab **Clipper**.
+- [x] Buat layout baru untuk tab **Editor**.
+- [x] Pindahkan atau modifikasi komponen `UploadDistribution` dan tombol render ke dalam tab **Publisher**.
 
-## 1. ⚡ Hardware Acceleration (Akselerasi GPU)
+## 2. Core Processing Pipeline Split (Phase 1 & Phase 2)
+- [x] Modifikasi `core/controller.py` dan `core/use_cases/clip_video.py` untuk menghentikan proses *rendering* (FFmpeg burn) saat menekan tombol "Mulai Proses Clip" di tab Clipper.
+- [x] **Phase 1 (Data Extraction & AI Analysis)**: Pipeline akan melakukan download raw/cut video, cropping dinamis, deteksi DeepFace (emosi visual), transkripsi Whisper (audio), dan analisa LLM (metadata & emosi teks). Semua data ini disimpan ke dalam JSON (`metadata.json` / `emotion.json`).
+- [x] **Phase 2 (Rendering)**: Implement render engine to parse updated metadata, create ASS, and burn subtitle & visual filters.
 
-- **FFmpeg NVENC / AMF / QSV**: Menerapkan dukungan _hardware encoding_ pada proses rendering/cropping FFmpeg untuk mempercepat waktu ekspor video secara drastis (menggantikan CPU _software encoding_ murni).
-- **Faster-Whisper GPU (CUDA)**: Menambahkan opsi agar deteksi model transkripsi Whisper bisa berjalan menggunakan kartu grafis NVIDIA (jika tersedia), sehingga _subtitle_ bisa digenerasi jauh lebih cepat.
+## 3. Editor Tab Implementation
+- [x] Load daftar project yang telah menyelesaikan *Phase 1* (membaca isi direktori `clips/` dan meload `metadata.json`).
+- [x] Buat antarmuka (timeline / list view) untuk menampilkan *keyframes* (misal: detik 01.00 ke 02.00, emosi marah).
+- [x] Sediakan dropdown / list pilihan bagi pengguna untuk menimpa atau memilih secara manual **VFX**, **SFX**, dan **Overlay** dari referensi file `sfx.json`, `vfx.json`, `overlay.json`.
+- [x] Buat fungsi untuk menyimpan (*save*) konfigurasi baru pengguna kembali ke dalam file JSON project, sehingga menimpa hasil default AI jika diubah.
 
-## 2. 🎵 BGM (Background Music) Manager
+## 4. Publisher Tab Implementation
+- [x] Buat antarmuka untuk me-load project yang sudah dikonfirmasi konfigurasinya dari tab Editor, untuk me-render dan melakukan upload.
+- [x] Tambahkan tombol "Render Project" yang akan memanggil *Phase 2* (mengeksekusi render FFmpeg untuk menghasilkan final output `clip_X.mp4`).
+- [x] Pertahankan form/tombol integrasi *auto-upload* ke platform (TikTok/YouTube dll) setelah video sukses di-render.
+- [x] Integrasikan `FletProgressReporter` untuk melaporkan proses *rendering* dan *upload* dengan baik ke UI.
 
-- Mirip dengan halaman manajemen SFX, tambahkan fitur untuk menyisipkan musik latar belakang secara otomatis.
-- Implementasi volume _ducking_ (audio video utama tetap jelas, BGM disesuaikan menjadi lebih pelan seperti -20dB) dan efek _looping_ jika BGM lebih pendek dari klip.
-
-## 5. Mendeteksi tingkat suara
-
-- Kemampuan untuk mendeteksi apakah streamer sedang berteriak atau berbisik atau berbicara dengan normal
-- Dipadukan dengan deteksi emosi untuk menentukan sfx yang sesuai
-
-## 4. ✂️ Advanced Timeline / Manual Override
-
-- Menambahkan _slider_ atau antarmuka visual sederhana di GUI agar pengguna bisa menggeser batas awal (`start`) dan akhir (`end`) dari sebuah klip secara manual.
-- Berguna jika hasil potongan otomatis (AI/Auto) dirasa kurang pas atau sedikit terpotong.
-
-## 6. 📚 Batch Processing (Antrean Proses)
-
-- Fitur untuk memasukkan banyak URL atau file video sekaligus ke dalam daftar antrean (_Queue_).
-- Aplikasi akan memproses semuanya secara berurutan (_sequential_) di latar belakang, sangat cocok untuk ditinggal semalaman (proses _bulk_).
-
-## 8. 🔄 Auto-Update Mechanism (✅ Selesai)
-
-- ~~Sistem pengecekan versi otomatis (misalnya mengecek rilis terbaru di GitHub).~~
-- ~~Menampilkan notifikasi di GUI bila ada pembaruan Cliptzy terbaru dan opsi untuk mengunduhnya langsung.~~
+## 5. Verification & Testing
+- [ ] Pastikan tidak ada GUI blocking (menggunakan `page.run_task` & `asyncio.to_thread`).
+- [ ] Lakukan pengujian proses render FFmpeg dengan efek visual (VFX) pada *timeline* yang dimodifikasi melalui tab Editor.
+- [ ] Jalankan `npx --yes pyright --pythonpath .venv/bin/python .` untuk memastikan 0 errors.

@@ -182,4 +182,17 @@ Sistem efek suara (SFX) dan efek visual (VFX) pada Cliptzy dikelola secara dinam
 
 ---
 
+## 🎨 10. ATURAN MIGRASI FLET 0.23+ (PENTING)
+
+1. **Penggunaan Warna (Colors)**:
+   - Dilarang keras menggunakan `ft.colors.<WARNA>` (huruf kecil). Flet telah memperbarui API-nya, gunakan **`ft.Colors.<WARNA>`** (kapital C) atau enum yang sesuai.
+2. **Penggunaan Ikon (Icons)**:
+   - Dilarang keras menggunakan string referensi lama seperti `ft.icons.MOVIE_EDIT`. Gunakan enum resmi **`ft.Icons.<IKON>`** (misal: `ft.Icons.MOVIE`, `ft.Icons.TUNE`, `ft.Icons.PUBLISH`).
+3. **Struktur Komponen Tabs**:
+   - Komponen `ft.Tabs` tidak lagi menerima list dari `ft.Tab` secara langsung sebagai parameter `tabs`. 
+   - Anda **WAJIB** menggunakan struktur `Tabs(length=..., content=ft.Column([ft.TabBar(tabs=[...]), ft.TabBarView(controls=[...])]))`.
+   - Parameter judul untuk `ft.Tab` sekarang menggunakan argumen `label=`, bukan `text=`.
+
+---
+
 _Peraturan dalam AGENTS.md ini mengikat untuk semua aktivitas pengembangan proyek Cliptzy. Pelanggaran terhadap Larangan 1.4 (`sys.executable`) dianggap **bug kritis** dan mengharuskan perbaikan segera._

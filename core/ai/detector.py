@@ -82,7 +82,7 @@ class AIHighlightDetector:
             else:
                 current_chunk.append(line)
                 current_len += line_len
-        
+
         if current_chunk:
             chunks.append("\n".join(current_chunk))
 
@@ -106,12 +106,12 @@ class AIHighlightDetector:
             prompt = template.replace("{transcript_text}", chunk_text)
             prompt = prompt.replace("{language}", language)
             prompt = prompt.replace("{custom_context}", custom_context_str)
-            
+
             if len(chunks) > 1:
                 log.info( f"[AI] Mengirim transkrip (Bagian {i+1}/{len(chunks)}) ke AI Provider: {provider_name.upper()}...")
             else:
                 log.info( f"[AI] Mengirim transkrip ke AI Provider: {provider_name.upper()}...")
-            
+
             raw_response = provider.generate(prompt, ai_config, event_hook)
             highlights = self._parse_json_highlights(raw_response)
             all_highlights.extend(highlights)
@@ -149,7 +149,7 @@ class AIHighlightDetector:
 
             if not isinstance(items, list):
                 return []
-            
+
             clean_highlights = []
             for item in items:
                 try:
@@ -202,22 +202,22 @@ class AIHighlightDetector:
             emotions = sfx_manager.sfx_map
         except Exception:
             emotions = {}
-            
+
         emotion_lines = []
         i = 1
         for emo, data in emotions.items():
             desc = data.get("desc", emo) if isinstance(data, dict) else emo
             emotion_lines.append(f"{i}. \"{emo}\" : {desc}")
             i += 1
-            
+
         emotion_lines.append(f"{i}. \"neutral\" : Normal, datar, informatif biasa, atau tidak ada emosi yang menonjol.")
         emotion_str = "\n".join(emotion_lines)
-        
+
         visual_str = ""
         if visual_emotions:
             compact_vis = [f"{em['time']}s:{em['emotion']}" for em in visual_emotions]
             visual_str = "\nVisual Emotion Timeline:\n" + ", ".join(compact_vis) + "\n"
-        
+
         prompt = f"""
 Anda adalah Social Media Manager spesialis video vertikal viral.
 Tugas: Buat Title, Tags, Highlight (teks pop-up lucu maks 4 kata), dan `enriched_transcript`.
@@ -234,8 +234,6 @@ ATURAN:
    Anda memiliki 3 sumber: Wajah (Visual Emotion), Suara (voice_level: whispering/normal/yelling), dan Makna Teks.
    Prioritas: Wajah (Visual) > Suara (voice_level) > Teks.
    - Wajah dan Nada suara jarang berbohong (deteksi sarkasme). Jika Wajah="surprise" dan Suara="yelling", pastikan kata tersebut dilabeli emosi ekstrim (misal: "surprise"/"angry") dengan warna kuat (misal #FF0000).
-4. ATURAN COOLDOWN SFX:
-   DILARANG menumpuk emosi non-netral. Setelah satu emosi non-netral ditetapkan (misal "surprise"), Anda WAJIB memberikan jeda (emosi "neutral") minimal selama 5 detik sebelum menetapkan emosi non-netral berikutnya. Ini mencegah efek suara (SFX) yang tabrakan.
 
 KATEGORI EMOSI VALID:
 {emotion_str}
@@ -269,8 +267,31 @@ Format Output JSON:
             # Find JSON
             match_obj = re.search(r'\{\s*".*"\s*:.*\s*\}', raw_response, re.DOTALL)
             if match_obj:
-                return json.loads(match_obj.group(0))
-            return json.loads(raw_response.strip())
+                metadata = json.loads(match_obj.group(0))
+            else:
+                metadata = json.loads(raw_response.strip())
+
+            # --- NORMALISASI EMOSI (5 detik cooldown) ---
+            enriched = metadata.get("enriched_transcript", [])
+            last_non_neutral_time = -999.0
+
+            for word_data in enriched:
+                emo = str(word_data.get("emotion", "neutral")).lower()
+                try:
+                    start_time = float(word_data.get("start", 0.0))
+                except (ValueError, TypeError):
+                    start_time = 0.0
+
+                if emo not in ["neutral", "transition"]:
+                    if start_time - last_non_neutral_time < 5.0:
+                        word_data["emotion"] = "neutral"
+                        word_data["color"] = "#FFFF00"
+                    else:
+                        last_non_neutral_time = start_time
+
+            metadata["enriched_transcript"] = enriched
+            return metadata
+
         except Exception as e:
             log.error( f"[ERROR] Gagal men-generate metadata: {e}")
             return {}

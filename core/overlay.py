@@ -25,15 +25,15 @@ class OverlayManager:
         # Struktur map: { emotion: [ { "file": "nama_file.ext", "effect": "transparent", "opacity": 0.5 } ] }
         # File media harus diletakkan di dalam assets/overlay/
         self.overlay_map = {
-            "sad": [{"file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {}],
-            "shock": [{"file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {}],
-            "fear": [{"file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {}],
-            "angry": [{"file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {}],
-            "disgust": [{"file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {}],
-            "confused": [{"file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {}],
-            "happy": [{"file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {}],
-            "amused": [{"file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {}],
-            "transition": [{"file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {}]
+            "sad": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
+            "shock": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
+            "fear": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
+            "angry": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
+            "disgust": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
+            "confused": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
+            "happy": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
+            "amused": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
+            "transition": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}]
         }
 
     def save(self):

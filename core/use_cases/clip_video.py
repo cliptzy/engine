@@ -89,6 +89,7 @@ class ClipVideoUseCase:
         padding = payload.get("padding") if payload.get("padding") is not None else 10
         max_clips = payload.get("max_clips") if payload.get("max_clips") is not None else 10
         mode = payload.get("mode") or "heatmap"
+        phase1_only = payload.get("phase1_only", False)
         
         is_local = os.path.isfile(url)
         if is_local:
@@ -203,22 +204,32 @@ class ClipVideoUseCase:
                 use_subtitle=subtitle,
                 event_hook=event_hook,
                 source_url=url if is_local else None,
-                custom_prompt=payload.get("custom_prompt", "")
+                custom_prompt=payload.get("custom_prompt", ""),
+                phase1_only=phase1_only
             )
 
             if ok_clip:
                 success_count += 1
-                clip_path = os.path.join(job_dir, f"clip_{clip_idx}.mp4")
-                if os.path.exists(clip_path):
-                    outputs.append({
-                        "name": f"clip_{clip_idx}.mp4",
-                        "path": os.path.abspath(clip_path),
-                        "size": os.path.getsize(clip_path)
-                    })
+                if phase1_only:
+                    meta_path = os.path.join(job_dir, f"metadata_{clip_idx}.json")
+                    if os.path.exists(meta_path):
+                        outputs.append({
+                            "name": f"metadata_{clip_idx}.json",
+                            "path": os.path.abspath(meta_path),
+                            "size": os.path.getsize(meta_path)
+                        })
+                else:
+                    clip_path = os.path.join(job_dir, f"clip_{clip_idx}.mp4")
+                    if os.path.exists(clip_path):
+                        outputs.append({
+                            "name": f"clip_{clip_idx}.mp4",
+                            "path": os.path.abspath(clip_path),
+                            "size": os.path.getsize(clip_path)
+                        })
 
             event_hook("stage", {"stage": "done_clip", "clip_index": clip_idx, "success": success_count, "outputs": outputs})
 
-        if config.merge_clips and len(outputs) > 1 and not (is_cancelled and is_cancelled()):
+        if config.merge_clips and len(outputs) > 1 and not (is_cancelled and is_cancelled()) and not phase1_only:
             log.info( "Menggabungkan klip (Merge)...")
             event_hook("stage", {"stage": "merging"})
             

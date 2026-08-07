@@ -4,12 +4,14 @@ from typing import Dict, Any, List, Optional, Callable
 
 from core.config import config
 from core.logger import log
-from core.interfaces import ProgressReporter, BaseUploader
+from core.interfaces import ProgressReporter
+from core.uploaders.base import BaseUploader
 from core.use_cases.scan_video import ScanVideoUseCase
 from core.use_cases.clip_video import ClipVideoUseCase
 from core.use_cases.preview_clip import PreviewClipUseCase
 from core.use_cases.detect_highlights import DetectHighlightsUseCase
 from core.use_cases.upload_clip import UploadClipUseCase
+from core.use_cases.render_clip import RenderClipUseCase
 
 class ClipController:
     """
@@ -27,6 +29,7 @@ class ClipController:
         self.clip_uc = ClipVideoUseCase(reporter=self.reporter)
         self.preview_uc = PreviewClipUseCase(reporter=self.reporter)
         self.detect_uc = DetectHighlightsUseCase(reporter=self.reporter)
+        self.render_uc = RenderClipUseCase(reporter=self.reporter)
 
     def get_preview(self, url: str) -> Dict[str, Any]:
         """Fetches metadata (title, thumbnail, duration, uploader) for a YouTube URL."""
@@ -55,6 +58,16 @@ class ClipController:
         Executes the clipping pipeline based on settings payload.
         """
         return self.clip_uc.execute(payload, is_cancelled)
+
+    def execute_rendering(
+        self,
+        payload: Dict[str, Any],
+        is_cancelled: Optional[Callable[[], bool]] = None
+    ) -> Dict[str, Any]:
+        """
+        Executes the Phase 2 rendering pipeline based on settings payload.
+        """
+        return self.render_uc.execute(payload, is_cancelled)
 
     def generate_subtitle_preview_sample(self, payload: Dict[str, Any]) -> str:
         """

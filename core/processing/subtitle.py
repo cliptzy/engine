@@ -105,44 +105,55 @@ def burn_subtitle_and_highlight(
             
         if isinstance(enriched, list) and len(enriched) > 0:
             current_emotion = None
+            current_vfx = "random"
+            current_sfx = "random"
+            current_ov = "random"
             start_t = 0.0
             end_t = 0.0
             
             for w in enriched:
                 mapped = map_emotion(str(w.get("emotion", "")))
+                w_vfx = str(w.get("vfx_override", "random"))
+                w_sfx = str(w.get("sfx_override", "random"))
+                w_ov = str(w.get("overlay_override", "random"))
                     
                 w_s = float(w.get("start", 0.0))
                 w_e = float(w.get("end", 0.0))
                 
-                if mapped == current_emotion:
+                if mapped == current_emotion and w_vfx == current_vfx and w_sfx == current_sfx and w_ov == current_ov:
                     end_t = w_e
                 else:
                     if current_emotion and current_emotion != "neutral":
-                        blocks.append((current_emotion, start_t, end_t))
+                        blocks.append((current_emotion, start_t, end_t, current_vfx, current_sfx, current_ov))
                     current_emotion = mapped
+                    current_vfx = w_vfx
+                    current_sfx = w_sfx
+                    current_ov = w_ov
                     start_t = w_s
                     end_t = w_e
                     
             if current_emotion and current_emotion != "neutral":
-                blocks.append((current_emotion, start_t, end_t))
+                blocks.append((current_emotion, start_t, end_t, current_vfx, current_sfx, current_ov))
                 
-        if isinstance(visual_emotions, list) and len(visual_emotions) > 0:
-            for ve in visual_emotions:
-                mapped = map_emotion(str(ve.get("emotion", "")))
-                    
-                if mapped != "neutral":
-                    t = float(ve.get("time", 0.0))
-                    blocks.append((mapped, t, t + 2.0))
-                    
+
         if len(blocks) > 0:
                 
-            for emo, s, e in blocks:
+            for emo, s, e, vfx_idx_str, sfx_idx_str, ov_idx_str in blocks:
                 e = e + 0.3
                 cond = f"between(t,{s},{e})"
                 
                 try:
                     from core.vfx import vfx_manager
-                    effect = vfx_manager.get_random_effect(emo)
+                    
+                    if vfx_idx_str == "none":
+                        effect = {"vf": [], "af": []}
+                    elif vfx_idx_str != "random" and vfx_idx_str.isdigit():
+                        idx = int(vfx_idx_str)
+                        vfx_list = vfx_manager.vfx_map.get(emo, [])
+                        effect = vfx_list[idx] if idx < len(vfx_list) else vfx_manager.get_random_effect(emo)
+                    else:
+                        effect = vfx_manager.get_random_effect(emo)
+                        
                     for vf_filter in effect.get("vf", []):
                         vf_chain.append(f"{vf_filter}:enable='{cond}'")
                     for af_filter in effect.get("af", []):
@@ -153,7 +164,16 @@ def burn_subtitle_and_highlight(
                 # --- LAYERING / OVERLAY LOGIC ---
                 try:
                     from core.overlay import overlay_manager
-                    overlay_info = overlay_manager.get_random_overlay(emo)
+                    
+                    if ov_idx_str == "none":
+                        overlay_info = None
+                    elif ov_idx_str != "random" and ov_idx_str.isdigit():
+                        idx = int(ov_idx_str)
+                        ov_list = overlay_manager.overlay_map.get(emo, [])
+                        overlay_info = ov_list[idx] if idx < len(ov_list) else overlay_manager.get_random_overlay(emo)
+                    else:
+                        overlay_info = overlay_manager.get_random_overlay(emo)
+                        
                     if overlay_info and overlay_info.get("file"):
                         overlay_file = os.path.join("assets", "overlay", overlay_info["file"])
                         if os.path.exists(overlay_file):
@@ -184,7 +204,13 @@ def burn_subtitle_and_highlight(
                             log.debug(f"File MP3 dilewati karena tidak ditemukan: {sfx_file}")
 
                 if available_sfx_pool:
-                    chosen_sfx = random.choice(available_sfx_pool)
+                    if sfx_idx_str == "none":
+                        chosen_sfx = {"type": "empty", "data": None}
+                    elif sfx_idx_str != "random" and sfx_idx_str.isdigit():
+                        idx = int(sfx_idx_str)
+                        chosen_sfx = available_sfx_pool[idx] if idx < len(available_sfx_pool) else random.choice(available_sfx_pool)
+                    else:
+                        chosen_sfx = random.choice(available_sfx_pool)
                     
                     if chosen_sfx["type"] == "external":
                         scheduled_external_sfx.append((chosen_sfx["data"], s))
