@@ -2,6 +2,7 @@ import os
 from typing import Dict, Any, Optional, Callable
 
 from core.logger import log
+from core.config import config
 from core.processor import render_single_clip
 from core.interfaces import ProgressReporter
 
@@ -48,7 +49,13 @@ class RenderClipUseCase:
         success_count = 0
         outputs = []
         
-        for idx, item in enumerate(targets, start=1):
+        import concurrent.futures
+        import threading
+        
+        success_lock = threading.Lock()
+        
+        def process_target(idx, item):
+            nonlocal success_count
             clip_idx = item.get("original_index")
             if clip_idx is None:
                 clip_idx = idx
@@ -57,7 +64,7 @@ class RenderClipUseCase:
 
             if is_cancelled and is_cancelled():
                 log.info( "[CANCEL] Proses render dibatalkan oleh pengguna.")
-                break
+                return None
 
             event_hook("stage", {"stage": "start_render", "clip_index": clip_idx, "total": len(targets)})
 
@@ -69,17 +76,33 @@ class RenderClipUseCase:
                 event_hook=event_hook
             )
 
+            clip_output = None
             if ok_clip:
-                success_count += 1
+                with success_lock:
+                    success_count += 1
                 clip_path = os.path.join(job_dir, f"clip_{clip_idx}.mp4")
                 if os.path.exists(clip_path):
-                    outputs.append({
+                    clip_output = {
                         "name": f"clip_{clip_idx}.mp4",
                         "path": os.path.abspath(clip_path),
                         "size": os.path.getsize(clip_path)
-                    })
+                    }
+                    with success_lock:
+                        outputs.append(clip_output)
 
             event_hook("stage", {"stage": "done_render", "clip_index": clip_idx, "success": success_count, "outputs": outputs})
+            return clip_output
+
+        max_workers = getattr(config, "max_workers", 2)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_target, idx, item) for idx, item in enumerate(targets, start=1)]
+            for future in concurrent.futures.as_completed(futures):
+                if is_cancelled and is_cancelled():
+                    break
+                try:
+                    future.result()
+                except Exception as e:
+                    log.error(f"Error rendering clip: {e}")
 
         if self.reporter:
             self.reporter.on_finished(outputs)

@@ -68,7 +68,7 @@ jobs:
         env:
           PYTHONUTF8: "1"
         run: |
-          python -m pip install "pip<26.2"
+          python -m pip install uv
           python scripts/manage_reqs.py compile
           python scripts/manage_reqs.py sync
 

@@ -93,6 +93,8 @@ class AppConfig:
     
     debug_mode: bool = False
     
+    max_workers: int = 2
+    
     tts_language: str = "default"
     tts_voice: str = "female"
     
@@ -155,6 +157,7 @@ class AppConfig:
             "merge_clips": self.merge_clips,
             "ui_locked": self.ui_locked,
             "default_hashtags": self.default_hashtags,
+            "max_workers": self.max_workers,
             
             "upload_youtube": self.youtube.upload,
             "upload_tiktok": self.tiktok.upload,
@@ -252,6 +255,8 @@ class AppConfig:
             self.merge_clips = bool(data["merge_clips"])
         if "ui_locked" in data:
             self.ui_locked = bool(data["ui_locked"])
+        if "max_workers" in data:
+            self.max_workers = int(data["max_workers"])
         if "default_hashtags" in data:
             self.default_hashtags = data["default_hashtags"]
             

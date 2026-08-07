@@ -20,11 +20,7 @@ flet-video
 pystray
 desktop-notifier
 certifi
-
 flet-audio
-
-git+https://github.com/BitCM581/tiktok-uploader
-
+git+https://github.com/dickymuliafiqri/tiktok-uploader
 deepface
-
 tf-keras

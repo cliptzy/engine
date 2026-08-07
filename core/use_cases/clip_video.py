@@ -182,7 +182,13 @@ class ClipVideoUseCase:
 
         success_count = 0
         outputs = []
-        for idx, item in enumerate(targets, start=1):
+        import concurrent.futures
+        import threading
+        
+        success_lock = threading.Lock()
+        
+        def process_target(idx, item):
+            nonlocal success_count
             clip_idx = item.get("original_index")
             if clip_idx is None:
                 clip_idx = idx
@@ -191,7 +197,7 @@ class ClipVideoUseCase:
 
             if is_cancelled and is_cancelled():
                 log.info( "[CANCEL] Proses dibatalkan oleh pengguna.")
-                break
+                return None
 
             event_hook("stage", {"stage": "start_clip", "clip_index": clip_idx, "total": len(targets)})
 
@@ -208,26 +214,43 @@ class ClipVideoUseCase:
                 phase1_only=phase1_only
             )
 
+            clip_output = None
             if ok_clip:
-                success_count += 1
+                with success_lock:
+                    success_count += 1
                 if phase1_only:
                     meta_path = os.path.join(job_dir, f"metadata_{clip_idx}.json")
                     if os.path.exists(meta_path):
-                        outputs.append({
+                        clip_output = {
                             "name": f"metadata_{clip_idx}.json",
                             "path": os.path.abspath(meta_path),
                             "size": os.path.getsize(meta_path)
-                        })
+                        }
                 else:
                     clip_path = os.path.join(job_dir, f"clip_{clip_idx}.mp4")
                     if os.path.exists(clip_path):
-                        outputs.append({
+                        clip_output = {
                             "name": f"clip_{clip_idx}.mp4",
                             "path": os.path.abspath(clip_path),
                             "size": os.path.getsize(clip_path)
-                        })
+                        }
+                if clip_output:
+                    with success_lock:
+                        outputs.append(clip_output)
 
             event_hook("stage", {"stage": "done_clip", "clip_index": clip_idx, "success": success_count, "outputs": outputs})
+            return clip_output
+
+        max_workers = getattr(config, "max_workers", 2)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_target, idx, item) for idx, item in enumerate(targets, start=1)]
+            for future in concurrent.futures.as_completed(futures):
+                if is_cancelled and is_cancelled():
+                    break
+                try:
+                    future.result()
+                except Exception as e:
+                    log.error(f"Error processing clip: {e}")
 
         if config.merge_clips and len(outputs) > 1 and not (is_cancelled and is_cancelled()) and not phase1_only:
             log.info( "Menggabungkan klip (Merge)...")

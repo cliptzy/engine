@@ -4,13 +4,13 @@ import sys
 import subprocess
 import argparse
 
-def ensure_pip_tools():
-    """Memastikan pip-tools telah terpasang di virtual environment."""
+def ensure_uv():
+    """Memastikan uv telah terpasang di virtual environment."""
     try:
-        import piptools
+        import uv
     except ImportError:
-        print("[Info] Memasang pip-tools...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "pip-tools"], check=True)
+        print("[Info] Memasang uv...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "uv"], check=True)
 
 def setup_files():
     """Memastikan requirements.in tersedia sebagai sumber utama."""
@@ -26,11 +26,11 @@ def setup_files():
 
 def compile_requirements(upgrade=False):
     """Menghasilkan requirements.txt yang rapi dan terkunci (locked) dari requirements.in."""
-    ensure_pip_tools()
+    ensure_uv()
     setup_files()
 
     print("[Info] Meng-compile requirements.txt...")
-    cmd = [sys.executable, "-m", "piptools", "compile", "requirements.in"]
+    cmd = [sys.executable, "-m", "uv", "pip", "compile", "requirements.in", "-o", "requirements.txt"]
     if upgrade:
         cmd.append("--upgrade")
 
@@ -58,11 +58,11 @@ def compile_requirements(upgrade=False):
     except Exception as e:
         print(f"[Peringatan] Gagal memodifikasi requirements.txt: {e}")
 
-    print("\n✅ Berhasil!")
+    print("\n[OK] Berhasil!")
 
 def sync_environment():
     """Menghapus pustaka sampah (orphans) dan menyesuaikan venv dengan requirements.txt."""
-    ensure_pip_tools()
+    ensure_uv()
 
     if not os.path.exists("requirements.txt"):
         print("[Error] requirements.txt tidak ditemukan. Jalankan 'python scripts/manage_reqs.py compile' terlebih dahulu.")
@@ -71,8 +71,8 @@ def sync_environment():
     print("[Info] Menyelaraskan environment (.venv) dengan requirements.txt...")
     print("[Info] Paket yang tidak ada di requirements (termasuk sub-dependensi yang usang) akan otomatis dihapus.")
 
-    subprocess.run([sys.executable, "-m", "piptools", "sync"], check=True)
-    print("\n✅ Sinkronisasi selesai!")
+    subprocess.run([sys.executable, "-m", "uv", "pip", "sync", "requirements.txt"], check=True)
+    print("\n[OK] Sinkronisasi selesai!")
 
 def add_package(package_name):
     """Menambahkan paket baru ke requirements.in lalu melakukan kompilasi & sinkronisasi."""
@@ -96,7 +96,7 @@ def add_package(package_name):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Script untuk mengelola dependencies Python secara efisien dan bersih menggunakan pip-tools."
+        description="Script untuk mengelola dependencies Python secara efisien dan bersih menggunakan uv."
     )
     subparsers = parser.add_subparsers(dest="command", help="Daftar perintah")
 
