@@ -9,7 +9,7 @@ class SettingsView(ft.Container):
         self._page = page
         self.expand = True
         self.padding = 20
-        
+
         # --- AI Settings ---
         self.ai_provider_dropdown = ft.Dropdown(
             label="Provider AI",
@@ -22,21 +22,21 @@ class SettingsView(ft.Container):
             on_select=self.on_ai_provider_changed, # type: ignore
             expand=True
         )
-        
+
         self.ai_key_input = ft.TextField(label="Ollama Host / API Key", value=config.ai.ollama_host, expand=True)
         self.ai_model_input = ft.TextField(label="Model Name", value=config.ai.ollama_model, hint_text="misal: llama3, gemini-1.5-flash, gpt-4o-mini", expand=True)
         self.ai_base_url_input = ft.TextField(label="Base URL", value=config.ai.openai_base_url, expand=True, hint_text="Opsional, untuk 3rd party OpenAI API", visible=False)
-        
+
         self.on_ai_provider_changed(None) # init fields
-        
+
         ai_settings_content = ft.Column([
             ft.Row(cast(list[ft.Control], [self.ai_provider_dropdown, self.ai_key_input]), expand=True),
             ft.Row(cast(list[ft.Control], [self.ai_base_url_input, self.ai_model_input]), expand=True)
         ], spacing=10)
-        
+
         # --- System Settings ---
         self.output_dir_input = ft.TextField(label="Direktori Output (Default: clips)", value=config.output_dir, expand=True)
-        
+
         system_settings_content = ft.Column([
             ft.Row(cast(list[ft.Control], [self.output_dir_input]), expand=True),
         ], spacing=10)
@@ -49,25 +49,25 @@ class SettingsView(ft.Container):
 
         # --- Platform Settings ---
         self.default_hashtags = ft.TextField(
-            label="Default Hashtags & Global Description", 
-            value=config.default_hashtags, 
-            hint_text="#Shorts #Viral #Cliptzy #fyp", 
+            label="Default Hashtags & Global Description",
+            value=config.default_hashtags,
+            hint_text="#Shorts #Viral #Cliptzy #fyp",
             expand=True
         )
 
         self.yt_client_id = ft.TextField(label="Client ID (OAuth 2.0)", value=config.youtube.client_id, expand=True)
         self.yt_client_secret = ft.TextField(label="Client Secret", value=config.youtube.client_secret, password=True, can_reveal_password=True, expand=True)
         self.yt_visibility = ft.Dropdown(
-            label="Default Visibility", 
+            label="Default Visibility",
             options=[ft.dropdown.Option("Public"), ft.dropdown.Option("Unlisted"), ft.dropdown.Option("Private")],
             value=config.youtube.visibility or "Public",
             expand=True
         )
-        
+
         yt_tab_content = ft.Container(
             content=ft.Column([
-                ft.Row(cast(list[ft.Control], [self.yt_client_id]), expand=True), 
-                ft.Row(cast(list[ft.Control], [self.yt_client_secret]), expand=True), 
+                ft.Row(cast(list[ft.Control], [self.yt_client_id]), expand=True),
+                ft.Row(cast(list[ft.Control], [self.yt_client_secret]), expand=True),
                 ft.Row(cast(list[ft.Control], [self.yt_visibility]), expand=True)
             ], spacing=10),
             padding=16
@@ -84,7 +84,7 @@ class SettingsView(ft.Container):
             value=config.tiktok.privacy or "Public (Semua Orang)",
             expand=True
         )
-        
+
         tt_tab_content = ft.Container(
             content=ft.Column([
                 ft.Row(cast(list[ft.Control], [self.tt_session, self.btn_import_tt_cookies]), expand=True),
@@ -98,7 +98,7 @@ class SettingsView(ft.Container):
             content=ft.Text("Import Cookies"),
             on_click=self.on_import_ig_cookies_clicked
         )
-        
+
         ig_tab_content = ft.Container(
             content=ft.Column([
                 ft.Row(cast(list[ft.Control], [self.ig_session, self.btn_import_ig_cookies]), expand=True)
@@ -161,7 +161,7 @@ class SettingsView(ft.Container):
 
         # --- Cloud Sync / Account Settings ---
         cloud_sync_content = self._build_cloud_sync_section()
-        
+
         # --- Dependency Manager Settings ---
         dep_manager_content = self._build_dep_manager_section()
 
@@ -193,7 +193,7 @@ class SettingsView(ft.Container):
                 )
             ]
         )
-        
+
         self.save_btn = ft.Button(
             content=ft.Text("💾 Simpan Pengaturan"), # type: ignore
             on_click=self.save_settings,
@@ -202,7 +202,7 @@ class SettingsView(ft.Container):
                 color=ft.Colors.WHITE
             )
         )
-        
+
         self.clear_cache_btn = ft.Button(
             content=ft.Text("🧹 Bersihkan Cache (Menghitung...)"), # type: ignore
             on_click=self.clear_cache,
@@ -211,7 +211,7 @@ class SettingsView(ft.Container):
                 color=ft.Colors.WHITE
             )
         )
-        
+
         self.content = ft.Column(
             controls=[
                 ft.Text("Settings", size=24, weight=ft.FontWeight.BOLD),
@@ -231,12 +231,12 @@ class SettingsView(ft.Container):
     def _build_cloud_sync_section(self) -> ft.Column:
         """Bangun section Cloud Sync: info akun, backup, restore, logout."""
         from core.supabase_sync import supabase_sync
-        
+
         # Info akun user
         user_name = supabase_sync.get_user_display_name() or "Pengguna"
         user_email = supabase_sync.get_user_email() or "-"
         avatar_url = supabase_sync.get_user_avatar_url()
-        
+
         # Avatar
         if avatar_url:
             avatar_widget = ft.CircleAvatar(
@@ -249,7 +249,7 @@ class SettingsView(ft.Container):
                 radius=28,
                 bgcolor=ft.Colors.BLUE_700
             )
-        
+
         user_info = ft.Row(
             controls=cast(list[ft.Control], [
                 avatar_widget,
@@ -261,23 +261,23 @@ class SettingsView(ft.Container):
             spacing=12,
             vertical_alignment=ft.CrossAxisAlignment.CENTER
         )
-        
+
         # Status sync
         self.sync_status_text = ft.Text(
-            "Siap untuk backup atau restore.", 
-            size=13, 
+            "Siap untuk backup atau restore.",
+            size=13,
             color=ft.Colors.GREY_400,
             italic=True
         )
-        
+
         self.sync_progress = ft.ProgressBar(visible=False, width=400)
-        
+
         # Tombol Backup
         self.backup_btn = ft.Button(
             content=ft.Row( # type: ignore
                 controls=cast(list[ft.Control], [
                     ft.Icon(ft.Icons.CLOUD_UPLOAD, size=18),
-                    ft.Text("☁️ Backup ke Cloud")
+                    ft.Text("Backup ke Cloud")
                 ]),
                 tight=True,
                 spacing=8
@@ -289,13 +289,13 @@ class SettingsView(ft.Container):
             ),
             tooltip="Upload config.json dan semua file di folder cred/ ke Supabase"
         )
-        
+
         # Tombol Restore
         self.restore_btn = ft.Button(
             content=ft.Row( # type: ignore
                 controls=cast(list[ft.Control], [
                     ft.Icon(ft.Icons.CLOUD_DOWNLOAD, size=18),
-                    ft.Text("📥 Restore dari Cloud")
+                    ft.Text("Restore dari Cloud")
                 ]),
                 tight=True,
                 spacing=8
@@ -307,7 +307,7 @@ class SettingsView(ft.Container):
             ),
             tooltip="Download config.json dan semua file di folder cred/ dari Supabase"
         )
-        
+
         # Tombol Logout
         self.logout_btn = ft.Button(
             content=ft.Row( # type: ignore
@@ -325,7 +325,7 @@ class SettingsView(ft.Container):
             ),
             tooltip="Keluar dari akun dan kunci aplikasi"
         )
-        
+
         # Keterangan
         info_text = ft.Text(
             "Backup & Restore menyimpan/memulihkan config.json dan seluruh channel dan kredensial Anda ke/dari database.",
@@ -333,7 +333,7 @@ class SettingsView(ft.Container):
             color=ft.Colors.GREY_500,
             italic=True
         )
-        
+
         return ft.Column([
             user_info,
             ft.Divider(height=16, color=ft.Colors.with_opacity(0.2, ft.Colors.WHITE)),
@@ -371,11 +371,11 @@ class SettingsView(ft.Container):
         self.sync_status_text.value = "Memulai backup..."
         self.sync_status_text.color = ft.Colors.AMBER_400
         self._page.update()
-        
+
         async def do_backup():
             import asyncio
             from core.supabase_sync import supabase_sync
-            
+
             def on_progress(label: str, current: int, total: int):
                 self.sync_status_text.value = label
                 if total > 0:
@@ -384,12 +384,12 @@ class SettingsView(ft.Container):
                     self._page.update()
                 except Exception:
                     pass
-            
+
             result = await asyncio.to_thread(supabase_sync.backup_all, on_progress)
-            
+
             self._set_sync_buttons_enabled(True)
             self.sync_progress.visible = False
-            
+
             if result.get("success"):
                 self.sync_status_text.value = f"✅ {result.get('message', 'Backup berhasil!')}"
                 self.sync_status_text.color = ft.Colors.GREEN_400
@@ -398,23 +398,23 @@ class SettingsView(ft.Container):
                 self.sync_status_text.value = f"⚠️ {result.get('message', 'Backup selesai dengan beberapa error.')}"
                 self.sync_status_text.color = ft.Colors.ORANGE_400
                 self._show_snackbar(result.get('message', 'Backup selesai dengan error.'), ft.Colors.ORANGE_700)
-            
+
             self._page.update()
-        
+
         self._page.run_task(do_backup)
 
     def _on_restore_click(self, e) -> None:
         """Handler tombol Restore — konfirmasi dulu, lalu jalankan di background task."""
-        
+
         def on_confirm(e_dialog):
             dialog.open = False
             self._page.update()
             self._execute_restore()
-        
+
         def on_cancel(e_dialog):
             dialog.open = False
             self._page.update()
-        
+
         dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("Konfirmasi Restore"),
@@ -440,11 +440,11 @@ class SettingsView(ft.Container):
         self.sync_status_text.value = "Memulai restore..."
         self.sync_status_text.color = ft.Colors.AMBER_400
         self._page.update()
-        
+
         async def do_restore():
             import asyncio
             from core.supabase_sync import supabase_sync
-            
+
             def on_progress(label: str, current: int, total: int):
                 self.sync_status_text.value = label
                 if total > 0:
@@ -453,16 +453,16 @@ class SettingsView(ft.Container):
                     self._page.update()
                 except Exception:
                     pass
-            
+
             result = await asyncio.to_thread(supabase_sync.restore_all, on_progress)
-            
+
             self._set_sync_buttons_enabled(True)
             self.sync_progress.visible = False
-            
+
             msg = result.get('message', 'Restore selesai.')
             success_count = result.get('success_count', 0)
             fail_count = result.get('fail_count', 0)
-            
+
             if fail_count == 0:
                 self.sync_status_text.value = f"✅ {msg}"
                 self.sync_status_text.color = ft.Colors.GREEN_400
@@ -471,23 +471,23 @@ class SettingsView(ft.Container):
                 self.sync_status_text.value = f"⚠️ {msg}"
                 self.sync_status_text.color = ft.Colors.ORANGE_400
                 self._show_snackbar(msg, ft.Colors.ORANGE_700)
-            
+
             self._page.update()
-        
+
         self._page.run_task(do_restore)
 
     def _on_logout_click(self, e) -> None:
         """Handler tombol Logout — konfirmasi, logout, dan kunci aplikasi."""
-        
+
         def on_confirm(e_dialog):
             dialog.open = False
             self._page.update()
             self._execute_logout()
-        
+
         def on_cancel(e_dialog):
             dialog.open = False
             self._page.update()
-        
+
         dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("Konfirmasi Logout"),
@@ -509,10 +509,10 @@ class SettingsView(ft.Container):
         """Eksekusi logout dan kirim event untuk kunci aplikasi."""
         from core.supabase_sync import supabase_sync
         from gui.event_bus import event_bus
-        
+
         supabase_sync.logout()
         self._show_snackbar("Berhasil logout. Aplikasi dikunci.", ft.Colors.BLUE_700)
-        
+
         # Kirim event LOGOUT untuk mengunci aplikasi kembali ke halaman login
         event_bus.publish("LOGOUT")
 
@@ -523,7 +523,7 @@ class SettingsView(ft.Container):
     def update_dependency_status(self) -> None:
         """Memeriksa status, versi, dan lokasi path dari FFmpeg dan Deno."""
         from core.dependency_manager import get_dependency_info
-        
+
         # Check FFmpeg
         ff_ok, ff_ver, ff_path = get_dependency_info("ffmpeg")
         if ff_ok:
@@ -551,10 +551,10 @@ class SettingsView(ft.Container):
     def _build_dep_manager_section(self) -> ft.Column:
         self.dep_status_text = ft.Text("Klik tombol di bawah untuk memeriksa/memasang dependensi.", size=13, color=ft.Colors.GREY_400)
         self.dep_progress = ft.ProgressBar(visible=False, width=400)
-        
+
         self.ffmpeg_status_text = ft.Text("Memeriksa...", color=ft.Colors.GREY_400, size=13)
         self.deno_status_text = ft.Text("Memeriksa...", color=ft.Colors.GREY_400, size=13)
-        
+
         self.dep_info_table = ft.Column([
             ft.Row(controls=cast(list[ft.Control], [
                 ft.Text("🎬 FFmpeg:", weight=ft.FontWeight.BOLD, size=13, width=90),
@@ -565,7 +565,7 @@ class SettingsView(ft.Container):
                 self.deno_status_text
             ]), vertical_alignment=ft.CrossAxisAlignment.START)
         ], spacing=10)
-        
+
         self.btn_install_deps = ft.Button(
             content=ft.Row(
                 controls=cast(list[ft.Control], [
@@ -582,7 +582,7 @@ class SettingsView(ft.Container):
             ),
             tooltip="Unduh Deno dan FFmpeg ke direktori bin aplikasi"
         )
-        
+
         desc = ft.Text(
             "Unduh dan pasang dependensi yang diperlukan oleh aplikasi secara otomatis "
             "(FFmpeg untuk pemrosesan video, Deno untuk eksekusi skrip). Dependensi ini akan di-install di "
@@ -590,7 +590,7 @@ class SettingsView(ft.Container):
             size=13,
             color=ft.Colors.GREY_400
         )
-        
+
         return ft.Column([
             desc,
             ft.Container(height=4),
@@ -605,14 +605,14 @@ class SettingsView(ft.Container):
     def start_dependency_installation(self, e) -> None:
         from core.dependency_manager import install_dependencies
         from gui.state import app_state
-        
+
         self.btn_install_deps.disabled = True
         self.dep_progress.visible = True
         self.dep_progress.value = None
         self.dep_status_text.value = "Memulai instalasi dependensi..."
         self.dep_status_text.color = ft.Colors.AMBER_400
         self._page.update()
-        
+
         def emit_log(msg: str):
             app_state.append_log(msg)
             self.dep_status_text.value = msg
@@ -624,10 +624,10 @@ class SettingsView(ft.Container):
         async def do_installation():
             import asyncio
             success = await asyncio.to_thread(install_dependencies, emit_log)
-            
+
             self.btn_install_deps.disabled = False
             self.dep_progress.visible = False
-            
+
             if success:
                 self.dep_status_text.value = "✅ Semua dependensi berhasil dipasang!"
                 self.dep_status_text.color = ft.Colors.GREEN_400
@@ -636,11 +636,11 @@ class SettingsView(ft.Container):
                 self.dep_status_text.value = "❌ Gagal memasang beberapa dependensi. Periksa log."
                 self.dep_status_text.color = ft.Colors.RED_400
                 self._show_snackbar("Gagal memasang dependensi.", ft.Colors.RED_700)
-                
+
             # Cek status ulang setelah selesai
             self.update_dependency_status()
             self._page.update()
-            
+
         self._page.run_task(do_installation)
 
     async def on_import_tt_cookies_clicked(self, e) -> None:
@@ -692,31 +692,31 @@ class SettingsView(ft.Container):
         self.auth_check_result_text.value = "Memeriksa status autentikasi semua platform..."
         self.auth_check_result_text.color = ft.Colors.AMBER_400
         self._page.update()
-        
+
         async def do_check():
             import asyncio
             from core.auth_checker import check_youtube_auth, check_tiktok_auth, check_instagram_auth
-            
+
             # Cek YouTube
             self.auth_check_result_text.value = "Memeriksa YouTube Shorts..."
             self._page.update()
             yt_ok, yt_msg = await asyncio.to_thread(check_youtube_auth)
-            
+
             # Cek TikTok
             self.auth_check_result_text.value = "Memeriksa TikTok..."
             self._page.update()
             config.tiktok.session = self.tt_session.value or ""
             tt_ok, tt_msg = await asyncio.to_thread(check_tiktok_auth)
-            
+
             # Cek Instagram
             self.auth_check_result_text.value = "Memeriksa Instagram Reels..."
             self._page.update()
             config.instagram.session = self.ig_session.value or ""
             ig_ok, ig_msg = await asyncio.to_thread(check_instagram_auth)
-            
+
             self.btn_check_all_auth.disabled = False
             self.auth_check_progress.visible = False
-            
+
             # Format report
             report = (
                 f"🔴 YouTube: {'✅ Valid' if yt_ok else '❌ Gagal'} - {yt_msg}\n\n"
@@ -725,14 +725,14 @@ class SettingsView(ft.Container):
             )
             self.auth_check_result_text.value = report
             self.auth_check_result_text.color = ft.Colors.WHITE
-            
+
             if yt_ok and tt_ok and ig_ok:
                 self._show_snackbar("Semua platform valid!", ft.Colors.GREEN_700)
             else:
                 self._show_snackbar("Beberapa platform gagal diautentikasi.", ft.Colors.ORANGE_700)
-                
+
             self._page.update()
-            
+
         self._page.run_task(do_check)
 
     def _show_snackbar(self, message: str, color) -> None:
@@ -763,7 +763,7 @@ class SettingsView(ft.Container):
             self.ai_model_input.value = config.ai.openai_model or "gpt-4o-mini"
             self.ai_base_url_input.visible = True
             self.ai_base_url_input.value = config.ai.openai_base_url or ""
-            
+
         if self._page:
             try:
                 self._page.update()
@@ -774,7 +774,7 @@ class SettingsView(ft.Container):
         provider = self.ai_provider_dropdown.value
         val = self.ai_key_input.value.strip() if self.ai_key_input.value else ""
         model_val = self.ai_model_input.value.strip() if self.ai_model_input.value else ""
-        
+
         config.ai.provider = provider or "ollama"
         if provider == "ollama":
             config.ai.ollama_host = val
@@ -789,17 +789,17 @@ class SettingsView(ft.Container):
 
         # System settings
         if self.output_dir_input.value: config.output_dir = self.output_dir_input.value
-        
+
         config.default_hashtags = self.default_hashtags.value or ""
-        
+
         # Platform settings
         config.youtube.client_id = self.yt_client_id.value or ""
         config.youtube.client_secret = self.yt_client_secret.value or ""
         config.youtube.visibility = self.yt_visibility.value or "Public"
-        
+
         config.tiktok.session = self.tt_session.value or ""
         config.tiktok.privacy = self.tt_privacy.value or "Public (Semua Orang)"
-        
+
         config.instagram.session = self.ig_session.value or ""
 
         if config.save_to_file():
@@ -809,7 +809,7 @@ class SettingsView(ft.Container):
         async def run_calc():
             import asyncio
             import os
-            
+
             def calc():
                 total_size = 0
                 folder_path = "clips"
@@ -845,7 +845,7 @@ class SettingsView(ft.Container):
             import asyncio
             import shutil
             import os
-            
+
             def clear_ops():
                 folder_path = "clips"
                 if os.path.exists(folder_path):

@@ -313,7 +313,7 @@ def burn_subtitle_and_highlight(
                     
                     next_v = f"[vout_{i+1}]"
                     cond = f"between(t,{ov_start},{ov_end})"
-                    fc_parts.append(f"{last_v}{ov_stream}overlay=x=(W-w)/2:y=(H-h)/2:enable='{cond}'{next_v}")
+                    fc_parts.append(f"{last_v}{ov_stream}overlay=shortest=1:x=(W-w)/2:y=(H-h)/2:enable='{cond}'{next_v}")
                     last_v = next_v
                     
                 map_v = last_v

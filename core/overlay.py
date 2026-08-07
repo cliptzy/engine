@@ -25,15 +25,65 @@ class OverlayManager:
         # Struktur map: { emotion: [ { "file": "nama_file.ext", "effect": "transparent", "opacity": 0.5 } ] }
         # File media harus diletakkan di dalam assets/overlay/
         self.overlay_map = {
-            "sad": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
-            "shock": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
-            "fear": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
-            "angry": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
-            "disgust": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
-            "confused": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
-            "happy": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
-            "amused": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}],
-            "transition": [{"name": "Noice Effect", "file": "noice.mp4", "effect": "transparent", "opacity": 0.5}, {"name": "None (No Effect)"}]
+            "sad": [
+                {"name": "Cry", "file": "cryy.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Patrick Sleep", "file": "patricksleep.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Sponge Smoke", "file": "spongesmoke.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "None (No Effect)"}
+            ],
+            "shock": [
+                {"name": "Cat Shock", "file": "catshock.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Apa Coba", "file": "apacoba.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Apa Tuh", "file": "apatuh.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Sus", "file": "sus.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "None (No Effect)"}
+            ],
+            "fear": [
+                {"name": "Cat Shock", "file": "catshock.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Apa Tuh", "file": "apatuh.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Uhhhh", "file": "uhhhh.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "None (No Effect)"}
+            ],
+            "angry": [
+                {"name": "Patrick Dongo", "file": "patrickdongo.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Dongo", "file": "dongoo.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Apa Coba", "file": "apacoba.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "None (No Effect)"}
+            ],
+            "disgust": [
+                {"name": "Iuh", "file": "iuhh.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Tai Lung Iuh", "file": "tailung-iuhhhh.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Apa Coba", "file": "apacoba.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Uhhhh", "file": "uhhhh.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "None (No Effect)"}
+            ],
+            "confused": [
+                {"name": "Mikir Keras", "file": "mikirkeras.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Think", "file": "think.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Let Me Think", "file": "lemiting.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Uhhhh", "file": "uhhhh.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Apa Coba", "file": "apacoba.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Apa Tuh", "file": "apatuh.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Dongo", "file": "dongoo.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "None (No Effect)"}
+            ],
+            "happy": [
+                {"name": "Nah Ini", "file": "nahini.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Terus Terang", "file": "terusterang.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Let Me Think", "file": "lemiting.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "None (No Effect)"}
+            ],
+            "amused": [
+                {"name": "Patrick Dongo", "file": "patrickdongo.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Terus Terang", "file": "terusterang.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Nah Ini", "file": "nahini.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Let Me Think", "file": "lemiting.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "None (No Effect)"}
+            ],
+            "transition": [
+                # TIDAK BOLEH ADA EFEK
+                {"name": "None (No Effect)"}
+            ]
         }
 
     def save(self):
