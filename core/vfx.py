@@ -80,10 +80,6 @@ class VFXManager:
                 {"name": "Punchy Contrast", "vf": ["eq=contrast=1.3"], "af": []},
                 {"name": "Brightened", "vf": ["eq=brightness=0.1:saturation=1.2"], "af": []},
                 {"name": "None (No Effect)"}
-            ],
-            "transition": [
-                {"name": "Basic Transition", "vf": [], "af": []},
-                {"name": "None (No Effect)"}
             ]
         }
 

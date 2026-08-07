@@ -621,7 +621,8 @@ class UploadDistribution(ft.Container):
             
             # Load metadata untuk masing-masing klip terpilih
             metadata_dict = {}
-            for clip_path in selected_clips:
+            for clip_item in selected_clips:
+                clip_path = clip_item["path"]
                 bname = os.path.basename(clip_path)
                 m = re.match(r'^clip_(\d+)\.mp4$', bname)
                 if m:
@@ -672,10 +673,11 @@ class UploadDistribution(ft.Container):
             utc7_time = timezone(timedelta(hours=7))
             base_time = datetime.now(utc7_time) + timedelta(minutes=30)
 
-            for idx_clip, clip in enumerate(selected_clips):
+            for idx_clip, clip_item in enumerate(selected_clips):
                 if self._is_upload_cancelled:
                     break
                     
+                clip = clip_item["path"]
                 clip_meta = metadata_dict.get(clip, {})
                 clip_name = os.path.basename(clip)
                 

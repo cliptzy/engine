@@ -277,6 +277,8 @@ def burn_subtitle_and_highlight(
                 ovf = ov["file"]
                 if ovf.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
                     cmd_subtitle.extend(["-loop", "1", "-i", ovf])
+                elif ovf.lower().endswith(".gif"):
+                    cmd_subtitle.extend(["-ignore_loop", "0", "-i", ovf])
                 else:
                     cmd_subtitle.extend(["-i", ovf])
                 
@@ -300,6 +302,12 @@ def burn_subtitle_and_highlight(
                         duration = 1.0
                         ov_end = ov_start + 1.0
                         
+                    # Pastikan GIF memiliki waktu tayang yang cukup (minimal 2 detik)
+                    # karena durasi default biasanya hanya mengikuti durasi kata subtitle yang sangat singkat
+                    if ov["file"].lower().endswith(".gif") and duration < 2.0:
+                        duration = 2.0
+                        ov_end = ov_start + 2.0
+                        
                     base_filter = f"[{ov_idx}:v]setpts=PTS-STARTPTS+{ov_start}/TB,format=argb"
                     
                     if effect == "transparent":
@@ -316,10 +324,12 @@ def burn_subtitle_and_highlight(
                     fc_parts.append(f"{last_v}{ov_stream}overlay=shortest=1:x=(W-w)/2:y=(H-h)/2:enable='{cond}'{next_v}")
                     last_v = next_v
                     
-                map_v = last_v
+                # Force yuv420p di dalam filter graph agar HW Encoder tidak bingung dan melakukan RGB/BGR swap
+                fc_parts.append(f"{last_v}format=yuv420p[vout_final]")
+                map_v = "[vout_final]"
             else:
-                fc_parts.append(f"[0:v]{','.join(vf_chain)}[vout]")
-                map_v = "[vout]"
+                fc_parts.append(f"[0:v]{','.join(vf_chain)},format=yuv420p[vout_final]")
+                map_v = "[vout_final]"
                 
             # --- AUDIO FILTER CHAIN ---
             if af_chain:
@@ -352,10 +362,11 @@ def burn_subtitle_and_highlight(
             cmd_subtitle.append(subbed_file)
             
         else:
+            vf_string = ",".join(vf_chain) + ",format=yuv420p" if vf_chain else "format=yuv420p"
             cmd_subtitle = [
                 "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
                 "-i", cropped_file,
-                "-vf", ",".join(vf_chain),
+                "-vf", vf_string,
             ] + get_video_codec_args()
             
             if af_chain:

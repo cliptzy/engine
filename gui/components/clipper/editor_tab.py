@@ -42,7 +42,7 @@ class EditorTab(ft.Column):
         )
 
         # Load options (emotions) from SFX/VFX configs
-        self.available_emotions = ["sad", "bored", "shock", "fear", "angry", "disgust", "confused", "happy", "amused", "transition", "neutral"]
+        self.available_emotions = list(sfx_manager.sfx_map)
 
         self.emotion_filter_dropdown = ft.Dropdown(
             label="Filter Emosi",
@@ -287,6 +287,7 @@ class EditorTab(ft.Column):
 
         self.vfx_override_dropdown.value = str(word_data.get("vfx_override", "random"))
         self.sfx_override_dropdown.value = str(word_data.get("sfx_override", "random"))
+        self.overlay_override_dropdown.value = str(word_data.get("overlay_override", "random"))
         self.edit_effect_dialog.data = idx
         if self.edit_effect_dialog not in self.page_ref.overlay:
             self.page_ref.overlay.append(self.edit_effect_dialog)

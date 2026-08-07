@@ -48,6 +48,7 @@ class OverlayManager:
                 {"name": "Patrick Dongo", "file": "patrickdongo.jpg", "effect": "transparent", "opacity": 0.5},
                 {"name": "Dongo", "file": "dongoo.jpg", "effect": "transparent", "opacity": 0.5},
                 {"name": "Apa Coba", "file": "apacoba.jpg", "effect": "transparent", "opacity": 0.5},
+                {"name": "Angry Cat", "file": "angry-cat.gif", "effect": "transparent", "opacity": 0.5},
                 {"name": "None (No Effect)"}
             ],
             "disgust": [
@@ -78,10 +79,6 @@ class OverlayManager:
                 {"name": "Terus Terang", "file": "terusterang.jpg", "effect": "transparent", "opacity": 0.5},
                 {"name": "Nah Ini", "file": "nahini.jpg", "effect": "transparent", "opacity": 0.5},
                 {"name": "Let Me Think", "file": "lemiting.jpg", "effect": "transparent", "opacity": 0.5},
-                {"name": "None (No Effect)"}
-            ],
-            "transition": [
-                # TIDAK BOLEH ADA EFEK
                 {"name": "None (No Effect)"}
             ]
         }
