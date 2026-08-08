@@ -120,7 +120,9 @@ def burn_subtitle_and_highlight(
                 w_s = float(w.get("start", 0.0))
                 w_e = float(w.get("end", 0.0))
 
-                if mapped == current_emotion and w_vfx == current_vfx and w_sfx == current_sfx and w_ov == current_ov:
+                if (mapped == current_emotion and w_vfx == current_vfx and 
+                    w_sfx == current_sfx and w_ov == current_ov and 
+                    (w_s - end_t) <= 1.0):
                     end_t = w_e
                 else:
                     if current_emotion and current_emotion != "neutral":
@@ -138,14 +140,26 @@ def burn_subtitle_and_highlight(
 
         if len(blocks) > 0:
             last_effect_time = -999.0
+            filtered_blocks = []
 
-            for emo, s, e, vfx_idx_str, sfx_idx_str, ov_idx_str in blocks:
+            for block in blocks:
+                s = block[1]
                 # NORMALISASI: Mencegah penumpukan (spam) SFX/VFX yang memekakkan telinga/sakit mata
                 # (Warna teks subtitle tetap berubah karena diurus oleh file .ass terpisah)
                 if s - last_effect_time < 5:
                     continue
                 last_effect_time = s
+                filtered_blocks.append(block)
 
+            # Pilih secara acak maksimal efek sesuai konfigurasi agar tersebar secara natural
+            max_eff = getattr(config, "max_effects_per_clip", 3)
+            if len(filtered_blocks) > max_eff:
+                selected_blocks = random.sample(filtered_blocks, max_eff)
+                selected_blocks.sort(key=lambda x: x[1]) # Urutkan kembali berdasarkan waktu start
+            else:
+                selected_blocks = filtered_blocks
+
+            for emo, s, e, vfx_idx_str, sfx_idx_str, ov_idx_str in selected_blocks:
                 e = e + 0.3
                 cond = f"between(t,{s},{e})"
 
@@ -314,6 +328,11 @@ def burn_subtitle_and_highlight(
                     if ov["file"].lower().endswith(".gif") and duration < 2.0:
                         duration = 2.0
                         ov_end = ov_start + 2.0
+                        
+                    # Batasi durasi maksimum overlay agar tidak menutupi layar terlalu lama (maksimal 2.5 detik)
+                    if duration > 2.5:
+                        duration = 2.5
+                        ov_end = ov_start + 2.5
 
                     base_filter = f"[{ov_idx}:v]setpts=PTS-STARTPTS+{ov_start}/TB,format=argb"
 

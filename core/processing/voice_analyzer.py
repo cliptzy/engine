@@ -123,6 +123,8 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
                     "relative_energy": round(rel_energy, 4)
                 }
 
+                log.info(f"Word: {words_data[i]['word']}, Emotion: {emotion}")
+
             # Sematkan emosi yang didapat
             words_data[i]['voice_emotion'] = emotion
 

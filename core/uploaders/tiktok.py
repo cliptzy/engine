@@ -45,7 +45,7 @@ class TikTokUploader:
                 try:
                     # Instansiasi uploader di dalam raw thread terisolasi agar Playwright tidak crash
                     # mendeteksi asyncio loop melalui contextvars
-                    uploader = TTUploader(cookies=cookie_path, headless=False)
+                    uploader = TTUploader(cookies=cookie_path, headless=True)
 
                     import datetime
                     schedule = None
@@ -57,7 +57,7 @@ class TikTokUploader:
                             utc_time = datetime.datetime.fromisoformat(time_str)
                             local_time = utc_time.astimezone()
                             schedule = local_time.replace(tzinfo=None)
-                            
+
                             logger.info( f"[TikTok] Menjadwalkan upload untuk {schedule} (Waktu Lokal)")
                         except Exception as e:
                             logger.warning(f"Gagal memparsing jadwal: {e}")

@@ -76,6 +76,29 @@ class UploadDistribution(ft.Container):
         self.platform_tt = ft.Checkbox(label="TikTok", value=config.tiktok.auto_upload)
         self.platform_ig = ft.Checkbox(label="Instagram Reels", value=config.instagram.auto_upload)
         self.upload_interval_input = ft.TextField(label="Interval (Jam)", value=str(config.upload_interval), width=100)
+        self.max_effects_input = ft.TextField(label="Max Efek/Klip", value=str(config.max_effects_per_clip), width=120)
+        
+        import datetime
+        self.schedule_date_picker = ft.DatePicker(
+            on_change=self.on_schedule_date_change,
+            first_date=datetime.datetime.now(),
+        )
+        self.schedule_time_picker = ft.TimePicker(
+            on_change=self.on_schedule_time_change,
+        )
+        self._page.overlay.extend([self.schedule_date_picker, self.schedule_time_picker])
+        
+        self.schedule_date = None
+        self.schedule_time = None
+        
+        def show_time(e):
+            self.schedule_time_picker.open = True
+            self._page.update()
+
+        self.btn_pick_date = ft.TextButton("Set Tanggal", icon=ft.Icons.CALENDAR_MONTH, on_click=lambda _: self._page.show_dialog(self.schedule_date_picker))
+        self.btn_pick_time = ft.TextButton("Set Waktu", icon=ft.Icons.ACCESS_TIME, on_click=show_time)
+        self.btn_clear_schedule = ft.IconButton(icon=ft.Icons.CLEAR, on_click=self.clear_schedule, tooltip="Reset Jadwal")
+        self.lbl_schedule_info = ft.Text("Jadwal Mulai: Segera (+30 menit)", size=12, color=ft.Colors.BLUE_GREY_400)
         
         self.upload_btn = ft.Button(
             content=ft.Text("📤 Upload Video Terpilih"), # type: ignore
@@ -168,8 +191,11 @@ class UploadDistribution(ft.Container):
         upload_panel = ft.Column([
             ft.Row([
                 self.platform_yt, self.platform_tt, self.platform_ig, 
-                self.upload_interval_input
+                self.upload_interval_input, self.max_effects_input
             ]),
+            ft.Row([
+                self.btn_pick_date, self.btn_pick_time, self.btn_clear_schedule, self.lbl_schedule_info
+            ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             self.upload_progress,
             self.upload_status_text,
             ft.Row([
@@ -190,6 +216,44 @@ class UploadDistribution(ft.Container):
         ])
         
         self.load_projects(None)
+
+    def on_schedule_date_change(self, e: Any) -> None:
+        import datetime
+        val = e.control.value
+        if val:
+            # Flet DatePicker value adalah naive datetime dalam UTC.
+            # Konversi ke zona waktu lokal pengguna agar tanggal tidak mundur 1 hari (contoh: 17:00 UTC menjadi keesokan harinya).
+            val = val.replace(tzinfo=datetime.timezone.utc).astimezone()
+            self.schedule_date = val.date()
+        else:
+            self.schedule_date = None
+        self.update_schedule_info()
+
+    def on_schedule_time_change(self, e: Any) -> None:
+        self.schedule_time = e.control.value
+        self.update_schedule_info()
+        
+    def clear_schedule(self, e: Any) -> None:
+        self.schedule_date = None
+        self.schedule_time = None
+        self.update_schedule_info()
+
+    def update_schedule_info(self) -> None:
+        if self.schedule_date and self.schedule_time:
+            self.lbl_schedule_info.value = f"Jadwal Mulai: {self.schedule_date.strftime('%Y-%m-%d')} {self.schedule_time.strftime('%H:%M')}"
+        elif self.schedule_date:
+            self.lbl_schedule_info.value = f"Jadwal Mulai: {self.schedule_date.strftime('%Y-%m-%d')} (00:00)"
+        elif self.schedule_time:
+            import datetime
+            self.schedule_date = datetime.datetime.now().date()
+            self.lbl_schedule_info.value = f"Jadwal Mulai: Hari ini {self.schedule_time.strftime('%H:%M')}"
+        else:
+            self.lbl_schedule_info.value = "Jadwal Mulai: Segera (+30 menit)"
+            
+        try:
+            self.lbl_schedule_info.update()
+        except Exception:
+            pass
 
     def _create_video_player(self, path: str) -> ftv.Video:
         """Buat instansi video player baru dengan controls kustom."""
@@ -595,6 +659,11 @@ class UploadDistribution(ft.Container):
         except ValueError:
             interval_hours = 0.0
 
+        try:
+            config.max_effects_per_clip = int(str(self.max_effects_input.value))
+        except ValueError:
+            config.max_effects_per_clip = 3
+
         # Update config
         config.youtube.auto_upload = bool(self.platform_yt.value)
         config.tiktok.auto_upload = bool(self.platform_tt.value)
@@ -616,7 +685,7 @@ class UploadDistribution(ft.Container):
         async def run_uploader_task():
             import asyncio
             from core.uploaders.factory import UploaderFactory
-            from datetime import datetime, timedelta, timezone
+            import datetime
             from gui.state import app_state
             
             # Load metadata untuk masing-masing klip terpilih
@@ -670,8 +739,15 @@ class UploadDistribution(ft.Container):
                 except Exception as ex:
                     app_state.append_log(f"[UPLOAD] Gagal memuat uploader {p}: {ex}")
 
-            utc7_time = timezone(timedelta(hours=7))
-            base_time = datetime.now(utc7_time) + timedelta(minutes=30)
+            utc7_time = datetime.timezone(datetime.timedelta(hours=7))
+            
+            if getattr(self, "schedule_date", None):
+                s_date = self.schedule_date
+                s_time = getattr(self, "schedule_time", None) or datetime.time(0, 0)
+                dt_naive = datetime.datetime.combine(s_date, s_time)
+                base_time = dt_naive.replace(tzinfo=utc7_time)
+            else:
+                base_time = datetime.datetime.now(utc7_time) + datetime.timedelta(minutes=30)
 
             for idx_clip, clip_item in enumerate(selected_clips):
                 if self._is_upload_cancelled:
@@ -686,9 +762,9 @@ class UploadDistribution(ft.Container):
                 tags_val = clip_meta.get("tags", "")
                 clip_meta["description"] = f"{title_val}\n\n{tags_val}".strip()
                 
-                if interval_hours > 0:
-                    publish_time = base_time + timedelta(hours=interval_hours * idx_clip)
-                    publish_time_utc = publish_time.astimezone(timezone.utc)
+                if interval_hours > 0 or getattr(self, "schedule_date", None):
+                    publish_time = base_time + datetime.timedelta(hours=interval_hours * idx_clip)
+                    publish_time_utc = publish_time.astimezone(datetime.timezone.utc)
                     clip_meta["publish_at"] = publish_time_utc.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
                 for uploader in uploaders:
@@ -779,6 +855,12 @@ class UploadDistribution(ft.Container):
             "segments": segments,
             "subtitle": True
         }
+        
+        try:
+            config.max_effects_per_clip = int(str(self.max_effects_input.value))
+        except ValueError:
+            config.max_effects_per_clip = 3
+        config.save_to_file()
         
         from gui.state import app_state
         from core.controller import controller
