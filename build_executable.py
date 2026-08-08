@@ -138,6 +138,12 @@ def main():
 
     print(f"[RUN] {' '.join(cmd)}")
 
+    print("[BUILD] Generating requirements.txt via uv export...")
+    try:
+        subprocess.run(["uv", "export", "--no-hashes", "--no-emit-project", "-o", "requirements.txt"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] Failed to generate requirements.txt: {e}")
+        sys.exit(1)
     res = subprocess.run(cmd)
 
     if res.returncode != 0:
