@@ -11,17 +11,17 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
     """
     Menganalisis emosi dari potongan audio per kata (berdasarkan words_data)
     menggunakan Deep Learning Transformer (Wav2Vec2) dan ekstraksi fitur (Librosa).
-    
+
     Data emosi akan langsung disematkan kembali ke dalam `words_data` di dalam
     key `voice_emotion` (misal: 'happy/excited', 'angry', 'neutral', dll) beserta fitur akustiknya.
     """
     try:
         import librosa
         from transformers import pipeline
-    except ImportError:
-        log.warning("Modul transformers atau librosa belum terinstall. Lewati analisis emosi suara.")
+    except Exception as e:
+        log.warning(f"Modul transformers atau librosa belum terinstall. Lewati analisis emosi suara. Error: {e}")
         return
-        
+
     if not os.path.exists(audio_path):
         log.error(f"File audio tidak ditemukan untuk analisis emosi: {audio_path}")
         return
@@ -35,30 +35,30 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
         log.info("Memuat Pre-trained Transformer Model (Wav2Vec2)...")
         # pipeline akan mengunduh model ke cache HF pada run pertama kali
         classifier = pipeline("audio-classification", model="superb/wav2vec2-base-superb-er")
-        
+
         target_sr = 16000
         log.info("Memuat sinyal audio untuk analisis SER...")
         y, sr = librosa.load(audio_path, sr=target_sr)
-        
+
         # Kalkulasi Global RMS untuk mengukur seberapa keras audio ini secara keseluruhan
         # Berguna untuk mengoreksi AI saat menebak 'angry' pada kata yang sebenarnya diucapkan pelan
         global_rms = float(np.sqrt(np.mean(y**2)))
-        
+
         log.info("Mengekstrak fitur dan memprediksi emosi per kata...")
         for i, w in enumerate(words_data):
             start_time = w.get('start', 0.0)
             end_time = w.get('end', 0.0)
-            
+
             start_sample = int(start_time * sr)
             end_sample = int(end_time * sr)
-            
+
             # Buffer konteks 0.5s (Jalan tengah: 1.5s membuat seluruh kalimat jadi 'angry' jika ada 1 teriakan)
             context_buffer = int(0.5 * sr)
             slice_start = max(0, start_sample - context_buffer)
             slice_end = min(len(y), end_sample + context_buffer)
-            
+
             y_segment = y[slice_start:slice_end]
-            
+
             emotion = 'neutral'
             if len(y_segment) > 1000:
                 # 1. Klasifikasi dengan Transformer (Wav2Vec2)
@@ -72,7 +72,7 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
                         'sad': 'sad'
                     }
                     emotion = label_map.get(best_pred['label'], best_pred['label'])
-                    
+
                 # 2. Ekstraksi Fitur Tradisional untuk Analytics
                 # MFCC
                 mfcc = librosa.feature.mfcc(y=y_segment, sr=sr, n_mfcc=13)
@@ -83,7 +83,7 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
                 # RMS (Volume Segmen)
                 rms = librosa.feature.rms(y=y_segment)
                 rms_mean = float(np.mean(rms)) if rms.size > 0 else 0.0
-                
+
                 # Pitch (F0)
                 try:
                     f0 = librosa.yin(y_segment, fmin=50, fmax=300)
@@ -91,12 +91,12 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
                     pitch_mean = float(np.mean(valid_f0)) if valid_f0.size > 0 else 0.0
                 except:
                     pitch_mean = 0.0
-                    
+
                 # 3. KOREKSI HYBRID (Deep Learning + Akustik Heuristik)
                 # Wav2Vec2 yang dilatih dengan bahasa Inggris sering mengira streamer Indonesia
                 # yang bersemangat sebagai 'angry'. Kita koreksi menggunakan Relative Energy.
                 rel_energy = rms_mean / (global_rms + 1e-6)
-                
+
                 if emotion == 'angry':
                     if rel_energy < 0.9:
                         # Model bilang marah, tapi suaranya pelan di bawah rata-rata. Koreksi jadi netral/sedih.
@@ -114,7 +114,7 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
                 elif emotion == 'neutral' and rel_energy > 1.8:
                     # Model bilang netral, tapi suaranya melonjak ekstrim kerasnya.
                     emotion = 'happy/excited' if pitch_mean > 160 and zcr_mean < 0.1 else 'angry'
-                    
+
                 words_data[i]['features'] = {
                     "rms_energy": round(rms_mean, 4),
                     "zero_crossing_rate": round(zcr_mean, 4),
@@ -122,7 +122,7 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
                     "mfcc_vector": [round(m, 2) for m in mfcc_mean],
                     "relative_energy": round(rel_energy, 4)
                 }
-            
+
             # Sematkan emosi yang didapat
             words_data[i]['voice_emotion'] = emotion
 
