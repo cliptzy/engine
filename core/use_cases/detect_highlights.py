@@ -73,6 +73,9 @@ class DetectHighlightsUseCase:
                     if config.youtube.session and os.path.exists(config.youtube.session):
                         ydl_opts['cookiefile'] = config.youtube.session
 
+                    from core.utils import apply_fast_download_opts
+                    apply_fast_download_opts(ydl_opts)
+
                     try:
                         with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
                             ydl.download([f"https://youtu.be/{video_id}"])
@@ -87,12 +90,9 @@ class DetectHighlightsUseCase:
                 self.reporter.on_log(f"[AI] Mengekstrak transkripsi audio dengan Whisper model ({config.subtitle.whisper_model})...")
 
             from core.subtitle import transcribe_audio_file
-            def event_hook_wrapper(event, data=None):
-                if self.reporter:
-                    if event == "log":
-                        self.reporter.on_log(str(data))
-                    elif event == "stage" and data is not None:
-                        self.reporter.on_progress(data.get("stage", ""), data.get("clip_index", 0), data.get("total", 0))
+            from core.interfaces import create_reporter_hook
+            
+            event_hook_wrapper = create_reporter_hook(self.reporter)
             
             transcript_segments = transcribe_audio_file(audio_file, whisper_model=config.subtitle.whisper_model, event_hook=event_hook_wrapper)
 
@@ -108,12 +108,8 @@ class DetectHighlightsUseCase:
             self.reporter.on_log(f"[AI] Menganalisis {len(transcript_segments)} klausa ucapan dengan AI Model ({ai_config.get('provider', 'ollama').upper()})...")
 
         from core.ai.detector import ai_detector
-        def ai_event_hook(event, data=None):
-            if self.reporter:
-                if event == "log":
-                    self.reporter.on_log(str(data))
-                elif event == "stage" and data is not None:
-                    self.reporter.on_progress(data.get("stage", ""), data.get("clip_index", 0), data.get("total", 0))
+        from core.interfaces import create_reporter_hook
+        ai_event_hook = create_reporter_hook(self.reporter)
 
         highlights = ai_detector.detect_highlights(transcript_segments, ai_config, event_hook=ai_event_hook, video_id=video_id)
 

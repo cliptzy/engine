@@ -214,3 +214,13 @@ def get_preview_data(job_dir: str | None = None, video_id: str | None = None) ->
 
     preview_path = os.path.join(job_dir, "preview.json")
     return read_json(preview_path, default={})
+
+def apply_fast_download_opts(ydl_opts: dict) -> None:
+    """
+    Applies aria2c and concurrent fragment downloads settings to ydl_opts
+    to speed up the download process (file splitting) just like Parabolic.
+    """
+    ydl_opts['concurrent_fragment_downloads'] = 16
+    if shutil.which('aria2c'):
+        ydl_opts['external_downloader'] = 'aria2c'
+        ydl_opts['external_downloader_args'] = {'aria2c': ['-c', '-j', '16', '-x', '16', '-s', '16', '-k', '1M']}

@@ -202,8 +202,7 @@ def burn_subtitle_and_highlight(
                                 "file": overlay_file,
                                 "start": s,
                                 "end": e,
-                                "effect": overlay_info.get("effect", "transparent"),
-                                "opacity": overlay_info.get("opacity", 0.5)
+                                "effect": overlay_info.get("effect", "transparent")
                             })
                         else:
                             log.debug(f"File overlay dilewati karena tidak ditemukan: {overlay_file}")
@@ -315,7 +314,6 @@ def burn_subtitle_and_highlight(
                     ov_start = ov["start"]
                     ov_end = ov["end"]
                     effect = ov["effect"]
-                    opacity = ov["opacity"]
 
                     ov_stream = f"[ov_processed_{i}]"
                     duration = ov_end - ov_start
@@ -324,7 +322,6 @@ def burn_subtitle_and_highlight(
                         ov_end = ov_start + 1.0
 
                     # Pastikan GIF memiliki waktu tayang yang cukup (minimal 2 detik)
-                    # karena durasi default biasanya hanya mengikuti durasi kata subtitle yang sangat singkat
                     if ov["file"].lower().endswith(".gif") and duration < 2.0:
                         duration = 2.0
                         ov_end = ov_start + 2.0
@@ -334,20 +331,14 @@ def burn_subtitle_and_highlight(
                         duration = 2.5
                         ov_end = ov_start + 2.5
 
-                    base_filter = f"[{ov_idx}:v]setpts=PTS-STARTPTS+{ov_start}/TB,format=argb"
-
-                    if effect == "transparent":
-                        fade_d = min(0.5, duration / 2)
-                        fade_st = ov_end - fade_d
-                        ov_filter = f"{base_filter},scale=720:-1,colorchannelmixer=aa={opacity},fade=t=out:st={fade_st}:d={fade_d}:alpha=1[ov_processed_{i}]"
-                    else:
-                        ov_filter = f"{base_filter},scale=720:-1[ov_processed_{i}]"
+                    from core.overlay import overlay_manager
+                    ov_filter, overlay_cmd = overlay_manager.get_filter_strings(i, ov_idx, ov_start, ov_end, effect)
 
                     fc_parts.append(ov_filter)
 
                     next_v = f"[vout_{i+1}]"
                     cond = f"between(t,{ov_start},{ov_end})"
-                    fc_parts.append(f"{last_v}{ov_stream}overlay=shortest=1:x=(W-w)/2:y=(H-h)/2:enable='{cond}'{next_v}")
+                    fc_parts.append(f"{last_v}{ov_stream}{overlay_cmd}:enable='{cond}'{next_v}")
                     last_v = next_v
 
                 # Force yuv420p di dalam filter graph agar HW Encoder tidak bingung dan melakukan RGB/BGR swap

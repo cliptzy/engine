@@ -57,6 +57,7 @@ def process_single_clip(
 
     import yt_dlp
     from yt_dlp.utils import download_range_func
+    from core.utils import apply_fast_download_opts
 
     ydl_opts: dict[str, Any] = {
         'force_ipv4': True,
@@ -87,6 +88,9 @@ def process_single_clip(
     if config.youtube.session and os.path.exists(config.youtube.session):
         ydl_opts['cookiefile'] = config.youtube.session
         ydl_opts_fallback['cookiefile'] = config.youtube.session
+
+    apply_fast_download_opts(ydl_opts)
+    apply_fast_download_opts(ydl_opts_fallback)
 
     try:
         if not os.path.exists(cropped_file):

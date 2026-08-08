@@ -49,17 +49,8 @@ class ClipVideoUseCase:
         if not url:
             raise ValueError("URL YouTube tidak boleh kosong")
 
-        def event_hook(event: str, data: Any = None):
-            if self.reporter:
-                if event == "log":
-                    self.reporter.on_log(str(data))
-                elif event == "stage":
-                    stage = data.get("stage", "")
-                    idx = data.get("clip_index", 0)
-                    tot = data.get("total", 0)
-                    self.reporter.on_progress(stage, idx, tot)
-                elif event == "total_targets":
-                    self.reporter.on_progress("total_targets", int(data), int(data))
+        from core.interfaces import create_reporter_hook
+        event_hook = create_reporter_hook(self.reporter)
 
         crop = payload.get("crop") or "default"
         ratio = payload.get("ratio") or "9:16"
@@ -367,15 +358,8 @@ class ClipVideoUseCase:
             if not video_id:
                 raise ValueError("URL YouTube / File lokal tidak valid")
 
-        def event_hook(event: str, data: Any = None):
-            if self.reporter:
-                if event == "log":
-                    self.reporter.on_log(str(data))
-                elif event == "stage":
-                    stage = data.get("stage", "")
-                    idx = data.get("clip_index", 0)
-                    tot = data.get("total", 0)
-                    self.reporter.on_progress(stage, idx, tot)
+        from core.interfaces import create_reporter_hook
+        event_hook = create_reporter_hook(self.reporter)
 
         crop = payload.get("crop") or "default"
         ratio = payload.get("ratio") or "9:16"
