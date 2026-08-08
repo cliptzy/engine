@@ -24,3 +24,13 @@ flet-audio
 git+https://github.com/dickymuliafiqri/tiktok-uploader
 deepface
 tf-keras
+vanpy
+torchaudio
+torch
+speechbrain==0.5.16
+ruamel.yaml<0.18.0
+emvoice
+lazy-loader
+soxr
+transformers
+tokenizers<0.23.0

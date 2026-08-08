@@ -231,9 +231,10 @@ ATURAN:
 1. `highlight` sangat singkat (maks 3-4 kata).
 2. Jika `words_data` ada, tulis ulang ke `enriched_transcript` dengan menambah field `emotion` dan `color` (Hex: #FFFF00 untuk netral, warna mencolok untuk emosi kuat).
 3. FUSI & PRIORITAS EMOSI:
-   Anda memiliki 3 sumber: Wajah (Visual Emotion), Suara (voice_level: whispering/normal/yelling), dan Makna Teks.
-   Prioritas: Wajah (Visual) > Suara (voice_level) > Teks.
-   - Wajah dan Nada suara jarang berbohong (deteksi sarkasme). Jika Wajah="surprise" dan Suara="yelling", pastikan kata tersebut dilabeli emosi ekstrim (misal: "surprise"/"angry") dengan warna kuat (misal #FF0000).
+   Anda memiliki 3 sumber: Wajah (Visual Emotion), Suara (voice_emotion: angry/happy/sad/etc), dan Makna Teks.
+   Prioritas: Wajah (Visual) > Suara (voice_emotion) > Teks.
+   - PENTING MUTLAK: Jika Wajah bernilai "neutral" (muka datar), Anda WAJIB menggunakan emosi dari Suara (`voice_emotion`) sebagai hasil akhir `emotion`. JANGAN jadikan 'neutral' jika Suara memiliki emosi!
+   - Wajah dan Nada suara jarang berbohong (deteksi sarkasme). Jika Wajah="surprise" dan Suara="yelling", pastikan kata tersebut dilabeli emosi ekstrim dengan warna kuat (misal #FF0000).
 
 KATEGORI EMOSI VALID:
 {emotion_str}
@@ -251,7 +252,7 @@ Format Output JSON:
     "tags": "#...",
     "highlight": "...",
     "enriched_transcript": [
-        {{"word": "kata", "start": 0.0, "end": 0.5, "emotion": "surprise", "color": "#FF0000", "voice_level": "yelling"}}
+        {{"word": "kata", "start": 0.0, "end": 0.5, "emotion": "surprise", "color": "#FF0000", "voice_emotion": "angry"}}
     ]
 }}
 ```
@@ -271,24 +272,8 @@ Format Output JSON:
             else:
                 metadata = json.loads(raw_response.strip())
 
-            # --- NORMALISASI EMOSI (5 detik cooldown) ---
+            # Kembalikan seluruh emosi mentah tanpa penghapusan cooldown agar tidak semua kata menjadi neutral
             enriched = metadata.get("enriched_transcript", [])
-            last_non_neutral_time = -999.0
-
-            for word_data in enriched:
-                emo = str(word_data.get("emotion", "neutral")).lower()
-                try:
-                    start_time = float(word_data.get("start", 0.0))
-                except (ValueError, TypeError):
-                    start_time = 0.0
-
-                if emo not in ["neutral", "transition"]:
-                    if start_time - last_non_neutral_time < 5.0:
-                        word_data["emotion"] = "neutral"
-                        word_data["color"] = "#FFFF00"
-                    else:
-                        last_non_neutral_time = start_time
-
             metadata["enriched_transcript"] = enriched
             return metadata
 

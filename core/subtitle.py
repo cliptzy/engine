@@ -200,60 +200,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             full_transcript = " ".join([s.text.strip() for s in segments if s.text.strip()])
             
             # Analyze voice levels
-            def analyze_voice_levels(wav_path, words):
-                import wave, struct, math
-                if not os.path.exists(wav_path):
-                    return
-                try:
-                    with wave.open(wav_path, 'r') as w:
-                        rate = w.getframerate()
-                        nframes = w.getnframes()
-                        for word in words:
-                            start_f = min(int(word['start'] * rate), nframes-1)
-                            end_f = min(int(word['end'] * rate), nframes)
-                            num_f = end_f - start_f
-                            if num_f <= 0:
-                                word['rms'] = 0
-                                continue
-                            w.setpos(start_f)
-                            data = w.readframes(num_f)
-                            # Only unpack if 16-bit
-                            if w.getsampwidth() == 2:
-                                samples = struct.unpack(f'<{num_f}h', data)
-                                rms = math.sqrt(sum(s*s for s in samples)/num_f)
-                                word['rms'] = rms
-                            else:
-                                word['rms'] = 0
-                                
-                    rmss = [w['rms'] for w in words if w['rms'] > 0]
-                    if not rmss:
-                        return
-                    mean_rms = sum(rmss)/len(rmss)
-                    
-                    yelling_count = 0
-                    whispering_count = 0
-                    
-                    for word in words:
-                        r = word.get('rms', 0)
-                        if r > mean_rms * 2.0 and r > 3000:
-                            word['voice_level'] = 'yelling'
-                            yelling_count += 1
-                        elif r < mean_rms * 0.4 and r < 2000:
-                            word['voice_level'] = 'whispering'
-                            whispering_count += 1
-                        else:
-                            word['voice_level'] = 'normal'
-                        
-                        # Remove rms key as it's not needed anymore
-                        if 'rms' in word:
-                            del word['rms']
-                            
-                    log.info(f"[audio] Deteksi amplitudo selesai: {mean_rms:.1f} RMS rata-rata. Ditemukan {yelling_count} kata berteriak dan {whispering_count} kata berbisik.")
-                            
-                except Exception as ex:
-                    log.warning(f"Voice level analysis failed: {ex}")
-            
-            analyze_voice_levels(audio_wav, words_data)
+            from core.processing.voice_analyzer import analyze_voice_emotions
+            analyze_voice_emotions(audio_wav, words_data)
                     
     except Exception as e:
         log.error(f"Failed to write subtitle file: {e}")
@@ -343,16 +291,23 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         if not word_str:
                             continue
                             
+                        is_angry = (str(w.get("emotion", "")).lower() == "angry")
+                        if is_angry:
+                            word_str = word_str.upper()
+                            
                         if idx == active_idx:
                             # Highlighted word
                             color_hex = w.get("color", "")
                             ass_c = hex_to_ass_color(color_hex)
                             
                             anim = ""
-                            reset_anim = ""
+                            reset_anim = "\\fscx100\\fscy100"
+                            target_scale = 130 if is_angry else 100
+                            
                             if config.subtitle.animation == "scale":
-                                anim = "\\fscx50\\fscy50\\t(0,150,\\fscx100\\fscy100)"
-                                reset_anim = "\\fscx100\\fscy100"
+                                anim = f"\\fscx50\\fscy50\\t(0,150,\\fscx{target_scale}\\fscy{target_scale})"
+                            elif is_angry:
+                                anim = f"\\fscx{target_scale}\\fscy{target_scale}"
                             
                             line_text += f"{{\\c{ass_c}{anim}}}{word_str}{{\\c{config.subtitle.color}{reset_anim}}} "
                         else:
@@ -407,8 +362,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 s = float(w.get("start", 0))
                 e = float(w.get("end", 0))
                 emo = w.get("emotion", "neutral")
-                voice = w.get("voice_level", "normal")
-                info = f"TEKS: emo={emo}, nada={voice}"
+                voice = w.get("voice_emotion", "neutral")
+                info = f"TEKS: emo={emo}, suara={voice}"
                 add_to_timeline(s, e, info)
                     
             for ve in visual_emotions:

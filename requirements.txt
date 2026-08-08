@@ -23,6 +23,12 @@ astunparse
     # via tensorflow
 attrs
     # via aiohttp
+audioop-lts
+    # via
+    #   standard-aifc
+    #   standard-sunau
+audioread
+    # via librosa
 av
     # via faster-whisper
 beautifulsoup4
@@ -39,7 +45,9 @@ certifi
     #   httpx
     #   requests
 cffi
-    # via cryptography
+    # via
+    #   cryptography
+    #   soundfile
 charset-normalizer
     # via requests
 click
@@ -57,6 +65,8 @@ cryptography
     #   pyjwt
 ctranslate2
     # via faster-whisper
+decorator
+    # via librosa
 deepface
     # via -r requirements.in
 deprecation
@@ -71,12 +81,15 @@ distro
     #   openai
 edge-tts
     # via -r requirements.in
+emvoice
+    # via -r requirements.in
 faster-whisper
     # via -r requirements.in
 filelock
     # via
     #   gdown
     #   huggingface-hub
+    #   torch
 fire
     # via deepface
 flask
@@ -103,13 +116,16 @@ frozenlist
     #   aiohttp
     #   aiosignal
 fsspec
-    # via huggingface-hub
+    # via
+    #   huggingface-hub
+    #   torch
 gast
     # via tensorflow
 gdown
     # via
     #   deepface
     #   retina-face
+    #   vanpy
 google-api-core
     # via google-api-python-client
 google-api-python-client
@@ -173,9 +189,14 @@ httpx
 huggingface-hub
     # via
     #   faster-whisper
+    #   speechbrain
     #   tokenizers
+    #   transformers
+    #   vanpy
 hyperframe
     # via h2
+hyperpyyaml
+    # via speechbrain
 idna
     # via
     #   anyio
@@ -187,17 +208,27 @@ instagrapi
 itsdangerous
     # via flask
 jinja2
-    # via flask
+    # via
+    #   flask
+    #   torch
 jiter
     # via openai
 joblib
-    # via mtcnn
+    # via
+    #   librosa
+    #   mtcnn
+    #   scikit-learn
+    #   speechbrain
 keras
     # via
     #   deepface
     #   tensorflow
+lazy-loader
+    # via -r requirements.in
 libclang
     # via tensorflow
+librosa
+    # via emvoice
 lightdsa
     # via deepface
 lightecc
@@ -206,6 +237,8 @@ lightecc
     #   lightphe
 lightphe
     # via deepface
+llvmlite
+    # via numba
 lz4
     # via mtcnn
 markdown-it-py
@@ -233,19 +266,37 @@ multidict
     #   yarl
 namex
     # via keras
+narwhals
+    # via scikit-learn
+networkx
+    # via torch
+numba
+    # via
+    #   librosa
+    #   resampy
 numpy
     # via
     #   ctranslate2
     #   deepface
+    #   emvoice
     #   h5py
     #   keras
+    #   librosa
     #   ml-dtypes
+    #   numba
     #   onnxruntime
     #   opencv-python
     #   opencv-python-headless
     #   pandas
+    #   resampy
     #   retina-face
+    #   scikit-learn
+    #   scipy
+    #   soundfile
+    #   soxr
+    #   speechbrain
     #   tensorflow
+    #   transformers
 oauthlib
     # via
     #   flet
@@ -271,21 +322,32 @@ packaging
     #   gunicorn
     #   huggingface-hub
     #   keras
+    #   lazy-loader
+    #   librosa
     #   onnxruntime
+    #   pooch
+    #   speechbrain
     #   tensorflow
+    #   transformers
     #   wheel
 pandas
-    # via deepface
+    # via
+    #   deepface
+    #   vanpy
 pillow
     # via
     #   deepface
     #   instagrapi
     #   pystray
     #   retina-face
+platformdirs
+    # via pooch
 playwright
     # via
     #   -r requirements.in
     #   tiktok-uploader
+pooch
+    # via librosa
 postgrest
     # via supabase
 propcache
@@ -323,6 +385,8 @@ pydantic
     #   tiktok-uploader
 pydantic-core
     # via pydantic
+pydub
+    # via vanpy
 pyee
     # via playwright
 pygments
@@ -349,8 +413,13 @@ pyyaml
     # via
     #   ctranslate2
     #   huggingface-hub
+    #   hyperpyyaml
+    #   transformers
+    #   vanpy
 realtime
     # via supabase
+regex
+    # via transformers
 repath
     # via flet
 requests
@@ -363,20 +432,45 @@ requests
     #   google-genai
     #   gtts
     #   instagrapi
+    #   pooch
     #   requests-oauthlib
     #   tensorflow
 requests-oauthlib
     # via google-auth-oauthlib
+resampy
+    # via librosa
 retina-face
     # via deepface
 rich
     # via
     #   keras
     #   typer
+ruamel-yaml
+    # via
+    #   -r requirements.in
+    #   hyperpyyaml
+safetensors
+    # via transformers
+scikit-learn
+    # via
+    #   emvoice
+    #   librosa
+    #   vanpy
+scipy
+    # via
+    #   emvoice
+    #   librosa
+    #   scikit-learn
+    #   speechbrain
+sentencepiece
+    # via speechbrain
 setuptools
     # via
     #   ctranslate2
+    #   numba
     #   tensorflow
+    #   torch
+    #   vanpy
 shellingham
     # via typer
 six
@@ -391,8 +485,20 @@ sniffio
     # via
     #   google-genai
     #   openai
+soundfile
+    # via librosa
 soupsieve
     # via beautifulsoup4
+soxr
+    # via -r requirements.in
+speechbrain
+    # via -r requirements.in
+standard-aifc
+    # via audioread
+standard-chunk
+    # via standard-aifc
+standard-sunau
+    # via audioread
 storage3
     # via supabase
 strenum
@@ -407,6 +513,7 @@ sympy
     # via
     #   lightdsa
     #   lightphe
+    #   torch
 tabulate
     # via edge-tts
 tenacity
@@ -422,12 +529,24 @@ termcolor
     #   tensorflow
 tf-keras
     # via -r requirements.in
+threadpoolctl
+    # via scikit-learn
 tiktok-uploader @ git+https://github.com/dickymuliafiqri/tiktok-uploader@525b8618687fedec1c7139b51b9f65f127e4d57c
     # via -r requirements.in
 tokenizers
-    # via faster-whisper
+    # via
+    #   faster-whisper
+    #   transformers
 toml
     # via tiktok-uploader
+torch
+    # via
+    #   -r requirements.in
+    #   speechbrain
+torchaudio
+    # via
+    #   -r requirements.in
+    #   speechbrain
 tqdm
     # via
     #   deepface
@@ -438,8 +557,14 @@ tqdm
     #   lightecc
     #   lightphe
     #   openai
+    #   speechbrain
+    #   transformers
+transformers
+    # via -r requirements.in
 typer
-    # via huggingface-hub
+    # via
+    #   huggingface-hub
+    #   transformers
 typing-extensions
     # via
     #   beautifulsoup4
@@ -454,7 +579,9 @@ typing-extensions
     #   pydantic-core
     #   pyee
     #   realtime
+    #   soundfile
     #   tensorflow
+    #   torch
     #   typing-inspection
     #   winrt-runtime
 typing-inspection
@@ -465,6 +592,8 @@ uritemplate
     # via google-api-python-client
 urllib3
     # via requests
+vanpy
+    # via -r requirements.in
 websockets
     # via
     #   google-genai
