@@ -11,10 +11,45 @@ authors = [
     { name = "Dicky Mulia Fiqri", email = "santrialanwari@gmail.com" }
 ]
 requires-python = ">=3.13"
-dynamic = ["dependencies"]
-
-[tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
+dependencies = [
+    "yt-dlp",
+    "faster-whisper",
+    "instagrapi",
+    "supabase",
+    "python-dotenv",
+    "google-genai",
+    "google-api-python-client",
+    "google-auth-oauthlib",
+    "google-auth-httplib2",
+    "gTTS",
+    "psutil",
+    "requests",
+    "playwright",
+    "openai",
+    "opencv-python-headless",
+    "edge-tts",
+    "flet",
+    "flet-video",
+    "pystray",
+    "desktop-notifier",
+    "certifi",
+    "flet-audio",
+    "tiktok-uploader @ git+https://github.com/dickymuliafiqri/tiktok-uploader",
+    "deepface",
+    "tf-keras",
+    "vanpy",
+    "torchaudio",
+    "torch",
+    "speechbrain",
+    "ruamel.yaml",
+    "emvoice",
+    "lazy-loader",
+    "soxr",
+    "transformers",
+    "tokenizers",
+    "librosa",
+    "setuptools"
+]
 
 [project.scripts]
 cliptzy = "main:main"
@@ -39,8 +74,7 @@ exclude = [
     "comments.txt",
     "tests",
     "*.sql",
-    ".gitignore",
-    "requirements.in"
+    ".gitignore"
 ]
 
 [tool.setuptools.packages.find]

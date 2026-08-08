@@ -130,7 +130,7 @@ def main():
     exclude_list = [
         ".git", ".github", ".venv", "venv", "clips", "logs", "build", "dist", "__pycache__",
         "*.log", ".env", "*.md", "cred", "*.json",
-        "tests", "*.sql", ".gitignore", "requirements.in"
+        "tests", "*.sql", ".gitignore"
     ]
     cmd.append("--exclude")
     cmd.extend(exclude_list)
