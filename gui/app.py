@@ -23,7 +23,7 @@ def main(page: ft.Page) -> None:
     page.window.min_height = h
     page.window.width = w
     page.window.height = h
-    
+
     # Load fonts
     from core.utils import get_app_root
     base_dir = get_app_root()
@@ -39,22 +39,22 @@ def main(page: ft.Page) -> None:
     from gui.layout.footer import StatusBar
     from gui.views.login_view import LoginView
     from gui.event_bus import event_bus
-    
+
     app_bar = Header()
-    
+
     def on_navigate(index: int) -> None:
         routes = ["clipper", "creator_hub", "sfx", "settings"]
         if 0 <= index < len(routes):
             app_state.set_page(routes[index])
-    
+
     sidebar = Sidebar(on_navigate=on_navigate)
     router = Router(page, app_state)
     main_layout = MainLayout(sidebar, router.wrapper)
-    log_viewer = LogViewer(height=120, expand=False)
+    log_viewer = LogViewer(height=180, expand=False)
     status_bar = StatusBar()
-    
+
     login_view = LoginView(page)
-    
+
     def build_app_ui():
         """Bangun UI utama aplikasi (hanya jika sudah login)."""
         page.controls.clear()
@@ -63,28 +63,28 @@ def main(page: ft.Page) -> None:
         app_state.set_page("clipper")
         router.initialize()
         page.update()
-        
+
         # Check for updates in background
         async def check_update_worker():
             import asyncio
             from core.updater import check_for_updates
             from core.logger import log
-            
+
             try:
                 # Run sync HTTP request in thread pool
                 has_update, new_ver, release_url = await asyncio.to_thread(check_for_updates)
                 if has_update and new_ver and release_url:
                     log.info(f"Pembaruan tersedia: {new_ver}. Menampilkan notifikasi ke pengguna.")
-                    
+
                     async def on_download_click(e):
                         await ft.UrlLauncher().launch_url(release_url)
                         dialog.open = False
                         page.update()
-                        
+
                     def on_close_click(e):
                         dialog.open = False
                         page.update()
-                        
+
                     dialog = ft.AlertDialog(
                         title=ft.Text("Pembaruan Tersedia 🚀", weight=ft.FontWeight.BOLD),
                         content=ft.Text(f"Versi terbaru Cliptzy ({new_ver}) telah tersedia!\nSilakan unduh untuk mendapatkan fitur dan perbaikan terbaru."),
@@ -101,7 +101,7 @@ def main(page: ft.Page) -> None:
                 log.warning(f"Error saat menjalankan update checker: {e}")
 
         page.run_task(check_update_worker)
-        
+
     def show_login_ui():
         """Tampilkan halaman login (kunci aplikasi)."""
         page.controls.clear()
@@ -111,7 +111,7 @@ def main(page: ft.Page) -> None:
     def on_login_success(*args, **kwargs):
         """Handler saat login berhasil — unlock aplikasi."""
         build_app_ui()
-    
+
     def on_logout(*args, **kwargs):
         """Handler saat logout — kunci aplikasi kembali ke login."""
         # Reset login view state
@@ -119,26 +119,26 @@ def main(page: ft.Page) -> None:
         login_view.progress_ring.visible = False
         login_view.info_text.value = "Silakan login menggunakan Google untuk mengakses aplikasi"
         show_login_ui()
-        
+
     event_bus.subscribe("LOGIN_SUCCESS", on_login_success)
     event_bus.subscribe("LOGOUT", on_logout)
 
     # Initialize Supabase Sync
     from core.supabase_sync import supabase_sync
-    
+
     # Check if a local .env exists (for development)
     dotenv_path = os.path.join(os.getcwd(), ".env")
     if not os.path.exists(dotenv_path):
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         dotenv_path = os.path.join(base_dir, ".env")
-        
+
     if os.path.exists(dotenv_path):
         from dotenv import load_dotenv
         load_dotenv(dotenv_path=dotenv_path)
-    
+
     supabase_url = os.getenv("SUPABASE_URL", "")
     supabase_key = os.getenv("SUPABASE_SECRET_KEY", "")
-    
+
     # Fallback to auto-generated _build_env if env vars not set (e.g., in standalone build)
     if not supabase_url or not supabase_key:
         try:
@@ -150,7 +150,7 @@ def main(page: ft.Page) -> None:
                 supabase_key = deobfuscate(_build_env.SUPABASE_SECRET_KEY_OBFUSCATED)
         except ImportError:
             pass
-            
+
     supabase_sync.initialize(supabase_url, supabase_key)
 
     # Check session — Kunci aplikasi jika belum login

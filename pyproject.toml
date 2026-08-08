@@ -20,7 +20,6 @@ dependencies = [
     "google-genai",
     "google-api-python-client",
     "google-auth-oauthlib",
-    "google-auth-httplib2",
     "gTTS",
     "psutil",
     "requests",
@@ -30,25 +29,21 @@ dependencies = [
     "edge-tts",
     "flet",
     "flet-video",
+    "flet-audio",
     "pystray",
     "desktop-notifier",
     "certifi",
-    "flet-audio",
     "tiktok-uploader @ git+https://github.com/dickymuliafiqri/tiktok-uploader",
     "deepface",
     "tf-keras",
-    "vanpy",
-    "torchaudio",
     "torch",
-    "speechbrain",
-    "ruamel.yaml",
-    "emvoice",
+    "torchaudio",
     "lazy-loader",
     "soxr",
     "transformers",
     "tokenizers",
     "librosa",
-    "setuptools"
+    "setuptools<70.0.0"
 ]
 
 [project.scripts]

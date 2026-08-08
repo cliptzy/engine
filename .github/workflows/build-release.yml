@@ -8,104 +8,33 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build ${{ matrix.target }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          # - os: ubuntu-latest
-          #   target: apk
-          #   artifact_name: cliptzy-android
-          #   file_extension: apk
-          # - os: ubuntu-latest
-          #   target: linux
-          #   artifact_name: cliptzy-linux
-          #   file_extension: zip
-          - os: windows-latest
-            target: windows
-            artifact_name: cliptzy-windows
-            file_extension: zip
-          # - os: macos-15-intel
-          #   target: macos
-          #   artifact_name: cliptzy-macos
-          #   file_extension: zip
+  package:
+    name: Package Source Code
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Get dotenv
-        shell: bash
-        run: echo "${{ secrets.DOTENV }}" | base64 --decode > .env
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Set up Java
-        if: matrix.target == 'apk'
-        uses: actions/setup-java@v4
-        with:
-          distribution: "zulu"
-          java-version: "17"
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-
-      - name: Install Linux Build Dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libxcb-cursor0 libasound2t64 libgtk-3-dev libblkid-dev liblzma-dev libmpv-dev
-
-      - name: Install Python Dependencies
-        env:
-          PYTHONUTF8: "1"
-        run: |
-          uv sync --frozen
-
-      - name: Build Executable
-        env:
-          PYTHONUTF8: "1"
-        run: |
-          uv run python build_executable.py
-
-      - name: Archive Executable
+      - name: Make scripts executable
         shell: bash
         run: |
-          if [ "${{ matrix.target }}" == "apk" ]; then
-            cp dist/cliptzy/*.apk ${{ matrix.artifact_name }}.apk
-          elif [ "${{ matrix.target }}" == "windows" ]; then
-            cd dist/cliptzy
-            7z a ../../${{ matrix.artifact_name }}.zip .
-          elif [ "${{ matrix.target }}" == "macos" ]; then
-            cd dist/cliptzy
-            zip -ry ../../${{ matrix.artifact_name }}.zip .
-          else
-            cd dist/cliptzy
-            zip -r ../../${{ matrix.artifact_name }}.zip .
-          fi
+          chmod +x run.sh || true
+
+      - name: Package Source
+        shell: bash
+        run: |
+          zip -r cliptzy.zip . -x "*.git*" "*.venv*" "*/__pycache__/*" "*.env" "clips/*" "logs/*" "build/*" "dist/*" ".flet/*" "cliptzy.egg-info/*" "youtube_token.json" "cookies.txt"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}-build
-          path: ${{ matrix.artifact_name }}.${{ matrix.file_extension }}
+          name: cliptzy
+          path: cliptzy.zip
 
   release:
     name: Create Release
-    needs: build
+    needs: package
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
