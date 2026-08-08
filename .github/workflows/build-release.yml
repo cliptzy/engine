@@ -39,11 +39,16 @@ jobs:
         shell: bash
         run: echo "${{ secrets.DOTENV }}" | base64 --decode > .env
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: "pip"
 
       - name: Set up Java
         if: matrix.target == 'apk'
@@ -68,15 +73,13 @@ jobs:
         env:
           PYTHONUTF8: "1"
         run: |
-          python -m pip install uv
-          uv pip sync uv.lock
-          uv pip install -r uv.lock
+          uv sync --frozen
 
       - name: Build Executable
         env:
           PYTHONUTF8: "1"
         run: |
-          python build_executable.py
+          uv run python build_executable.py
 
       - name: Archive Executable
         shell: bash
