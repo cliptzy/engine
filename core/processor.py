@@ -24,6 +24,13 @@ def process_single_clip(
     custom_prompt: str = "",
     phase1_only: bool = False
 ) -> bool:
+    original_hook = event_hook
+    def wrapped_event_hook(event_name: str, data: Any):
+        if callable(original_hook):
+            if isinstance(data, dict) and "clip_index" not in data:
+                data["clip_index"] = index
+            original_hook(event_name, data)
+    event_hook = wrapped_event_hook
     """
     Downloads, crops, and exports a single vertical clip based on a heatmap segment.
     """

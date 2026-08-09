@@ -14,22 +14,22 @@ class Router:
 
         self.content_container = ft.Container(expand=True)
         self.wrapper = ft.Container(content=self.content_container, expand=True)
-        
+
         # Cache view instances agar state persistent saat navigasi
         self._view_cache: dict[str, ft.Control] = {}
-        
+
         # Subscribe to state changes
         event_bus.subscribe(events.STATE_CHANGED, self.on_state_changed)
-    
+
     def initialize(self) -> None:
         # Bersihkan cache saat reinitialize (misal setelah login ulang)
         self._view_cache.clear()
         self.navigate(self.state.current_page)
-        
+
     def on_state_changed(self, state: AppState) -> None:
         if state.current_page != self.current_route:
             self.navigate(state.current_page)
-            
+
     def _get_or_create_view(self, route: str) -> ft.Control:
         """Ambil view dari cache, atau buat baru jika belum ada."""
         if route not in self._view_cache:
@@ -56,7 +56,7 @@ class Router:
         clipper_view = self._get_or_create_view("clipper")
         if isinstance(clipper_view, ClipperView):
             clipper_view.load_video_url(url)
-             
+
     def navigate(self, route: str) -> None:
         self.current_route = route
         view = self._get_or_create_view(route)

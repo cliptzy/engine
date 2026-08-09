@@ -138,7 +138,7 @@ class ClipperView(ft.Column):
             "padding": int(self.clip_config.padding_spin.value or 0),
             "max_duration": int(self.clip_config.max_duration_spin.value or 0),
             "custom_prompt": self.preview.custom_prompt_input.value or "",
-            "phase1_only": True
+            "phase1_only": False
         })
 
         self.set_processing(True)

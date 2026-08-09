@@ -9,7 +9,7 @@ class Sidebar(ft.NavigationRail):
         self.min_extended_width = 200
         self.group_alignment = -0.9
         self.bgcolor = ft.Colors.TRANSPARENT
-        
+
         self.destinations = [
             ft.NavigationRailDestination(
                 icon=ft.Icons.VIDEO_FILE_OUTLINED,  # type: ignore
@@ -30,7 +30,7 @@ class Sidebar(ft.NavigationRail):
                 icon=ft.Icons.SETTINGS_OUTLINED,  # type: ignore
                 selected_icon=ft.Icons.SETTINGS,  # type: ignore
                 label="Settings"
-            ),
+            )
         ]
-        
+
         self.on_change = lambda e: on_navigate(e.control.selected_index)  # type: ignore

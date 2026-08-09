@@ -1,7 +1,6 @@
 import flet as ft
 from typing import cast, Any
 from core.config import config
-from core.ai.detector import DEFAULT_PROMPT_TEMPLATE
 
 class SettingsView(ft.Container):
     def __init__(self, page: ft.Page):
@@ -52,6 +51,8 @@ class SettingsView(ft.Container):
             label="Default Hashtags & Global Description",
             value=config.default_hashtags,
             hint_text="#Shorts #Viral #Cliptzy #fyp",
+            multiline=True,
+            min_lines=3,
             expand=True
         )
 
@@ -790,7 +791,10 @@ class SettingsView(ft.Container):
         # System settings
         if self.output_dir_input.value: config.output_dir = self.output_dir_input.value
 
+        # Normalize hashtags
         config.default_hashtags = self.default_hashtags.value or ""
+        config.default_hashtags = " ".join(config.default_hashtags.splitlines())
+        config.default_hashtags = " ".join(list(dict.fromkeys(config.default_hashtags.split(" "))))
 
         # Platform settings
         config.youtube.client_id = self.yt_client_id.value or ""

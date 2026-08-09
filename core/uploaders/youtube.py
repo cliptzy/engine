@@ -59,10 +59,16 @@ class YouTubeUploader:
         title = metadata.get("title", "Untitled")
         description = metadata.get("description", "")
         tags_raw = metadata.get("tags", "")
-        if isinstance(tags_raw, list):
-            tags_list = [t.strip().replace('#', '') for t in tags_raw if t.strip() and not t.strip().startswith('@')]
-        else:
-            tags_list = [t.strip().replace('#', '') for t in tags_raw.split() if t.strip() and not t.strip().startswith('@')]
+        raw_list = tags_raw if isinstance(tags_raw, list) else tags_raw.split()
+        tags_list = []
+        total_len = 0
+        for t in raw_list:
+            cleaned = t.strip().replace('#', '').replace('<', '').replace('>', '').replace(',', '').replace('"', '').replace("'", "")
+            if cleaned and not cleaned.startswith('@'):
+                if total_len + len(cleaned) + 1 > 400:
+                    break
+                tags_list.append(cleaned)
+                total_len += len(cleaned) + 1
         
         tags_str = " ".join([f"#{t}" for t in tags_list])
         

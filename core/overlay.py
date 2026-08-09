@@ -97,7 +97,7 @@ class OverlayManager:
         base_filter = f"[{ov_idx}:v]setpts=PTS-STARTPTS+{ov_start}/TB,format=argb"
         
         if effect == "random":
-            effect = random.choice(["transparent", "blocking"])
+            effect = random.choice(["transparent", "blocking", "slide_up", "shake", "float_up"])
             
         if effect == "transparent":
             fade_d = min(0.5, duration / 2)
@@ -108,6 +108,23 @@ class OverlayManager:
             # Solid (tanpa transparansi), dimensi lebih kecil, diletakkan di kiri tengah
             ov_filter = f"{base_filter},scale=300:-1[ov_processed_{i}]"
             overlay_cmd = "overlay=shortest=1:x=20:y=(H-h)/2"
+        elif effect == "slide_up":
+            # Animasi cepat dari bawah ke tengah (CapCut style)
+            fade_d = min(0.3, duration / 2)
+            ov_filter = f"{base_filter},scale=720:-1,fade=t=in:st={ov_start}:d={fade_d}:alpha=1[ov_processed_{i}]"
+            overlay_cmd = f"overlay=shortest=1:x=(W-w)/2:y='max((H-h)/2, H - 2500*(t-{ov_start}))'"
+        elif effect == "shake":
+            # Efek guncangan agresif + fade out (CapCut Wiggle)
+            fade_d = min(0.3, duration / 2)
+            fade_st = ov_end - fade_d
+            ov_filter = f"{base_filter},scale=720:-1,fade=t=out:st={fade_st}:d={fade_d}:alpha=1[ov_processed_{i}]"
+            overlay_cmd = f"overlay=shortest=1:x='(W-w)/2 + 20*sin((t-{ov_start})*20)':y='(H-h)/2 + 20*cos((t-{ov_start})*25)'"
+        elif effect == "float_up":
+            # Efek melayang pelan ke atas, cinematic fade in & out
+            fade_d = min(0.5, duration / 2)
+            fade_st = ov_end - fade_d
+            ov_filter = f"{base_filter},scale=720:-1,fade=t=in:st={ov_start}:d={fade_d}:alpha=1,fade=t=out:st={fade_st}:d={fade_d}:alpha=1[ov_processed_{i}]"
+            overlay_cmd = f"overlay=shortest=1:x=(W-w)/2:y='(H-h)/2 - 100*(t-{ov_start})'"
         else:
             ov_filter = f"{base_filter},scale=720:-1[ov_processed_{i}]"
             overlay_cmd = "overlay=shortest=1:x=(W-w)/2:y=(H-h)/2"

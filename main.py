@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument("--url", help="YouTube URL (watch/shorts/youtu.be)")
     parser.add_argument(
         "--crop",
-        choices=["default", "split_left", "split_right", "split_face", "full_face"],
+        choices=["default", "split_left", "split_right", "split_face", "full", "full_face", "multi_face"],
         help="Crop mode",
     )
     parser.add_argument(
@@ -106,7 +106,11 @@ def main():
             "default": "Default center crop",
             "split_left": "Split crop (bottom-left facecam)",
             "split_right": "Split crop (bottom-right facecam)",
-        }[crop_mode]
+            "split_face": "Split crop (dynamic face tracking)",
+            "full": "Full (blurred background)",
+            "full_face": "Full + Face Track",
+            "multi_face": "Multi Face Track (Podcast)",
+        }.get(crop_mode, crop_mode)
 
     subtitle_choice = args.subtitle
     use_subtitle = subtitle_choice == "y" if subtitle_choice else None
@@ -121,9 +125,10 @@ def main():
         print("4. Split Face Track (top: center, bottom: dynamic face crop)")
         print("5. Full (fit screen with blurred background)")
         print("6. Full + Face Track (top: full scaled, bottom: dynamic face crop)")
+        print("7. Multi Face Track (podcast: face1 + full + face2)")
 
         while crop_mode is None:
-            choice = input("\nSelect crop mode (1-6): ").strip()
+            choice = input("\nSelect crop mode (1-7): ").strip()
             if choice == "1":
                 crop_mode = "default"
                 crop_desc = "Default center crop"
@@ -148,7 +153,11 @@ def main():
                 crop_mode = "full_face"
                 crop_desc = "Full + Face Track"
                 break
-            print("Invalid choice. Please enter a number between 1 and 6.")
+            elif choice == "7":
+                crop_mode = "multi_face"
+                crop_desc = "Multi Face Track (Podcast)"
+                break
+            print("Invalid choice. Please enter a number between 1 and 7.")
 
         print(f"Selected: {crop_desc}")
         print("\n=== Auto Subtitle ===")

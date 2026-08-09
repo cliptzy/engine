@@ -24,9 +24,9 @@ class TikTokUploader:
             description = metadata.get("description", "")
             tags_raw = metadata.get("tags", "")
             if isinstance(tags_raw, list):
-                tags_str = " ".join([f"#{t.strip().replace('#', '')}" for t in tags_raw if t.strip()])
+                tags_str = " ".join([f"#{t.strip().replace('#', '')}" for t in tags_raw if t.strip() and not t.strip().startswith('@')])
             else:
-                tags_str = " ".join([f"#{t.strip().replace('#', '')}" for t in tags_raw.split() if t.strip()])
+                tags_str = tags_raw.strip()
 
             parts = []
             if title and title not in description: parts.append(title)

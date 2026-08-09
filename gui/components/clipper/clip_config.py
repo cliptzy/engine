@@ -30,6 +30,7 @@ class ClipConfig(ft.Container):
                 ft.dropdown.Option("split_face", "Split Face Track (Top: Center, Bottom: Dynamic Face)"),
                 ft.dropdown.Option("full", "Full (Fit Screen & Blurred BG)"),
                 ft.dropdown.Option("full_face", "Full + Face Track (Dynamic Face)"),
+                ft.dropdown.Option("multi_face", "Multi Face Track (Podcast: Face1 + Full + Face2)"),
             ],
             expand=1
         )
@@ -74,7 +75,7 @@ class ClipConfig(ft.Container):
         )
 
         self.delay_spin = SpinBox(min_value=-5000, max_value=5000, step=100, label="Subtitle Delay (ms)")
-        self.padding_spin = SpinBox(min_value=-30, max_value=30, step=1, value=0, label="Padding Klip (Detik)")
+        self.padding_spin = SpinBox(min_value=-30, max_value=60, step=1, value=0, label="Padding Klip (Detik)")
         self.max_duration_spin = SpinBox(min_value=10, max_value=600, step=10, value=60, label="Maks Durasi (Detik)")
 
         self.font_size_spin = SpinBox(min_value=20, max_value=150, step=1, value=60, label="Ukuran Font")

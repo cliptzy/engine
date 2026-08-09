@@ -320,7 +320,7 @@ class ClipVideoUseCase:
                     log.warning(f"Gagal men-generate metadata kompilasi: {e}")
                 
                 log.info( "Berhasil menggabungkan klip.")
-                event_hook("stage", {"stage": "done_clip", "clip_index": success_count, "is_merge": True, "success": success_count, "outputs": outputs})
+                event_hook("stage", {"stage": "done_clip", "clip_index": 0, "is_merge": True, "success": success_count, "outputs": outputs})
             except Exception as e:
                 log.error(f"Gagal menggabungkan klip: {e}")
                 log.error( f"Gagal menggabungkan klip: {e}")

@@ -10,16 +10,16 @@ class Preview(ft.Container):
 
         self.segments_data = []
         self.ai_segments_data = []
-        
+
         self.padding = 16
         self.border_radius = 8
         self.border = ft.Border.all(1, ft.Colors.OUTLINE_VARIANT)
-        
+
         # UI Elements
         self.video_title = ft.Text("Masukkan URL YouTube lalu klik Load Video", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE)
         self.video_uploader = ft.Text("Uploader: -", color=ft.Colors.WHITE_54)
         self.video_duration = ft.Text("Durasi: -", color=ft.Colors.WHITE_54)
-        
+
         self.thumbnail_image = ft.Image(
             src="",
             width=160,
@@ -36,7 +36,7 @@ class Preview(ft.Container):
             border_radius=8,
             alignment=ft.Alignment.CENTER # type: ignore
         )
-        
+
         # Mode selection
         self.mode_dropdown = ft.Dropdown(
             options=[
@@ -48,7 +48,7 @@ class Preview(ft.Container):
             on_select=self.on_mode_changed, # type: ignore
             expand=True
         )
-        
+
         # Heatmap Page
         self.segment_count_label = ft.Text("Pilih Segmen Heatmap:", color=ft.Colors.WHITE_54)
         self.segment_list = ft.ListView(height=160, spacing=4, )
@@ -67,7 +67,7 @@ class Preview(ft.Container):
                 )
             ])
         ], visible=True)
-        
+
         # Custom Page
         self.start_input = ft.TextField(label="Waktu Mulai", hint_text="detik (contoh: 30) atau MM:SS", expand=True)
         self.end_input = ft.TextField(label="Waktu Selesai", hint_text="detik (contoh: 90) atau MM:SS", expand=True)
@@ -77,7 +77,7 @@ class Preview(ft.Container):
             ft.Text("Waktu Selesai:"),
             self.end_input
         ], visible=False)
-        
+
         # AI Page
         self.btn_run_ai_scan = ft.Button(
             content=ft.Text("🤖 Scan Highlights dengan AI"), # type: ignore
@@ -86,12 +86,12 @@ class Preview(ft.Container):
             height=40
         )
         self.force_rescan_checkbox = ft.Checkbox(label="Force Rescan (Abaikan Cache AI)")
-        
+
         self.custom_prompt_input = ft.TextField(
-            label="Konteks Prompt Tambahan (Custom Context)", 
-            multiline=True, 
-            min_lines=2, 
-            max_lines=3, 
+            label="Konteks Prompt Tambahan (Custom Context)",
+            multiline=True,
+            min_lines=2,
+            max_lines=3,
             hint_text="Contoh: Fokus pada momen lucu atau komedi. Abaikan bagian yang membosankan.",
             expand=True
         )
@@ -104,13 +104,13 @@ class Preview(ft.Container):
             self.ai_segment_count_label,
             self.ai_segment_list
         ], visible=False)
-        
+
         self.mode_stack = ft.Column([
             self.heatmap_view,
             self.custom_view,
             self.ai_view
         ])
-        
+
         # Main layout
         self.content = ft.Column([
             ft.Text("📺 Video Preview & Segment Selection", size=18, weight=ft.FontWeight.BOLD),
@@ -166,7 +166,7 @@ class Preview(ft.Container):
     def set_preview_data(self, preview: dict) -> None:
         self.video_title.value = preview.get("title", "Unknown Title")
         self.video_uploader.value = f"Uploader: {preview.get('uploader', '-')}"
-        
+
         dur_s = preview.get("duration", 0)
         m, s = divmod(dur_s, 60)
         h, m = divmod(m, 60)
@@ -181,7 +181,7 @@ class Preview(ft.Container):
         else:
             self.thumbnail_image.visible = False
             self.thumbnail_placeholder.visible = True
-        
+
         try:
             if self.page: self.page.update()
             else: self.update()
@@ -191,23 +191,23 @@ class Preview(ft.Container):
     def set_scan_data(self, scan_result: dict) -> None:
         self.segments_data = scan_result.get("segments", [])
         self.segment_list.controls.clear()
-        
+
         self.segment_count_label.value = f"Segmen Heatmap Ditemukan ({len(self.segments_data)}):"
-        
+
         for idx, seg in enumerate(self.segments_data, start=1):
             seg["original_index"] = idx
             start_s = int(seg.get("start", 0))
             dur_s = int(seg.get("duration", 0))
             score = seg.get("score", 0.0)
-            
+
             m1, s1 = divmod(start_s, 60)
             m2, s2 = divmod(start_s + dur_s, 60)
             time_str = f"{m1:02d}:{s1:02d} - {m2:02d}:{s2:02d}"
-            
+
             item_text = f"Klip #{idx} | {time_str} (durasi: {dur_s}s) | Score: {score:.2f}"
             checkbox = ft.Checkbox(label=item_text, value=True, data=seg, on_change=self.on_checkbox_changed)
             self.segment_list.controls.append(checkbox)
-            
+
         try:
             if self.page: self.page.update()
             else: self.update()
@@ -226,7 +226,7 @@ class Preview(ft.Container):
             dur_s = int(seg.get("duration", 0))
             title = seg.get("title", "AI Highlight")
             reason = seg.get("reason", "")
-            
+
             m1, s1 = divmod(start_s, 60)
             m2, s2 = divmod(start_s + dur_s, 60)
             time_str = f"{m1:02d}:{s1:02d} - {m2:02d}:{s2:02d}"
@@ -234,7 +234,7 @@ class Preview(ft.Container):
             item_text = f"🤖 Klip #{idx} | {title} [{time_str}] ({dur_s}s) | {reason}"
             checkbox = ft.Checkbox(label=item_text, value=True, data=seg, on_change=self.on_checkbox_changed)
             self.ai_segment_list.controls.append(checkbox)
-            
+
         try:
             if self.page: self.page.update()
             else: self.update()
