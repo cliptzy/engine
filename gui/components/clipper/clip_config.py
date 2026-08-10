@@ -17,7 +17,8 @@ class ClipConfig(ft.Container):
         self.intro_picker = ft.FilePicker()
         self.outro_picker = ft.FilePicker()
         self.watermark_picker = ft.FilePicker()
-        self.page_ref.services.extend([self.intro_picker, self.outro_picker, self.watermark_picker])
+        self.video_frame_picker = ft.FilePicker()
+        self.page_ref.services.extend([self.intro_picker, self.outro_picker, self.watermark_picker, self.video_frame_picker])
 
         self.title = ft.Text("⚙️ Pengaturan Klip & Subtitle", size=18, weight=ft.FontWeight.BOLD)
 
@@ -179,11 +180,14 @@ class ClipConfig(ft.Container):
         # type: ignore
         self.btn_watermark = ft.Button("💧 Set Watermark", on_click=self.on_watermark_picked) # type: ignore
         # type: ignore
+        self.btn_video_frame = ft.Button("🖼️ Pilih Frame Video", on_click=self.on_video_frame_picked) # type: ignore
+        # type: ignore
         self.btn_outro = ft.Button("🎬 Set Video Outro", on_click=self.on_outro_picked) # type: ignore
 
-        # Check outro and watermark
+        # Check outro, watermark, and video frame
         self.on_toggle_outro_btn()
         self.on_toggle_watermark_btn()
+        self.on_toggle_video_frame_btn()
 
         # type: ignore
         self.btn_lock_all = ft.Button("🔒 Kunci dan Simpan Pengaturan", on_click=self.on_lock_all_toggled) # type: ignore
@@ -200,7 +204,7 @@ class ClipConfig(ft.Container):
             ft.Row(cast(list[ft.Control], [self.max_words_spin, self.font_size_spin, self.hw_combo])),
             ft.Row(cast(list[ft.Control], [self.tts_lang_combo, self.tts_voice_combo])),
             ft.Row(cast(list[ft.Control], [self.watermark_pos_combo, self.debug_mode_check]), alignment=ft.MainAxisAlignment.CENTER),
-            ft.Row(cast(list[ft.Control], [self.btn_intro, self.btn_watermark, self.btn_outro]), alignment=ft.MainAxisAlignment.CENTER),
+            ft.Row(cast(list[ft.Control], [self.btn_intro, self.btn_watermark, self.btn_video_frame, self.btn_outro]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.btn_lock_all]), alignment=ft.MainAxisAlignment.CENTER),
         ])
 
@@ -241,6 +245,8 @@ class ClipConfig(ft.Container):
         if config.ui_locked:
             self._lock_ui(True)
             self.btn_lock_all.data = True
+
+        self.on_toggle_video_frame_btn()
 
         try:
             if self.page_ref: self.page_ref.update()
@@ -409,6 +415,53 @@ class ClipConfig(ft.Container):
             self.btn_watermark.content = "💧 Pilih Watermark"
             self.btn_watermark.color = None
             self.btn_watermark.on_click = self.on_watermark_picked
+
+    async def on_video_frame_picked(self, e) -> None:
+        files = await self.video_frame_picker.pick_files(
+            dialog_title="Pilih Frame Video",
+            allowed_extensions=["mp4", "mkv", "mov", "avi"]
+        )
+        if files and len(files) > 0 and files[0].path:
+            try:
+                dest = controller.set_video_frame(files[0].path)
+                self.on_toggle_video_frame_btn()
+                self._show_snackbar(f"Frame video berhasil diset:\n{dest}")
+            except Exception as ex:
+                self._show_snackbar(f"Gagal mengeset frame video: {ex}", error=True)
+
+    def on_clear_video_frame_picked(self, e) -> None:
+        try:
+            controller.clear_video_frame()
+            self.on_toggle_video_frame_btn()
+            self._show_snackbar("Frame video berhasil dihapus.")
+        except Exception as ex:
+            self._show_snackbar(f"Gagal menghapus frame video: {ex}", error=True)
+
+    def on_toggle_video_frame_btn(self) -> None:
+        if config.video_frame is not None:
+            if path.exists(config.video_frame):
+                self.btn_video_frame.content = "🖼️ Hapus Frame Video"
+                self.btn_video_frame.color = ft.Colors.RED
+                self.btn_video_frame.on_click = self.on_clear_video_frame_picked
+            else:
+                self.btn_video_frame.content = "🖼️ File Tidak Ditemukan"
+                self.btn_video_frame.color = ft.Colors.RED
+                self.btn_video_frame.on_click = self.on_clear_video_frame_picked
+        else:
+            self.btn_video_frame.content = "🖼️ Pilih Frame Video"
+            self.btn_video_frame.color = None
+            self.btn_video_frame.on_click = self.on_video_frame_picked
+
+        try:
+            self.btn_video_frame.update()
+        except Exception:
+            pass
+
+        try:
+            if self.page_ref: self.page_ref.update()
+            else: self.update()
+        except Exception:
+            pass
 
 
 

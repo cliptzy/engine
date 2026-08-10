@@ -139,8 +139,8 @@ class ClipController:
         if not os.path.exists(file_path):
             raise FileNotFoundError("File watermark tidak ditemukan")
         os.makedirs("assets", exist_ok=True)
-        ext = os.path.splitext(file_path)[1]
-        dest = os.path.join("assets", f"watermark{ext}")
+        base_name = os.path.basename(file_path).replace(" ", "")
+        dest = os.path.join("assets", base_name)
         shutil.copy2(file_path, dest)
         config.watermark_image = dest
         config.save_to_file()
@@ -149,6 +149,23 @@ class ClipController:
     def clear_watermark_image(self) -> None:
         """Clears the configured watermark image."""
         config.watermark_image = None
+        config.save_to_file()
+
+    def set_video_frame(self, file_path: str) -> str:
+        """Sets and copies frame video to assets folder."""
+        if not os.path.exists(file_path):
+            raise FileNotFoundError("File frame video tidak ditemukan")
+        os.makedirs("assets", exist_ok=True)
+        base_name = os.path.basename(file_path).replace(" ", "")
+        dest = os.path.join("assets", base_name)
+        shutil.copy2(file_path, dest)
+        config.video_frame = dest
+        config.save_to_file()
+        return dest
+
+    def clear_video_frame(self) -> None:
+        """Clears the configured frame video."""
+        config.video_frame = None
         config.save_to_file()
 
     def get_available_fonts(self) -> List[str]:

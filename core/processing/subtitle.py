@@ -21,32 +21,35 @@ def burn_subtitle_and_highlight(
 ) -> str:
     # --- Subtitle & Highlight Burning Logic ---
     has_highlight = config.ai.use_highlight and metadata and metadata.get("highlight")
-    should_burn = (use_subtitle and subtitle_generated) or has_highlight
+    has_frame = config.video_frame and os.path.isfile(config.video_frame)
+    should_burn_sub = (use_subtitle and subtitle_generated) or has_highlight
+    should_process = should_burn_sub or has_frame
 
     current_clip = cropped_file
 
-    if should_burn and os.path.exists(subtitle_file):
-        if has_highlight:
-            log.info( f"Adding Highlight text to subtitle file for clip {index}...")
-            try:
-                from core.subtitle import format_ass_time
-                highlight_val = metadata.get("highlight")
-                highlight_text = highlight_val.upper() if highlight_val else None
-                end_ass = format_ass_time(end - start)
+    if should_process:
+        if should_burn_sub and os.path.exists(subtitle_file):
+            if has_highlight:
+                log.info( f"Adding Highlight text to subtitle file for clip {index}...")
+                try:
+                    from core.subtitle import format_ass_time
+                    highlight_val = metadata.get("highlight")
+                    highlight_text = highlight_val.upper() if highlight_val else None
+                    end_ass = format_ass_time(end - start)
 
-                if not use_subtitle:
-                    with open(subtitle_file, "r", encoding="utf-8") as f:
-                        lines = f.readlines()
-                    with open(subtitle_file, "w", encoding="utf-8") as f:
-                        for line in lines:
-                            if not line.startswith("Dialogue:"):
-                                f.write(line)
+                    if not use_subtitle:
+                        with open(subtitle_file, "r", encoding="utf-8") as f:
+                            lines = f.readlines()
+                        with open(subtitle_file, "w", encoding="utf-8") as f:
+                            for line in lines:
+                                if not line.startswith("Dialogue:"):
+                                    f.write(line)
 
-                highlight_event = f"Dialogue: 1,0:00:00.00,{end_ass},Default,,0,0,100,,{{\\an8\\fs90\\c&H00FFFF&\\b1\\3c&H000000&\\3a&H80&\\bord5}}{highlight_text}\n"
-                with open(subtitle_file, "a", encoding="utf-8") as f:
-                    f.write(highlight_event)
-            except Exception as e:
-                log.warning(f"Failed to append highlight to subtitle: {e}")
+                    highlight_event = f"Dialogue: 1,0:00:00.00,{end_ass},Default,,0,0,100,,{{\\an8\\fs90\\c&H00FFFF&\\b1\\3c&H000000&\\3a&H80&\\bord5}}{highlight_text}\n"
+                    with open(subtitle_file, "a", encoding="utf-8") as f:
+                        f.write(highlight_event)
+                except Exception as e:
+                    log.warning(f"Failed to append highlight to subtitle: {e}")
 
         if callable(event_hook):
             try:
@@ -54,7 +57,7 @@ def burn_subtitle_and_highlight(
             except Exception as e:
                 log.debug(f"Event hook error: {e}")
 
-        log.info(f"Burning subtitle/highlight and SFX to video for clip {index}...")
+        log.info(f"Burning subtitle/highlight/frame and SFX to video for clip {index}...")
         fontsdir_arg = ""
         if config.subtitle.fonts_dir and os.path.isdir(config.subtitle.fonts_dir):
             fontsdir_fwd = config.subtitle.fonts_dir.replace("\\", "/")
@@ -77,8 +80,8 @@ def burn_subtitle_and_highlight(
         except ImportError:
             OVERLAY_MAP = {}
 
-        enriched = metadata.get("enriched_transcript", [])
-        visual_emotions = metadata.get("visual_emotions", [])
+        enriched = metadata.get("enriched_transcript", []) if metadata else []
+        visual_emotions = metadata.get("visual_emotions", []) if metadata else []
         blocks = []
 
         def map_emotion(emotion_str: str) -> str:
@@ -136,7 +139,6 @@ def burn_subtitle_and_highlight(
 
             if current_emotion and current_emotion != "neutral":
                 blocks.append((current_emotion, start_t, end_t, current_vfx, current_sfx, current_ov))
-
 
         if len(blocks) > 0:
             last_effect_time = -999.0
@@ -235,8 +237,9 @@ def burn_subtitle_and_highlight(
                     if chosen_sfx["type"] == "external":
                         scheduled_external_sfx.append((chosen_sfx["data"], s))
 
-        subtitle_file_fwd = subtitle_file.replace("\\", "/")
-        vf_chain.append(f"subtitles=filename='{subtitle_file_fwd}'{fontsdir_arg}")
+        if should_burn_sub and os.path.exists(subtitle_file):
+            subtitle_file_fwd = subtitle_file.replace("\\", "/")
+            vf_chain.append(f"subtitles=filename='{subtitle_file_fwd}'{fontsdir_arg}")
 
         if getattr(config, "debug_mode", False):
             from core.subtitle import write_debug_ass_file
@@ -282,13 +285,15 @@ def burn_subtitle_and_highlight(
 
         total_overlays = len(scheduled_overlays)
 
-        if total_sfx > 0 or total_overlays > 0:
+        if total_sfx > 0 or total_overlays > 0 or has_frame:
             cmd_subtitle = [
                 "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
                 "-i", cropped_file
             ]
+            if has_frame and config.video_frame is not None:
+                cmd_subtitle.extend(["-stream_loop", "-1", "-i", config.video_frame])
 
-            sfx_input_offset = 1
+            sfx_input_offset = 2 if has_frame else 1
             for sfx in unique_sfx_files:
                 cmd_subtitle.extend(["-i", sfx])
 
@@ -303,10 +308,24 @@ def burn_subtitle_and_highlight(
                     cmd_subtitle.extend(["-i", ovf])
 
             fc_parts = []
+            out_w, out_h = config.out_width or 720, config.out_height or 1280
+
+            # Scale and chromakey frame video, then overlay on top of [0:v]
+            if has_frame and config.video_frame is not None:
+                frame_input_idx = 1
+                fc_parts.append(f"[{frame_input_idx}:v]scale={out_w}:{out_h},chromakey=0x00B140:0.1:0.1[frame_v]")
+                fc_parts.append(f"[0:v][frame_v]overlay=shortest=1[video_with_frame]")
+
+            start_v_stream = "[video_with_frame]" if has_frame else "[0:v]"
+
+            if vf_chain:
+                vf_filter = f"{start_v_stream}{','.join(vf_chain)}"
+            else:
+                vf_filter = start_v_stream
 
             # --- VIDEO FILTER CHAIN ---
             if total_overlays > 0:
-                fc_parts.append(f"[0:v]{','.join(vf_chain)}[vout_0]")
+                fc_parts.append(f"{vf_filter}[vout_0]")
                 last_v = "[vout_0]"
 
                 for i, ov in enumerate(scheduled_overlays):
@@ -345,7 +364,7 @@ def burn_subtitle_and_highlight(
                 fc_parts.append(f"{last_v}format=yuv420p[vout_final]")
                 map_v = "[vout_final]"
             else:
-                fc_parts.append(f"[0:v]{','.join(vf_chain)},format=yuv420p[vout_final]")
+                fc_parts.append(f"{vf_filter},format=yuv420p[vout_final]")
                 map_v = "[vout_final]"
 
             # --- AUDIO FILTER CHAIN ---

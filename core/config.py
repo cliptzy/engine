@@ -78,6 +78,7 @@ class AppConfig:
     intro_video: Optional[str] = None
     outro_video: Optional[str] = None
     watermark_image: Optional[str] = None
+    video_frame: Optional[str] = None
     watermark_position: str = "center"
     
     output_ratio: str = "9:16"
@@ -156,6 +157,7 @@ class AppConfig:
             "intro_video": self.intro_video,
             "outro_video": self.outro_video,
             "watermark_image": self.watermark_image,
+            "video_frame": self.video_frame,
             "watermark_position": self.watermark_position,
             "output_ratio": self.output_ratio,
             "crop_mode": self.crop_mode,
@@ -255,6 +257,8 @@ class AppConfig:
             self.outro_video = data["outro_video"]
         if "watermark_image" in data:
             self.watermark_image = data["watermark_image"]
+        if "video_frame" in data:
+            self.video_frame = data["video_frame"]
         if "watermark_position" in data:
             self.watermark_position = data["watermark_position"]
         if "output_ratio" in data and data["output_ratio"]:
