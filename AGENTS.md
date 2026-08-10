@@ -164,21 +164,22 @@ Daftar ini adalah _lesson learned_ dari riwayat proyek. AI Model **WAJIB** memba
 
 ---
 
-## 🎭 9. ATURAN PENGELOLAAN SFX & VFX (EFEK AUDIO & VISUAL)
+## 🎭 9. ATURAN PENGELOLAAN VIDEO EFFECTS (MENGGANTIKAN SFX & VFX)
 
-Sistem efek suara (SFX) dan efek visual (VFX) pada Cliptzy dikelola secara dinamis berbasis JSON dan tersentralisasi untuk sinkronisasi otomatis antara prompt AI Detector dan rantai filter (filter chain) FFmpeg.
+Sistem efek suara (SFX), efek visual (VFX), dan overlay yang lama telah **dihapus dan digantikan sepenuhnya** oleh sistem `video_effect` yang terintegrasi (melalui `VideoEffectManager` di `core/video_effects.py`).
 
-1. **Sentralisasi Melalui Manager (`core/sfx.py` & `core/vfx.py`)**:
+1. **Sentralisasi Melalui Manager (`core/video_effects.py`)**:
    - Dilarang keras melakukan _hardcode_ pencocokan emosi (seperti `if emo == "sad": ...`) langsung di dalam `core/processing/subtitle.py` atau tempat lain.
-   - Penambahan, pengurangan, atau pengubahan emosi beserta deskripsinya **WAJIB** dilakukan melalui fungsi pemetaan (seperti `_load_default()`) pada kelas managernya. `core/processing/subtitle.py` akan otomatis beradaptasi dengan daftar emosi ini.
-2. **Kesesuaian Filter FFmpeg (Timeline Support)**:
-   - Opsi filter FFmpeg (`vf` dan `af`) yang ditambahkan pada konfigurasi VFX **WAJIB** mendukung evaluasi timeline/waktu (`enable='between(...)'`).
-   - Hindari filter yang menyebabkan _crash_ karena tidak mendukung `enable` (misal: `aphaser`). Gunakan filter yang terbukti aman seperti `tremolo`, `bass`, `lowpass`, `eq`, `geq`, `hue`, `vignette`, dll.
-3. **Pembaruan Konfigurasi Sinkron**:
-   - Setiap kali memodifikasi `_load_default()` di kode sumber, Anda **WAJIB** menghapus file konfigurasi eksternal yang sudah ada (yaitu `sfx.json` dan `vfx.json`) melalui terminal agar saat aplikasi dijalankan kembali, sistem meregenerasi file JSON tersebut dengan pengaturan standar yang baru.
+   - Penambahan, pengurangan, atau pengubahan emosi beserta aset videonya **WAJIB** dilakukan melalui mapping pada `VideoEffectManager`.
+   - Setiap emosi harus memiliki setidaknya 5 variasi aset video untuk menghindari repetisi.
+2. **Aturan Audio untuk Video Effects**:
+   - Semua efek video secara default **wajib** memiliki `audio_filter` yang mengatur volume agar selalu lebih rendah dari audio utama (misalnya `volume=0.2`).
+   - Efek video **wajib** memiliki konfigurasi _audio fade out_ (menggunakan `afade=t=out:st=...:d=...`) agar transisinya mulus dan tidak terpotong tiba-tiba di akhir efek.
+3. **Kesesuaian Filter FFmpeg (Timeline Support)**:
+   - Hindari filter tambahan yang menyebabkan _crash_. Jika menambahkan efek visual dinamis, pastikan opsi filter FFmpeg mendukung evaluasi timeline/waktu (`enable='between(...)'`).
 4. **Skema Pengujian (Testing Scheme)**:
    - **Verifikasi Substring Emosi**: Ujicoba logika `map_emotion` menggunakan script Python singkat untuk memastikan string respon AI (meski kotor/bercampur kata lain) dapat dipetakan dengan tepat ke *key* di manager.
-   - **Verifikasi Keutuhan Render FFmpeg (Kritis)**: Lakukan uji coba rendering untuk melihat apakah command string FFmpeg gagal terbentuk atau ditolak oleh *binary* FFmpeg (contoh: error sintaks filter, argumen tidak dikenali, atau *timeline not supported*). Pastikan log tidak memunculkan "FFmpeg subtitle filter failed".
+   - **Verifikasi Keutuhan Render FFmpeg (Kritis)**: Lakukan uji coba rendering untuk melihat apakah command string FFmpeg gagal terbentuk atau ditolak oleh *binary* FFmpeg (contoh: error sintaks filter, argumen tidak dikenali, atau *timeline not supported*). Pastikan log tidak memunculkan "FFmpeg subtitle/video effect filter failed".
 
 ---
 

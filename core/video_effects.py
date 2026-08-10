@@ -3,44 +3,22 @@ import random
 from typing import Dict, List, Optional
 from core.logger import log
 from core.utils import get_app_root
+from core.constant import VALID_EMOTIONS
 
 class VideoEffectManager:
     def __init__(self):
         self.root = get_app_root()
         self.effects_dir = os.path.join(self.root, "assets", "video_effects")
 
-        # Hardcoded video effects mapping
-        # type: "greenscreen" (needs colorkey), "alpha" (transparent webm/mov), "fullscreen" (opaque overlay)
-        self.effects_map: Dict[str, List[Dict]] = {
-            "happy": [
-                {"name": "Happy Jump", "file": "Shocked Face Meme.mp4", "type": "greenscreen", "key_color": "0x00FF00"}
-            ],
-            "sad": [
-                {"name": "Happy Jump", "file": "Shocked Face Meme.mp4", "type": "greenscreen", "key_color": "0x00FF00"}
-            ],
-            "angry": [
-                {"name": "Happy Jump", "file": "Shocked Face Meme.mp4", "type": "greenscreen", "key_color": "0x00FF00"}
-            ],
-            "shock": [
-                {"name": "Happy Jump", "file": "Shocked Face Meme.mp4", "type": "greenscreen", "key_color": "0x00FF00"}
-            ],
-            "fear": [
-                {"name": "Happy Jump", "file": "Shocked Face Meme.mp4", "type": "greenscreen", "key_color": "0x00FF00"}
-            ],
-            "disgust": [
-                {"name": "Happy Jump", "file": "Shocked Face Meme.mp4", "type": "greenscreen", "key_color": "0x00FF00"}
-            ],
-            "neutral": [],
-            "fun": [
-                {"name": "Happy Jump", "file": "Shocked Face Meme.mp4", "type": "greenscreen", "key_color": "0x00FF00"}
-            ],
-            "laugh": [
-                {"name": "Happy Jump", "file": "Shocked Face Meme.mp4", "type": "greenscreen", "key_color": "0x00FF00"}
-            ],
-            "love": [
-                {"name": "Happy Jump", "file": "Shocked Face Meme.mp4", "type": "greenscreen", "key_color": "0x00FF00"}
-            ]
-        }
+        self.effects_map = {}
+        for emo in VALID_EMOTIONS:
+            json_path = os.path.join(self.root, "core", "constant", f"{emo}.json")
+            if os.path.exists(json_path):
+                import json
+                with open(json_path, 'r', encoding='utf-8') as jf:
+                    self.effects_map[emo] = json.load(jf)
+            else:
+                self.effects_map[emo] = []
 
         # Ensure directory exists but don't create JSON config
         os.makedirs(self.effects_dir, exist_ok=True)

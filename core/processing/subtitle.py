@@ -90,6 +90,7 @@ def burn_subtitle_and_highlight(
         if isinstance(enriched, list) and len(enriched) > 0 and config.subtitle.style != "plain":
             current_emotion = None
             current_ve = "random"
+            current_score = 0.0
             start_t = 0.0
             end_t = 0.0
 
@@ -99,19 +100,26 @@ def burn_subtitle_and_highlight(
 
                 w_s = float(w.get("start", 0.0))
                 w_e = float(w.get("end", 0.0))
+                
+                try:
+                    w_score = float(w.get("score", 0.0))
+                except Exception:
+                    w_score = 0.0
 
                 if (mapped == current_emotion and w_ve == current_ve and (w_s - end_t) <= 1.0):
                     end_t = w_e
+                    current_score = max(current_score, w_score)
                 else:
                     if current_emotion and current_emotion != "neutral":
-                        blocks.append((current_emotion, start_t, end_t, current_ve))
+                        blocks.append((current_emotion, start_t, end_t, current_ve, current_score))
                     current_emotion = mapped
                     current_ve = w_ve
+                    current_score = w_score
                     start_t = w_s
                     end_t = w_e
 
             if current_emotion and current_emotion != "neutral":
-                blocks.append((current_emotion, start_t, end_t, current_ve))
+                blocks.append((current_emotion, start_t, end_t, current_ve, current_score))
 
         if len(blocks) > 0:
             last_effect_time = -999.0
@@ -126,12 +134,12 @@ def burn_subtitle_and_highlight(
 
             max_eff = getattr(config, "max_effects_per_clip", 3)
             if len(filtered_blocks) > max_eff:
-                selected_blocks = random.sample(filtered_blocks, max_eff)
+                selected_blocks = sorted(filtered_blocks, key=lambda x: x[4], reverse=True)[:max_eff]
                 selected_blocks.sort(key=lambda x: x[1])
             else:
                 selected_blocks = filtered_blocks
 
-            for emo, s, e, ve_idx_str in selected_blocks:
+            for emo, s, e, ve_idx_str, _score in selected_blocks:
                 e = e + 0.3
                 effect = None
                 
@@ -156,7 +164,8 @@ def burn_subtitle_and_highlight(
                             "key_color": effect.get("key_color", "0x00FF00"),
                             "start": s,
                             "end": e,
-                            "position": effect.get("position", "center")
+                            "position": effect.get("position", "center"),
+                            "audio_filter": effect.get("audio_filter", "volume=0.2,afade=t=out:st=1.5:d=0.5")
                         })
                     else:
                         log.debug(f"Video effect dilewati karena file tidak ditemukan: {eff_file}")
@@ -262,7 +271,8 @@ def burn_subtitle_and_highlight(
                     
                     delay_ms = int(ve_start * 1000)
                     ve_a = f"[ve_a_{i}]"
-                    fc_parts.append(f"[{ve_idx}:a]adelay={delay_ms}|{delay_ms}{ve_a}")
+                    audio_filter = ve.get("audio_filter", "volume=0.2")
+                    fc_parts.append(f"[{ve_idx}:a]{audio_filter},adelay={delay_ms}|{delay_ms}{ve_a}")
                     a_mix_inputs += ve_a
                     a_mix_count += 1
 

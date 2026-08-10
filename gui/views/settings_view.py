@@ -395,11 +395,11 @@ class SettingsView(ft.Container):
             if result.get("success"):
                 self.sync_status_text.value = f"✅ {result.get('message', 'Backup berhasil!')}"
                 self.sync_status_text.color = ft.Colors.GREEN_400
-                show_snackbar(self.page, f"Backup berhasil! ({result.get('success_count', 0)} item)", ft.Colors.GREEN_700)
+                show_snackbar(self.page, f"Backup berhasil! ({result.get('success_count', 0)} item)", False)
             else:
                 self.sync_status_text.value = f"⚠️ {result.get('message', 'Backup selesai dengan beberapa error.')}"
                 self.sync_status_text.color = ft.Colors.ORANGE_400
-                show_snackbar(self.page, result.get('message', 'Backup selesai dengan error.'), ft.Colors.ORANGE_700)
+                show_snackbar(self.page, result.get('message', 'Backup selesai dengan error.'), True)
 
             self._page.update()
 
@@ -468,7 +468,7 @@ class SettingsView(ft.Container):
             if fail_count == 0:
                 self.sync_status_text.value = "✅ Restore berhasil! Memulai ulang aplikasi..."
                 self.sync_status_text.color = ft.Colors.GREEN_400
-                show_snackbar(self.page, "Restore berhasil! Memulai ulang aplikasi...", ft.Colors.GREEN_700)
+                show_snackbar(self.page, "Restore berhasil! Memulai ulang aplikasi...", False)
                 self._page.update()
                 await asyncio.sleep(1.5)
                 try:
@@ -480,7 +480,7 @@ class SettingsView(ft.Container):
             else:
                 self.sync_status_text.value = f"⚠️ {msg}"
                 self.sync_status_text.color = ft.Colors.ORANGE_400
-                show_snackbar(self.page, msg, ft.Colors.ORANGE_700)
+                show_snackbar(self.page, msg, True)
 
             self._page.update()
 
@@ -521,7 +521,7 @@ class SettingsView(ft.Container):
         from gui.event_bus import event_bus
 
         supabase_sync.logout()
-        show_snackbar(self.page, "Berhasil logout. Aplikasi dikunci.", ft.Colors.BLUE_700)
+        show_snackbar(self.page, "Berhasil logout. Aplikasi dikunci.", False)
 
         # Kirim event LOGOUT untuk mengunci aplikasi kembali ke halaman login
         event_bus.publish("LOGOUT")
@@ -641,11 +641,11 @@ class SettingsView(ft.Container):
             if success:
                 self.dep_status_text.value = "✅ Semua dependensi berhasil dipasang!"
                 self.dep_status_text.color = ft.Colors.GREEN_400
-                show_snackbar(self.page, "Instalasi dependensi berhasil!", ft.Colors.GREEN_700)
+                show_snackbar(self.page, "Instalasi dependensi berhasil!", False)
             else:
                 self.dep_status_text.value = "❌ Gagal memasang beberapa dependensi. Periksa log."
                 self.dep_status_text.color = ft.Colors.RED_400
-                show_snackbar(self.page, "Gagal memasang dependensi.", ft.Colors.RED_700)
+                show_snackbar(self.page, "Gagal memasang dependensi.", True)
 
             # Cek status ulang setelah selesai
             self.update_dependency_status()
@@ -670,9 +670,9 @@ class SettingsView(ft.Container):
                     self.tt_session.update()
                 except Exception:
                     pass
-                show_snackbar(self.page, f"File cookies TikTok berhasil diimpor ke '{target_path}'", ft.Colors.GREEN_700)
+                show_snackbar(self.page, f"File cookies TikTok berhasil diimpor ke '{target_path}'", False)
             except Exception as ex:
-                show_snackbar(self.page, f"Gagal mengimpor cookies: {ex}", ft.Colors.RED_700)
+                show_snackbar(self.page, f"Gagal mengimpor cookies: {ex}", True)
 
     async def on_import_ig_cookies_clicked(self, e) -> None:
         files = await self.ig_cookies_picker.pick_files(
@@ -691,9 +691,9 @@ class SettingsView(ft.Container):
                     self.ig_session.update()
                 except Exception:
                     pass
-                show_snackbar(self.page, f"File cookies Instagram berhasil diimpor ke '{target_path}'", ft.Colors.GREEN_700)
+                show_snackbar(self.page, f"File cookies Instagram berhasil diimpor ke '{target_path}'", False)
             except Exception as ex:
-                show_snackbar(self.page, f"Gagal mengimpor cookies: {ex}", ft.Colors.RED_700)
+                show_snackbar(self.page, f"Gagal mengimpor cookies: {ex}", True)
 
     def check_all_platforms_auth(self, e) -> None:
         self.btn_check_all_auth.disabled = True
@@ -737,20 +737,13 @@ class SettingsView(ft.Container):
             self.auth_check_result_text.color = ft.Colors.WHITE
 
             if yt_ok and tt_ok and ig_ok:
-                show_snackbar(self.page, "Semua platform valid!", ft.Colors.GREEN_700)
+                show_snackbar(self.page, "Semua platform valid!", False)
             else:
-                show_snackbar(self.page, "Beberapa platform gagal diautentikasi.", ft.Colors.ORANGE_700)
+                show_snackbar(self.page, "Beberapa platform gagal diautentikasi.", True)
 
             self._page.update()
 
         self._page.run_task(do_check)
-
-    def _show_snackbar(self, message: str, color) -> None:
-        """Tampilkan SnackBar notifikasi."""
-        snack = ft.SnackBar(ft.Text(message, color=ft.Colors.WHITE), bgcolor=color) # type: ignore
-        self._page.overlay.append(snack)
-        snack.open = True
-        self._page.update()
 
     def on_ai_provider_changed(self, e = None) -> None:
         provider = self.ai_provider_dropdown.value
@@ -816,7 +809,7 @@ class SettingsView(ft.Container):
         config.instagram.session = self.ig_session.value or ""
 
         if config.save_to_file():
-            show_snackbar(self.page, "Pengaturan berhasil disimpan!", ft.Colors.GREEN_700)
+            show_snackbar(self.page, "Pengaturan berhasil disimpan!", False)
 
     def update_cache_size(self) -> None:
         async def run_calc():
@@ -875,7 +868,7 @@ class SettingsView(ft.Container):
 
             await asyncio.to_thread(clear_ops)
             self.clear_cache_btn.disabled = False
-            show_snackbar(self.page, "Cache clips berhasil dibersihkan!", ft.Colors.GREEN_700)
+            show_snackbar(self.page, "Cache clips berhasil dibersihkan!", False)
             self.update_cache_size()
 
         self._page.run_task(run_clear)

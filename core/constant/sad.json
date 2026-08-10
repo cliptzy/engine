@@ -1,0 +1,30 @@
+[
+    {
+        "name": "cryman",
+        "file": "cryman.mp4",
+        "type": "greenscreen",
+        "key_color": "0x00FF00",
+        "audio_filter": "volume=0.2,afade=t=out:st=0.75:d=0.5"
+    },
+    {
+        "name": "nononono",
+        "file": "nononono.mp4",
+        "type": "greenscreen",
+        "key_color": "0x00FF00",
+        "audio_filter": "volume=0.2,afade=t=out:st=1.75:d=0.5"
+    },
+    {
+        "name": "spongebobdisappoint",
+        "file": "spongebobdisappoint.mp4",
+        "type": "greenscreen",
+        "key_color": "0x00FF00",
+        "audio_filter": "volume=0.2,afade=t=out:st=1.24:d=0.5"
+    },
+    {
+        "name": "minecraftfail",
+        "file": "minecraftfail.mp4",
+        "type": "greenscreen",
+        "key_color": "0x00FF00",
+        "audio_filter": "volume=0.2,afade=t=out:st=0.00:d=0.5"
+    }
+]

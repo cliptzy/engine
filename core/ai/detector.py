@@ -197,17 +197,13 @@ class AIHighlightDetector:
             clip_text = clip_text[:10000] + "..."
 
         context_str = f"- Konteks Tambahan dari Pengguna: {user_context}\n" if user_context else ""
-
-        try:
-            from core.sfx import sfx_manager
-            emotions = sfx_manager.sfx_map
-        except Exception:
-            emotions = {}
+        from core.constant import VALID_EMOTIONS, EMOTION_DESCRIPTIONS
 
         emotion_lines = []
         i = 1
-        for emo, data in emotions.items():
-            desc = data.get("desc", emo) if isinstance(data, dict) else emo
+        for emo in VALID_EMOTIONS:
+            if emo == "neutral": continue
+            desc = EMOTION_DESCRIPTIONS.get(emo, emo)
             emotion_lines.append(f"{i}. \"{emo}\" : {desc}")
             i += 1
 
@@ -231,11 +227,14 @@ Konteks Video: {channel_name} - {youtube_title} ({youtube_url})
 ATURAN:
 1. `highlight` sangat singkat (maks 3-4 kata).
 2. Jika `words_data` ada, tulis ulang ke `enriched_transcript` dengan menambah field `emotion` dan `color` (Hex: #FFFF00 untuk netral, warna mencolok untuk emosi kuat).
-3. FUSI & PRIORITAS EMOSI:
-   Anda memiliki 3 sumber: Wajah (Visual Emotion), Suara (voice_emotion: angry/happy/sad/etc), dan Makna Teks.
-   Prioritas: Wajah (Visual) > Suara (voice_emotion) > Teks.
-   - PENTING MUTLAK: Jika Wajah bernilai "neutral" (muka datar), Anda WAJIB menggunakan emosi dari Suara (`voice_emotion`) sebagai hasil akhir `emotion`. JANGAN jadikan 'neutral' jika Suara memiliki emosi!
-   - Wajah dan Nada suara jarang berbohong (deteksi sarkasme). Jika Wajah="surprise" dan Suara="yelling", pastikan kata tersebut dilabeli emosi ekstrim dengan warna kuat (misal #FF0000).
+3. Tambahkan field `score` ke `enriched_transcript` untuk setiap kata, dengan nilai antara 0.0 hingga 1.0.
+4. SINTESIS EMOSI HOLISTIK:
+   Anda memiliki 3 sumber: Wajah (Visual Emotion), Suara (voice_emotion), dan Makna Teks.
+   Mengingat bahwa pendeteksi emosi wajah dan suara oleh AI/mesin sering kali kurang akurat (misalnya teriakan panik sering dideteksi sebagai "angry", atau ekspresi bingung disangka "sad"), JANGAN MENGGUNAKAN SKALA PRIORITAS KAKU.
+   Tugas Anda adalah MEMPERTIMBANGKAN KETIGA VARIABEL TERSEBUT SECARA KONTEKSTUAL untuk menentukan emosi yang paling logis.
+   - Gunakan makna teks sebagai panduan utama jika Wajah/Suara terlihat bertentangan atau ekstrem.
+   - Contoh: Jika Wajah/Suara mendeteksi "angry" namun teksnya menunjukkan kepanikan ("lari", "tolong", "aaaa"), maka emosi yang benar adalah "fear" atau "shock".
+   - Gabungkan sinyal dari ketiga sumber tersebut untuk menghasilkan 1 kesimpulan emosi akhir yang paling mewakili situasi sebenarnya.
 
 KATEGORI EMOSI VALID:
 {emotion_str}
@@ -253,7 +252,7 @@ Format Output JSON:
     "tags": "#...",
     "highlight": "...",
     "enriched_transcript": [
-        {{"word": "kata", "start": 0.0, "end": 0.5, "emotion": "surprise", "color": "#FF0000", "voice_emotion": "angry"}}
+        {{"word": "kata", "start": 0.0, "end": 0.5, "emotion": "surprise", "color": "#FF0000", "voice_emotion": "angry", "score": 0.8}}
     ]
 }}
 ```
