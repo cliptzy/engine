@@ -110,6 +110,8 @@ class ClipVideoUseCase:
         config.subtitle.style = str(subtitle_style)
         
         config.padding = max(0, int(padding if padding is not None else 10))
+        if "min_duration" in payload:
+            config.min_duration = int(payload["min_duration"])
         config.set_ratio_preset(ratio)
 
         job_dir = os.path.join("clips", video_id)
@@ -166,7 +168,7 @@ class ClipVideoUseCase:
             targets = [{"start": float(start_s), "duration": float(end_s - start_s), "score": 1.0}]
         else:
             log.info( "Memindai segmen most replayed...")
-            segments = fetch_most_replayed(video_id, config.min_score, config.max_duration)
+            segments = fetch_most_replayed(video_id, config.min_score)
             if not segments:
                 raise RuntimeError("Data Most Replayed / Heatmap tidak ditemukan untuk video ini")
             targets = segments[: max(1, int(max_clips) if max_clips else 10)]

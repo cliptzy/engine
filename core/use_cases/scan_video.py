@@ -51,7 +51,7 @@ class ScanVideoUseCase:
             if self.reporter:
                 self.reporter.on_log("Memindai segmen most replayed...")
 
-            segments = fetch_most_replayed(video_id, config.min_score, config.max_duration)
+            segments = fetch_most_replayed(video_id, config.min_score)
             total_duration = get_video_duration(video_id)
         
         write_json(cache_file, {"duration": total_duration, "segments": segments})

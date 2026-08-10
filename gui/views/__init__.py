@@ -7,3 +7,4 @@ __all__ = [
     "CreatorHubView",
     "SettingsView",
 ]
+from .debugger_view import DebuggerView

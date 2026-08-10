@@ -18,10 +18,10 @@ def get_whisper_model(whisper_model_name: str, event_hook: Optional[Callable[[st
         if callable(event_hook):
             try: event_hook("stage", {"stage": "subtitle_model_load"})
             except Exception: pass
-            
+
         from core.config import config
         device = "cuda" if getattr(config, "hw_accel", "cpu").lower() in ["nvidia", "nvenc"] else "cpu"
-        
+
         log.info(f"Loading Faster-Whisper model '{whisper_model_name}' (Global) on {device}...")
         _global_whisper_model = WhisperModel(whisper_model_name, device=device, compute_type="int8")
         log.info("Model loaded successfully.")
@@ -56,7 +56,7 @@ def _transcribe_with_language_sync(model, audio_file: str, word_timestamps: bool
         vad_filter=True,
         vad_parameters=dict(min_silence_duration_ms=500)
     )
-        
+
     return segments_gen
 
 def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, event_hook: Optional[Callable[[str, Any], None]] = None) -> tuple[bool, str, list]:
@@ -70,50 +70,50 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
         log.error("faster_whisper module not found. Please install it.")
         return False, "", []
 
-        
+
     from core.config import config
     from core.utils import get_preview_data
-    
+
     preview_data = get_preview_data()
     target_lang = preview_data.get("language") if preview_data else None
-    
+
     audio_wav = video_file + ".wav"
 
     def load_and_transcribe():
-        log.info("[ffmpeg] Mengekstrak audio PCM murni (.wav) untuk memastikan subtitle sinkron 100%...")
-            
+        log.info("[ffmpeg] Mengekstrak audio PCM (.wav)...")
+
         cmd_extract = [
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
             "-i", video_file,
             "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
             audio_wav
         ]
-        
+
         try:
             subprocess.run(cmd_extract, check=True)
             current_audio = audio_wav
         except Exception as e:
             log.warning(f"Gagal mengekstrak .wav, fallback ke original video: {e}")
             current_audio = video_file
-            
+
         model = get_whisper_model(whisper_model, event_hook)
         if not model:
             return []
-        
+
         log.info("Transcribing audio...")
         if callable(event_hook):
             try: event_hook("stage", {"stage": "subtitle_transcribe"})
             except Exception: pass
-            
+
         segments_gen = _transcribe_with_language_sync(model, current_audio, word_timestamps=True, target_lang=target_lang)
-        
+
         segments = []
         for s in segments_gen:
             msg = f"[whisper-segment] {s.start:.2f}s - {s.end:.2f}s : {s.text}"
             log.info(msg)
             segments.append(s)
-            
-            
+
+
         return segments
 
     try:
@@ -137,12 +137,12 @@ def generate_subtitle(video_file: str, subtitle_file: str, whisper_model: str, e
             event_hook("stage", {"stage": "subtitle_write"})
         except Exception as e:
             log.debug(f"Event hook error: {e}")
-            
+
     log.info("Generating ASS subtitle file...")
     try:
         alignment = "2" if config.subtitle.location == "bottom" else "5"
         margin_v = "200" if config.subtitle.location == "bottom" else "0"
-        
+
         ass_header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 720
@@ -165,11 +165,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 chunks = []
                 for i in range(0, len(words), max(1, config.subtitle.max_words)):
                     chunks.append(words[i:i + config.subtitle.max_words])
-                
+
                 for chunk in chunks:
                     word_start = max(0.0, chunk[0].start + config.subtitle.delay)
                     word_end = max(0.0, chunk[-1].end + config.subtitle.delay)
-                    
+
                     # Prevent stuck subtitle if Whisper fails to detect proper end boundary
                     if word_end - word_start > 2.0:
                         word_end = word_start + 2.0
@@ -178,7 +178,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     text = " ".join([w.word.strip() for w in chunk if w.word.strip()])
                     if not text:
                         continue
-                        
+
                     for w in chunk:
                         w_text = w.word.strip()
                         if w_text:
@@ -187,7 +187,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                                 "start": max(0.0, w.start + config.subtitle.delay),
                                 "end": max(0.0, w.end + config.subtitle.delay)
                             })
-                    
+
                     log.info(f"[whisper] {start_time} --> {end_time} : {text}")
 
                     if config.subtitle.animation == "scale":
@@ -195,14 +195,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     else:
                         ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{text}\n"
                     f.write(ass_line)
-            
+
             # Combine all text for AI metadata generation
             full_transcript = " ".join([s.text.strip() for s in segments if s.text.strip()])
-            
+
             # Analyze voice levels
             from core.processing.voice_analyzer import analyze_voice_emotions
             analyze_voice_emotions(audio_wav, words_data)
-                    
+
     except Exception as e:
         log.error(f"Failed to write subtitle file: {e}")
         return False, "", []
@@ -236,10 +236,10 @@ def transcribe_audio_file(audio_file: str, whisper_model: str = "small", event_h
 
 def write_enriched_ass_file(enriched_transcript: list, subtitle_file: str, event_hook: Optional[Callable[[str, Any], None]] = None):
     from core.config import config
-    
+
     alignment = "2" if config.subtitle.location == "bottom" else "5"
     margin_v = "200" if config.subtitle.location == "bottom" else "0"
-    
+
     ass_header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 720
@@ -265,28 +265,28 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     try:
         with open(subtitle_file, "w", encoding="utf-8") as f:
             f.write(ass_header)
-            
+
             chunks = []
             for i in range(0, len(enriched_transcript), max(1, config.subtitle.max_words)):
                 chunks.append(enriched_transcript[i:i + config.subtitle.max_words])
-            
+
             for chunk in chunks:
                 if not chunk:
                     continue
-                
+
                 is_plain = config.subtitle.style == "plain"
-                
+
                 # Create multiple lines per chunk for active word highlighting
                 for active_idx, active_word in enumerate(chunk):
                     start_s = float(active_word.get("start", 0))
                     end_s = float(active_word.get("end", 0))
-                    
+
                     if end_s < start_s:
                         end_s = start_s + 0.5
-                        
+
                     start_time = format_ass_time(start_s)
                     end_time = format_ass_time(end_s)
-                    
+
                     line_text = ""
                     for idx, w in enumerate(chunk):
                         word_str = w.get("word", "").strip()
@@ -302,31 +302,31 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         is_angry = (str(w.get("emotion", "")).lower() == "angry")
                         if is_angry:
                             word_str = word_str.upper()
-                            
+
                         if idx == active_idx:
                             # Highlighted word
                             color_hex = w.get("color", "")
                             ass_c = hex_to_ass_color(color_hex)
-                            
+
                             anim = ""
                             reset_anim = "\\fscx100\\fscy100"
                             target_scale = 130 if is_angry else 100
-                            
+
                             if config.subtitle.animation == "scale":
                                 anim = f"\\fscx50\\fscy50\\t(0,150,\\fscx{target_scale}\\fscy{target_scale})"
                             elif is_angry:
                                 anim = f"\\fscx{target_scale}\\fscy{target_scale}"
-                            
+
                             line_text += f"{{\\c{ass_c}{anim}}}{word_str}{{\\c{config.subtitle.color}{reset_anim}}} "
                         else:
                             # Normal word
                             line_text += f"{word_str} "
-                            
+
                     line_text = line_text.strip()
                     if line_text:
                         ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{line_text}\n"
                         f.write(ass_line)
-                        
+
             log.info(f"[subtitle] Berhasil menulis ulang ASS subtitle dengan {len(enriched_transcript)} kata yang diperkaya.")
     except Exception as e:
         log.error(f"Failed to write enriched subtitle file: {e}")
@@ -334,7 +334,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 def write_debug_ass_file(metadata: dict, debug_file: str) -> bool:
     """Writes an ASS file containing debug information (emotion and voice level) per second."""
     from core.config import config
-    
+
     ass_header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 720
@@ -350,12 +350,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     try:
         with open(debug_file, "w", encoding="utf-8") as f:
             f.write(ass_header)
-            
+
             enriched = metadata.get("enriched_transcript", [])
             visual_emotions = metadata.get("visual_emotions", [])
-            
+
             timeline = {}
-            
+
             def add_to_timeline(start_s, end_s, text):
                 start_sec = int(start_s)
                 end_sec = int(end_s)
@@ -365,7 +365,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         timeline[sec] = []
                     if text not in timeline[sec]:
                         timeline[sec].append(text)
-            
+
             for w in enriched:
                 s = float(w.get("start", 0))
                 e = float(w.get("end", 0))
@@ -373,7 +373,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 voice = w.get("voice_emotion", "neutral")
                 info = f"TEKS: emo={emo}, suara={voice}"
                 add_to_timeline(s, e, info)
-                    
+
             for ve in visual_emotions:
                 s = float(ve.get("time", 0))
                 emo = ve.get("emotion", "neutral")
@@ -383,22 +383,22 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 else:
                     info = f"VISUAL: emo={emo}"
                 add_to_timeline(s, s + 1.0, info)
-                
+
             max_sec = max(timeline.keys()) if timeline else 0
             for sec in range(0, max_sec + 1):
                 if sec not in timeline:
                     timeline[sec] = ["VISUAL: emo=neutral | TEKS: emo=neutral, nada=normal"]
-                    
+
             for sec in sorted(timeline.keys()):
                 infos = " | ".join(timeline[sec])
                 text = f"Detik {sec:02d}: {infos}"
-                
+
                 start_time = format_ass_time(sec)
                 end_time = format_ass_time(sec + 0.99)
-                
+
                 ass_line = f"Dialogue: 9,{start_time},{end_time},DebugInfo,,0,0,0,,{text}\n"
                 f.write(ass_line)
-                
+
         return True
     except Exception as e:
         from core.logger import log

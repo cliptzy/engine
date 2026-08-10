@@ -71,13 +71,9 @@ class LoginView(ft.Container):
         self._page.run_task(do_login)
 
     def show_error(self, msg: str):
-        snack = ft.SnackBar(ft.Text(msg, color=ft.Colors.WHITE), bgcolor=ft.Colors.RED_700) # type: ignore
-        self._page.overlay.append(snack)
-        snack.open = True
-        self._page.update()
+        from gui.ui_utils import show_snackbar
+        show_snackbar(self._page, msg, error=True)
         
     def show_success(self, msg: str):
-        snack = ft.SnackBar(ft.Text(msg, color=ft.Colors.WHITE), bgcolor=ft.Colors.GREEN_700) # type: ignore
-        self._page.overlay.append(snack)
-        snack.open = True
-        self._page.update()
+        from gui.ui_utils import show_snackbar
+        show_snackbar(self._page, msg)

@@ -16,7 +16,8 @@ Kriteria Pemilihan Momen (Wajib Dipenuhi):
 2. Memiliki Hook & Payoff: Klip harus diawali dengan pernyataan/kejadian menarik (hook) dan diakhiri dengan konklusi/punchline yang jelas (payoff).
 3. Kelengkapan Konteks: Jangan pernah memotong percakapan di tengah kalimat atau menyisakan informasi yang menggantung.
 4. Durasi Klip: Total durasi setiap klip HARUS di antara 15 hingga 60 detik.
-5. Larangan: Tidak boleh opening dan closing video
+5. Tidak boleh opening dan closing video (menit awal dan akhir video)
+6. Jarak antar momen harus cukup jauh (minimal 5 menit)
 
 Aturan Output:
 Karena output Anda akan dibaca oleh sistem, Anda HANYA boleh merespons dengan JSON Object yang valid di dalam blok kode Markdown (```json ... ```). Jangan menambahkan teks pengantar atau penutup di luar blok JSON tersebut.

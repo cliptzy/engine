@@ -1,3 +1,4 @@
+from gui.ui_utils import show_snackbar
 import flet as ft
 from typing import Any, cast
 from core import controller
@@ -58,9 +59,9 @@ class VideoInput(ft.Container):
         if files and len(files) > 0 and files[0].path:
             try:
                 controller.import_cookies(files[0].path)
-                self._show_snackbar("File cookies.txt berhasil diimpor!")
+                show_snackbar(self.page_ref, "File cookies.txt berhasil diimpor!")
             except Exception as ex:
-                self._show_snackbar(f"Gagal mengimpor cookies: {ex}", error=True)
+                show_snackbar(self.page_ref, f"Gagal mengimpor cookies: {ex}", error=True)
                 
     async def on_browse_video(self, e: Any) -> None:
         files = await self.video_picker.pick_files(
@@ -90,9 +91,4 @@ class VideoInput(ft.Container):
         except Exception:
             pass
 
-    def _show_snackbar(self, message: str, error: bool = False) -> None:
-        bgcolor = ft.Colors.RED_700 if error else ft.Colors.GREEN_700
-        sb = ft.SnackBar(ft.Text(message, color=ft.Colors.WHITE), bgcolor=bgcolor)
-        sb.open = True
-        self.page_ref.overlay.append(sb)
-        self.page_ref.update()
+

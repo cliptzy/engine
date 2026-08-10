@@ -1,3 +1,4 @@
+from gui.ui_utils import show_snackbar
 import flet as ft
 from typing import Any, cast
 import os
@@ -533,10 +534,7 @@ class UploadDistribution(ft.Container):
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
             
-        snack = ft.SnackBar(ft.Text("Metadata berhasil disimpan!", color=ft.Colors.WHITE), bgcolor=ft.Colors.GREEN_700) # type: ignore
-        self._page.overlay.append(snack)
-        snack.open = True
-        self._page.update()
+        show_snackbar(self._page, "Metadata berhasil disimpan!")
 
     def generate_ai_metadata(self, e: Any) -> None:
         if not self.current_clip_index:
@@ -573,10 +571,7 @@ class UploadDistribution(ft.Container):
                 pass
                 
         if not transcript and not youtube_title:
-            snack = ft.SnackBar(ft.Text("Tidak ada konteks video (transkrip/judul) untuk AI.", color=ft.Colors.WHITE), bgcolor=ft.Colors.RED_700) # type: ignore
-            self._page.overlay.append(snack)
-            snack.open = True
-            self._page.update()
+            show_snackbar(self._page, "Tidak ada konteks video (transkrip/judul) untuk AI.", error=True)
             return
             
         # Run AI generation in background
@@ -635,10 +630,7 @@ class UploadDistribution(ft.Container):
     def handle_upload(self, e: Any) -> None:
         selected_clips = [chk.data for chk in self.clips_to_upload if chk.value]
         if not selected_clips:
-            snack = ft.SnackBar(ft.Text("Pilih setidaknya satu klip untuk di-upload!", color=ft.Colors.WHITE), bgcolor=ft.Colors.RED_700) # type: ignore
-            self._page.overlay.append(snack)
-            snack.open = True
-            self._page.update()
+            show_snackbar(self._page, "Pilih setidaknya satu klip untuk di-upload!", error=True)
             return
             
         platforms = []
@@ -647,10 +639,7 @@ class UploadDistribution(ft.Container):
         if self.platform_ig.value: platforms.append("Instagram Reels")
         
         if not platforms:
-            snack = ft.SnackBar(ft.Text("Pilih setidaknya satu platform tujuan upload!", color=ft.Colors.WHITE), bgcolor=ft.Colors.RED_700) # type: ignore
-            self._page.overlay.append(snack)
-            snack.open = True
-            self._page.update()
+            show_snackbar(self._page, "Pilih setidaknya satu platform tujuan upload!", error=True)
             return
 
         # Ambil interval
@@ -756,6 +745,7 @@ class UploadDistribution(ft.Container):
             else:
                 base_time = datetime.datetime.now(utc7_time) + datetime.timedelta(minutes=30)
 
+            last_publish_time = None
             for idx_clip, clip_item in enumerate(selected_clips):
                 if self._is_upload_cancelled:
                     break
@@ -775,12 +765,24 @@ class UploadDistribution(ft.Container):
                 else:
                     publish_time = base_time
 
+                orig_publish_time = publish_time
+
                 # Jalankan guard jam sepi
-                publish_time, adjusted = adjust_for_quiet_hours(publish_time)
+                publish_time, _ = adjust_for_quiet_hours(publish_time)
+                
+                # Pastikan minimal ada selisih interval_hours dengan klip sebelumnya jika dijadwalkan
+                if last_publish_time is not None and interval_hours > 0:
+                    min_publish_time = last_publish_time + datetime.timedelta(hours=interval_hours)
+                    if publish_time < min_publish_time:
+                        publish_time = min_publish_time
+
+                adjusted = (publish_time != orig_publish_time)
                 if adjusted:
-                    msg = f"[UPLOAD] ⚠️ Jadwal publikasi untuk {clip_name} digeser ke {publish_time.strftime('%d-%m-%Y %H:%M WIB')} karena masuk jam sepi (tengah malam - subuh)."
+                    msg = f"[UPLOAD] ⚠️ Jadwal publikasi untuk {clip_name} digeser ke {publish_time.strftime('%d-%m-%Y %H:%M WIB')} (semula {orig_publish_time.strftime('%H:%M WIB')}) karena masuk jam sepi atau menyesuaikan antrean."
                     app_state.append_log(msg)
                     log.info(msg)
+
+                last_publish_time = publish_time
 
                 if is_scheduled or adjusted:
                     publish_time_utc = publish_time.astimezone(datetime.timezone.utc)
@@ -836,15 +838,7 @@ class UploadDistribution(ft.Container):
             if self._is_upload_cancelled:
                 self.upload_status_text.value = "⚠️ Upload Dibatalkan"
                 self.upload_status_text.color = ft.Colors.RED_400
-                snack_result = ft.SnackBar(ft.Text("Proses upload dibatalkan.", color=ft.Colors.WHITE), bgcolor=ft.Colors.RED_700) # type: ignore
-            else:
-                self.upload_status_text.value = "✅ Upload Selesai"
-                self.upload_status_text.color = ft.Colors.GREEN_400
-                snack_result = ft.SnackBar(ft.Text("Semua klip telah diproses dalam antrean upload!", color=ft.Colors.WHITE), bgcolor=ft.Colors.GREEN_700) # type: ignore
-                
-            self._page.overlay.append(snack_result)
-            snack_result.open = True
-            self._page.update()
+                show_snackbar(self._page, "Proses upload dibatalkan.", error=True)
 
         self._page.run_task(run_uploader_task)
     def handle_render(self, e: Any) -> None:

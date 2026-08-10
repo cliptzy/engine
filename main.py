@@ -196,7 +196,7 @@ def main():
         log.error("Invalid YouTube link.")
         return
 
-    heatmap_data = fetch_most_replayed(video_id, config.min_score, config.max_duration)
+    heatmap_data = fetch_most_replayed(video_id, config.min_score)
     if not heatmap_data:
         log.warning("No high-engagement segments found.")
         return

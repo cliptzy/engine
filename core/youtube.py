@@ -27,7 +27,7 @@ def extract_video_id(url: str) -> Optional[str]:
 
     return None
 
-def fetch_most_replayed(video_id: str, min_score: float, max_duration: int) -> List[Dict[str, Any]]:
+def fetch_most_replayed(video_id: str, min_score: float) -> List[Dict[str, Any]]:
     """
     Fetches and parses YouTube 'Most Replayed' heatmap data using yt-dlp.
     Returns a list of high-engagement segments.
@@ -69,7 +69,7 @@ def fetch_most_replayed(video_id: str, min_score: float, max_duration: int) -> L
                     duration = end - start
                     results.append({
                         "start": start,
-                        "duration": min(duration, max_duration),
+                        "duration": duration,
                         "score": score
                     })
             except Exception:

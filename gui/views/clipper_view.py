@@ -9,7 +9,6 @@ from gui.components.clipper import (
     ProcessControl,
     UploadDistribution
 )
-from gui.components.clipper.editor_tab import EditorTab
 
 class ClipperView(ft.Column):
     def __init__(self, page: ft.Page):
@@ -33,9 +32,6 @@ class ClipperView(ft.Column):
             self.process_control,
         ], spacing=20, scroll=ft.ScrollMode.AUTO)
 
-        # Tab Editor Layout
-        self.editor_tab_content = EditorTab(self.page_ref)
-
         # Tab Publisher Layout
         self.publisher_tab_content = ft.Column([
             ft.Text("Publisher & Render Phase", size=20, weight=ft.FontWeight.BOLD),
@@ -44,21 +40,19 @@ class ClipperView(ft.Column):
         ], spacing=20, scroll=ft.ScrollMode.AUTO)
 
         self.tabs = ft.Tabs(
-            length=3,
+            length=2,
             selected_index=0,
             content=ft.Column(
                 controls=[
                     ft.TabBar(
                         tabs=[
                             ft.Tab(label="Clipper", icon=ft.Icons.MOVIE),
-                            ft.Tab(label="Editor", icon=ft.Icons.TUNE),
                             ft.Tab(label="Publisher", icon=ft.Icons.PUBLISH),
                         ]
                     ),
                     ft.TabBarView(
                         controls=[
                             ft.Container(content=self.clipper_tab_content, padding=20),
-                            ft.Container(content=self.editor_tab_content, padding=20),
                             ft.Container(content=self.publisher_tab_content, padding=20),
                         ],
                         expand=1
@@ -137,7 +131,7 @@ class ClipperView(ft.Column):
             "subtitle_style": self.clip_config.style_combo.value,
             "subtitle_max_words": int(self.clip_config.max_words_spin.value or 3),
             "padding": int(self.clip_config.padding_spin.value or 0),
-            "max_duration": int(self.clip_config.max_duration_spin.value or 0),
+            "min_duration": int(self.clip_config.min_duration_spin.value or 0),
             "custom_prompt": self.preview.custom_prompt_input.value or "",
             "phase1_only": False
         })

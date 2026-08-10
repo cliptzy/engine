@@ -42,6 +42,9 @@ class Router:
             elif route == "sfx":
                 from gui.views.sfx_view import SFXView
                 self._view_cache[route] = SFXView(self.page)
+            elif route == "debugger":
+                from gui.views.debugger_view import DebuggerView
+                self._view_cache[route] = DebuggerView(self.page)
             elif route == "logs":
                 self._view_cache[route] = ft.Text("Logs View (To Be Implemented)", size=24)
             else:

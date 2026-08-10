@@ -30,6 +30,11 @@ class Sidebar(ft.NavigationRail):
                 icon=ft.Icons.SETTINGS_OUTLINED,  # type: ignore
                 selected_icon=ft.Icons.SETTINGS,  # type: ignore
                 label="Settings"
+            ),
+            ft.NavigationRailDestination(
+                icon=ft.Icons.BUG_REPORT_OUTLINED,  # type: ignore
+                selected_icon=ft.Icons.BUG_REPORT,  # type: ignore
+                label="Debugger"
             )
         ]
 

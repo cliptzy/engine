@@ -1,3 +1,4 @@
+from gui.ui_utils import show_snackbar
 import threading
 import flet as ft
 from typing import Any, Callable, Optional, cast
@@ -253,11 +254,7 @@ class CreatorHubView(ft.Container):
         try:
             channel_manager.delete_channel(channel_id)
             self.load_channels()
-            snack = ft.SnackBar(ft.Text(f"Channel {channel_name} berhasil dihapus!", color=ft.Colors.WHITE), bgcolor=ft.Colors.GREEN_700) # type: ignore
-            if self.page:
-                self.page.overlay.append(snack)
-                snack.open = True
-                self.page.update()
+            show_snackbar(self.page, f"Channel {channel_name} berhasil dihapus!")
         except Exception as ex:
             log.error(f"Gagal menghapus channel: {ex}")
 

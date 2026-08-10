@@ -1,3 +1,4 @@
+from gui.ui_utils import show_snackbar
 import flet as ft
 from os import path
 from typing import Any, Optional, cast
@@ -85,7 +86,7 @@ class ClipConfig(ft.Container):
 
         self.delay_spin = SpinBox(min_value=-5000, max_value=5000, step=100, label="Subtitle Delay (ms)")
         self.padding_spin = SpinBox(min_value=-30, max_value=60, step=1, value=0, label="Padding Klip (Detik)")
-        self.max_duration_spin = SpinBox(min_value=10, max_value=600, step=10, value=60, label="Maks Durasi (Detik)")
+        self.min_duration_spin = SpinBox(min_value=10, max_value=600, step=10, value=60, label="Min Durasi (Detik)")
 
         self.font_size_spin = SpinBox(min_value=20, max_value=150, step=1, value=60, label="Ukuran Font")
 
@@ -198,7 +199,7 @@ class ClipConfig(ft.Container):
             self.libass_warning,
             ft.Row(cast(list[ft.Control], [self.highlight_check, self.emotion_check, self.voice_analysis_check, self.generate_intro_check, self.merge_clips_check]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.whisper_combo, self.font_combo])),
-            ft.Row(cast(list[ft.Control], [self.delay_spin, self.padding_spin, self.max_duration_spin]), alignment=ft.MainAxisAlignment.CENTER),
+            ft.Row(cast(list[ft.Control], [self.delay_spin, self.padding_spin, self.min_duration_spin]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.color_combo, self.location_combo])),
             ft.Row(cast(list[ft.Control], [self.bg_combo, self.anim_combo, self.style_combo])),
             ft.Row(cast(list[ft.Control], [self.max_words_spin, self.font_size_spin, self.hw_combo])),
@@ -227,7 +228,7 @@ class ClipConfig(ft.Container):
         self.location_combo.value = config.subtitle.location
         self.delay_spin.value = int(config.subtitle.delay * 1000)
         self.padding_spin.value = config.padding
-        self.max_duration_spin.value = config.max_duration
+        self.min_duration_spin.value = config.min_duration
         self.font_size_spin.value = config.subtitle.font_size
         self.color_combo.value = config.subtitle.color
         self.bg_combo.value = str(config.subtitle.border_style)
@@ -327,9 +328,9 @@ class ClipConfig(ft.Container):
         if files and len(files) > 0 and files[0].path:
             try:
                 dest = controller.set_intro_video(files[0].path)
-                self._show_snackbar(f"Video intro berhasil diset:\n{dest}")
+                show_snackbar(self.page_ref, f"Video intro berhasil diset:\n{dest}")
             except Exception as ex:
-                self._show_snackbar(f"Gagal mengeset intro: {ex}", error=True)
+                show_snackbar(self.page_ref, f"Gagal mengeset intro: {ex}", error=True)
 
     async def on_outro_picked(self, e) -> None:
         files = await self.outro_picker.pick_files(
@@ -340,18 +341,18 @@ class ClipConfig(ft.Container):
             try:
                 dest = controller.set_outro_video(files[0].path)
                 self.on_toggle_outro_btn()
-                self._show_snackbar(f"Video outro berhasil diset:\n{dest}")
+                show_snackbar(self.page_ref, f"Video outro berhasil diset:\n{dest}")
             except Exception as ex:
-                self._show_snackbar(f"Gagal mengeset outro: {ex}", error=True)
+                show_snackbar(self.page_ref, f"Gagal mengeset outro: {ex}", error=True)
 
     def on_clear_outro_picked(self, e) -> None:
         """Menghapus pilihan video outro dari konfigurasi."""
         try:
             controller.clear_outro_video()
             self.on_toggle_outro_btn()
-            self._show_snackbar("Video outro berhasil dihapus.")
+            show_snackbar(self.page_ref, "Video outro berhasil dihapus.")
         except Exception as ex:
-            self._show_snackbar(f"Gagal menghapus outro: {ex}", error=True)
+            show_snackbar(self.page_ref, f"Gagal menghapus outro: {ex}", error=True)
 
     def on_toggle_outro_btn(self) -> None:
         if config.outro_video is not None:
@@ -389,17 +390,17 @@ class ClipConfig(ft.Container):
             try:
                 dest = controller.set_watermark_image(files[0].path)
                 self.on_toggle_watermark_btn()
-                self._show_snackbar(f"Watermark berhasil diset:\n{dest}")
+                show_snackbar(self.page_ref, f"Watermark berhasil diset:\n{dest}")
             except Exception as ex:
-                self._show_snackbar(f"Gagal mengeset watermark: {ex}", error=True)
+                show_snackbar(self.page_ref, f"Gagal mengeset watermark: {ex}", error=True)
 
     def on_clear_watermark_picked(self, e) -> None:
         try:
             controller.clear_watermark_image()
             self.on_toggle_watermark_btn()
-            self._show_snackbar("Watermark berhasil dihapus.")
+            show_snackbar(self.page_ref, "Watermark berhasil dihapus.")
         except Exception as ex:
-            self._show_snackbar(f"Gagal menghapus watermark: {ex}", error=True)
+            show_snackbar(self.page_ref, f"Gagal menghapus watermark: {ex}", error=True)
 
     def on_toggle_watermark_btn(self) -> None:
         if config.watermark_image is not None:
@@ -425,17 +426,17 @@ class ClipConfig(ft.Container):
             try:
                 dest = controller.set_video_frame(files[0].path)
                 self.on_toggle_video_frame_btn()
-                self._show_snackbar(f"Frame video berhasil diset:\n{dest}")
+                show_snackbar(self.page_ref, f"Frame video berhasil diset:\n{dest}")
             except Exception as ex:
-                self._show_snackbar(f"Gagal mengeset frame video: {ex}", error=True)
+                show_snackbar(self.page_ref, f"Gagal mengeset frame video: {ex}", error=True)
 
     def on_clear_video_frame_picked(self, e) -> None:
         try:
             controller.clear_video_frame()
             self.on_toggle_video_frame_btn()
-            self._show_snackbar("Frame video berhasil dihapus.")
+            show_snackbar(self.page_ref, "Frame video berhasil dihapus.")
         except Exception as ex:
-            self._show_snackbar(f"Gagal menghapus frame video: {ex}", error=True)
+            show_snackbar(self.page_ref, f"Gagal menghapus frame video: {ex}", error=True)
 
     def on_toggle_video_frame_btn(self) -> None:
         if config.video_frame is not None:
@@ -502,7 +503,7 @@ class ClipConfig(ft.Container):
             "subtitle_style": self.style_combo.value,
             "subtitle_max_words": self.max_words_spin.value,
             "padding": self.padding_spin.value,
-            "max_duration": self.max_duration_spin.value,
+            "min_duration": self.min_duration_spin.value,
             "tts_language": self.tts_lang_combo.value,
             "tts_voice": self.tts_voice_combo.value,
             "watermark_position": self.watermark_pos_combo.value,
@@ -524,7 +525,7 @@ class ClipConfig(ft.Container):
         self.generate_intro_check.disabled = locked
         self.merge_clips_check.disabled = locked
         self.padding_spin.disabled = locked
-        self.max_duration_spin.disabled = locked
+        self.min_duration_spin.disabled = locked
         self.hw_combo.disabled = locked
         self.tts_lang_combo.disabled = locked
         self.tts_voice_combo.disabled = locked
@@ -556,9 +557,4 @@ class ClipConfig(ft.Container):
         except Exception:
             pass
 
-    def _show_snackbar(self, message: str, error: bool = False) -> None:
-        bgcolor = ft.Colors.RED_700 if error else ft.Colors.GREEN_700
-        sb = ft.SnackBar(ft.Text(message, color=ft.Colors.WHITE), bgcolor=bgcolor)
-        sb.open = True
-        self.page_ref.overlay.append(sb)
-        self.page_ref.update()
+

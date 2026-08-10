@@ -67,7 +67,7 @@ APP_ROOT = get_app_root()
 class AppConfig:
     """Application configuration container."""
     output_dir: str = os.path.join(APP_ROOT, "clips")
-    max_duration: int = 60
+    min_duration: int = 60
     min_score: float = 0.40
     max_clips: int = 10
     padding: int = 10
@@ -128,7 +128,7 @@ class AppConfig:
         """Exports configuration to dictionary."""
         return {
             "output_dir": self.output_dir,
-            "max_duration": self.max_duration,
+            "min_duration": self.min_duration,
             "min_score": self.min_score,
             "max_clips": self.max_clips,
             "padding": self.padding,
@@ -204,8 +204,10 @@ class AppConfig:
         """Updates configuration from dictionary."""
         if "output_dir" in data and data["output_dir"]:
             self.output_dir = data["output_dir"]
-        if "max_duration" in data and data["max_duration"] is not None:
-            self.max_duration = int(data["max_duration"])
+        if "min_duration" in data and data["min_duration"] is not None:
+            self.min_duration = int(data["min_duration"])
+        elif "max_duration" in data and data["max_duration"] is not None:
+            self.min_duration = int(data["max_duration"])
         if "min_score" in data and data["min_score"] is not None:
             self.min_score = float(data["min_score"])
         if "max_clips" in data and data["max_clips"] is not None:
