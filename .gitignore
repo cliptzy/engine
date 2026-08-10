@@ -70,3 +70,6 @@ test*
 *.txt
 .env
 core/_build_env.py
+
+# Exceptions
+!assets/**
