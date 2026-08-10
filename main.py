@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument("--url", help="YouTube URL (watch/shorts/youtu.be)")
     parser.add_argument(
         "--crop",
-        choices=["default", "split_left", "split_right", "split_face", "full", "full_face", "multi_face"],
+        choices=["default", "center_face", "split_left", "split_right", "split_face", "full", "full_face", "multi_face"],
         help="Crop mode",
     )
     parser.add_argument(
@@ -104,6 +104,7 @@ def main():
     if crop_mode:
         crop_desc = {
             "default": "Default center crop",
+            "center_face": "Center Face Track (dynamic face center crop)",
             "split_left": "Split crop (bottom-left facecam)",
             "split_right": "Split crop (bottom-right facecam)",
             "split_face": "Split crop (dynamic face tracking)",
@@ -126,9 +127,10 @@ def main():
         print("5. Full (fit screen with blurred background)")
         print("6. Full + Face Track (top: full scaled, bottom: dynamic face crop)")
         print("7. Multi Face Track (podcast: face1 + full + face2)")
+        print("8. Center Face Track (dynamic crop following face)")
 
         while crop_mode is None:
-            choice = input("\nSelect crop mode (1-7): ").strip()
+            choice = input("\nSelect crop mode (1-8): ").strip()
             if choice == "1":
                 crop_mode = "default"
                 crop_desc = "Default center crop"
@@ -157,7 +159,11 @@ def main():
                 crop_mode = "multi_face"
                 crop_desc = "Multi Face Track (Podcast)"
                 break
-            print("Invalid choice. Please enter a number between 1 and 7.")
+            elif choice == "8":
+                crop_mode = "center_face"
+                crop_desc = "Center Face Track (dynamic)"
+                break
+            print("Invalid choice. Please enter a number between 1 and 8.")
 
         print(f"Selected: {crop_desc}")
         print("\n=== Auto Subtitle ===")

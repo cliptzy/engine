@@ -23,16 +23,16 @@ def get_app_root() -> str:
     """Returns the absolute path to the application root directory."""
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
-        
+
     exe_dir = os.path.dirname(sys.executable)
     exe_name = os.path.basename(sys.executable).lower()
-    
+
     # Deteksi flet build desktop runner (bukan python.exe)
     if exe_name not in ("python.exe", "pythonw.exe", "python", "python3", "python3.exe"):
         flet_app_dir = os.path.join(exe_dir, "app")
         if os.path.isdir(flet_app_dir):
             return flet_app_dir
-            
+
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def inject_local_bin_to_path():
@@ -85,7 +85,7 @@ def attempt_add_ffmpeg_to_path() -> bool:
     if local_app_data:
         winget_packages = os.path.join(local_app_data, "Microsoft", "WinGet", "Packages")
         gyan_root = os.path.join(winget_packages, "Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe")
-        
+
         if os.path.isdir(gyan_root):
             for root, _, files in os.walk(gyan_root):
                 if ("ffmpeg.exe" in files or "ffmpeg" in files) and os.path.basename(root).lower() == "bin":
@@ -114,7 +114,7 @@ def check_dependencies(install_whisper: bool = False, skip_update_ytdlp: bool = 
     Automatically updates yt-dlp and checks FFmpeg availability.
     """
     is_frozen = getattr(sys, 'frozen', False)
-    
+
     if not skip_update_ytdlp and not is_frozen:
         log.info("Updating yt-dlp...")
         subprocess.run(
@@ -127,10 +127,10 @@ def check_dependencies(install_whisper: bool = False, skip_update_ytdlp: bool = 
         try:
             import faster_whisper
             log.info("Faster-Whisper package is already installed.")
-            
+
             cache_dir = os.path.expanduser("~/.cache/huggingface/hub")
             model_folder_name = f"faster-whisper-{whisper_model}"
-            
+
             model_cached = False
             if os.path.exists(cache_dir):
                 try:
@@ -138,13 +138,13 @@ def check_dependencies(install_whisper: bool = False, skip_update_ytdlp: bool = 
                     model_cached = any(model_folder_name in item.lower() for item in cached_items)
                 except Exception as e:
                     log.warning(f"Could not read cache directory: {e}")
-            
+
             if model_cached:
                 log.info(f"Model '{whisper_model}' is already cached and ready.")
             else:
                 log.warning(f"Model '{whisper_model}' not found in cache.")
                 log.info(f"Will auto-download ~{get_model_size(whisper_model)} on first transcribe.")
-                
+
         except ImportError:
             if not is_frozen:
                 log.info("Installing Faster-Whisper package...")
@@ -164,7 +164,7 @@ def check_dependencies(install_whisper: bool = False, skip_update_ytdlp: bool = 
         if fatal:
             sys.exit(1)
         return False
-        
+
     return True
 
 def read_json(file_path: str, default: Any = None) -> Any:
@@ -224,3 +224,47 @@ def apply_fast_download_opts(ydl_opts: dict) -> None:
     if shutil.which('aria2c'):
         ydl_opts['external_downloader'] = 'aria2c'
         ydl_opts['external_downloader_args'] = {'aria2c': ['-c', '-j', '16', '-x', '16', '-s', '16', '-k', '1M']}
+
+
+def restart_app() -> None:
+    """Restarts the application by spawning a new process and exiting the current one.
+    Handles both development (python execution) and production (frozen executable) environments.
+    """
+    import sys
+    import os
+    import subprocess
+
+    log.info("Memulai ulang aplikasi (restart)...")
+
+    # Copy env and remove Flet environment variables to avoid port/session conflicts
+    env = os.environ.copy()
+    flet_keys = [k for k in env if k.startswith("FLET_")]
+    for k in flet_keys:
+        env.pop(k, None)
+
+    is_frozen = getattr(sys, 'frozen', False)
+    if is_frozen:
+        # sys.executable is cliptzy.exe
+        cmd = [sys.executable] + sys.argv[1:]
+    else:
+        # Development mode: resolve main.py path directly to avoid carrying flet run args
+        app_root = get_app_root()
+        main_py = os.path.join(app_root, "main.py")
+        if os.path.exists(main_py):
+            cmd = [sys.executable, main_py]
+        else:
+            cmd = [sys.executable] + sys.argv
+
+    try:
+        # Explicitly pass creationflags=0 to bypass CREATE_NO_WINDOW patch in main.py
+        subprocess.Popen(cmd, env=env, creationflags=0)
+    except Exception as e:
+        log.error(f"Gagal memicu restart otomatis: {e}")
+        return
+
+    # Give Flet GUI time to flush websocket packets (like window destroy) before killing the process
+    import time
+    time.sleep(1.0)
+
+    # Instantly exit the old process
+    os._exit(0)

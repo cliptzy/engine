@@ -741,6 +741,13 @@ class UploadDistribution(ft.Container):
 
             utc7_time = datetime.timezone(datetime.timedelta(hours=7))
             
+            def adjust_for_quiet_hours(dt: datetime.datetime) -> tuple[datetime.datetime, bool]:
+                # Jam sepi: 00:00 s/d 05:59 (WIB / UTC+7)
+                if dt.hour < 6:
+                    adjusted_dt = dt.replace(hour=6, minute=0, second=0, microsecond=0)
+                    return adjusted_dt, True
+                return dt, False
+
             if getattr(self, "schedule_date", None):
                 s_date = self.schedule_date
                 s_time = getattr(self, "schedule_time", None) or datetime.time(0, 0)
@@ -762,8 +769,20 @@ class UploadDistribution(ft.Container):
                 tags_val = clip_meta.get("tags", "")
                 clip_meta["description"] = f"{title_val}\n\n{tags_val}".strip()
                 
-                if interval_hours > 0 or getattr(self, "schedule_date", None):
+                is_scheduled = interval_hours > 0 or getattr(self, "schedule_date", None)
+                if is_scheduled:
                     publish_time = base_time + datetime.timedelta(hours=interval_hours * idx_clip)
+                else:
+                    publish_time = base_time
+
+                # Jalankan guard jam sepi
+                publish_time, adjusted = adjust_for_quiet_hours(publish_time)
+                if adjusted:
+                    msg = f"[UPLOAD] ⚠️ Jadwal publikasi untuk {clip_name} digeser ke {publish_time.strftime('%d-%m-%Y %H:%M WIB')} karena masuk jam sepi (tengah malam - subuh)."
+                    app_state.append_log(msg)
+                    log.info(msg)
+
+                if is_scheduled or adjusted:
                     publish_time_utc = publish_time.astimezone(datetime.timezone.utc)
                     clip_meta["publish_at"] = publish_time_utc.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 

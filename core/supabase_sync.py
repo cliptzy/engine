@@ -435,6 +435,8 @@ class SupabaseSyncManager:
         
         # Reload config dari file yang baru didownload
         config.load_from_file()
+
+
         
         success_count = sum(1 for v in results.values() if v)
         fail_count = sum(1 for v in results.values() if not v)

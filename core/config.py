@@ -4,6 +4,7 @@ from typing import Optional
 @dataclass
 class SubtitleConfig:
     enabled: bool = True
+    style: str = "plain"
     whisper_model: str = "small"
     font: str = "Arial"
     fonts_dir: Optional[str] = None
@@ -29,6 +30,7 @@ class AIConfig:
     use_highlight: bool = False
     use_generate_intro: bool = False
     use_emotion_detection: bool = True
+    use_voice_analysis: bool = True
 
 @dataclass
 class YoutubeConfig:
@@ -136,6 +138,7 @@ class AppConfig:
             "use_highlight": self.ai.use_highlight,
             "use_generate_intro": self.ai.use_generate_intro,
             "use_emotion_detection": self.ai.use_emotion_detection,
+            "use_voice_analysis": self.ai.use_voice_analysis,
             "whisper_model": self.subtitle.whisper_model,
             "subtitle_font": self.subtitle.font,
             "subtitle_fonts_dir": self.subtitle.fonts_dir,
@@ -146,6 +149,7 @@ class AppConfig:
             "subtitle_bg_color": self.subtitle.bg_color,
             "subtitle_border_style": self.subtitle.border_style,
             "subtitle_animation": self.subtitle.animation,
+            "subtitle_style": self.subtitle.style,
             "subtitle_max_words": self.subtitle.max_words,
             
             "yt_session": self.youtube.session,
@@ -215,6 +219,8 @@ class AppConfig:
             self.ai.use_generate_intro = bool(data["use_generate_intro"])
         if "use_emotion_detection" in data:
             self.ai.use_emotion_detection = bool(data["use_emotion_detection"])
+        if "use_voice_analysis" in data:
+            self.ai.use_voice_analysis = bool(data["use_voice_analysis"])
             
         if "whisper_model" in data and data["whisper_model"]:
             self.subtitle.whisper_model = data["whisper_model"]
@@ -236,6 +242,8 @@ class AppConfig:
             self.subtitle.border_style = int(data["subtitle_border_style"])
         if "subtitle_animation" in data and data["subtitle_animation"]:
             self.subtitle.animation = data["subtitle_animation"]
+        if "subtitle_style" in data and data["subtitle_style"]:
+            self.subtitle.style = data["subtitle_style"]
         if "subtitle_max_words" in data and data["subtitle_max_words"] is not None:
             self.subtitle.max_words = int(data["subtitle_max_words"])
             

@@ -73,6 +73,7 @@ class ClipVideoUseCase:
             subtitle_border_style = 3
         subtitle_animation = payload.get("subtitle_animation") or "none"
         subtitle_max_words = payload.get("subtitle_max_words") or 3
+        subtitle_style = payload.get("subtitle_style") or "plain"
             
         if not subtitle_fontsdir and os.path.isdir("fonts"):
             subtitle_fontsdir = "fonts"
@@ -106,6 +107,7 @@ class ClipVideoUseCase:
         config.subtitle.border_style = int(subtitle_border_style)
         config.subtitle.animation = str(subtitle_animation)
         config.subtitle.max_words = int(subtitle_max_words)
+        config.subtitle.style = str(subtitle_style)
         
         config.padding = max(0, int(padding if padding is not None else 10))
         config.set_ratio_preset(ratio)
@@ -381,6 +383,7 @@ class ClipVideoUseCase:
             subtitle_border_style = 3
         subtitle_animation = payload.get("subtitle_animation") or "none"
         subtitle_max_words = payload.get("subtitle_max_words") or 3
+        subtitle_style = payload.get("subtitle_style") or "plain"
 
         if not subtitle_fontsdir and os.path.isdir("fonts"):
             subtitle_fontsdir = "fonts"
@@ -397,6 +400,7 @@ class ClipVideoUseCase:
         config.subtitle.border_style = int(subtitle_border_style)
         config.subtitle.animation = str(subtitle_animation)
         config.subtitle.max_words = int(subtitle_max_words)
+        config.subtitle.style = str(subtitle_style)
         
         config.set_ratio_preset(ratio)
 

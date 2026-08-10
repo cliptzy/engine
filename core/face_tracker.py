@@ -304,3 +304,133 @@ def get_two_faces_normalized_centers(
     except Exception as e:
         log.warning(f"Multi-face tracking error: {e}")
         return None, None, f"Kesalahan sistem saat deteksi multi-wajah: {str(e)}"
+
+
+def get_face_keyframes(
+    video_path: str, interval_sec: float = 3.0
+) -> list[tuple[float, float, float]]:
+    """
+    Deteksi posisi wajah secara berkala setiap `interval_sec` detik.
+    Mengembalikan list of (timestamp_sec, cx_norm, cy_norm) untuk setiap
+    keyframe dimana wajah terdeteksi.
+
+    Jika pada suatu interval wajah tidak terdeteksi, posisi terakhir yang
+    diketahui digunakan agar crop tidak melompat ke tengah.
+
+    Returns:
+        List of (timestamp, cx_norm, cy_norm). List kosong jika gagal total.
+    """
+    if not os.path.exists(video_path):
+        log.warning(f"[face_keyframes] File video tidak ditemukan: {video_path}")
+        return []
+
+    try:
+        model_dir = "models"
+        os.makedirs(model_dir, exist_ok=True)
+        model_path = os.path.join(model_dir, "face_detection_yunet.onnx")
+
+        if not os.path.exists(model_path):
+            log.info(f"YuNet model not found. Downloading to {model_path}...")
+            import urllib.request
+            url = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
+            try:
+                urllib.request.urlretrieve(url, model_path)
+                log.info("YuNet model downloaded successfully.")
+            except Exception as e:
+                log.error(f"Failed to download YuNet model: {e}")
+                return []
+
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            log.warning("[face_keyframes] Gagal membuka video dengan OpenCV.")
+            return []
+
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        duration = total_frames / fps if fps > 0 else 0
+
+        if duration <= 0:
+            cap.release()
+            log.warning("[face_keyframes] Durasi video 0 atau tidak valid.")
+            return []
+
+        # Tentukan timestamp sampling: 0, interval, 2*interval, ...
+        timestamps: list[float] = []
+        t = 0.0
+        while t < duration:
+            timestamps.append(t)
+            t += interval_sec
+        # Pastikan ada minimal frame terakhir juga
+        if timestamps and timestamps[-1] < duration - 0.5:
+            timestamps.append(duration - 0.5)
+
+        detector = None
+        keyframes: list[tuple[float, float, float]] = []
+        last_cx, last_cy = 0.5, 0.5  # fallback jika wajah hilang
+
+        for ts in timestamps:
+            frame_idx = int(ts * fps)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                # Gunakan posisi terakhir
+                keyframes.append((ts, last_cx, last_cy))
+                continue
+
+            h, w = frame.shape[:2]
+
+            # Downscale jika terlalu besar
+            scale_ratio = 1.0
+            max_dim = 1280
+            if max(h, w) > max_dim:
+                scale_ratio = max_dim / float(max(h, w))
+                frame = cv2.resize(frame, (0, 0), fx=scale_ratio, fy=scale_ratio)
+                h, w = frame.shape[:2]
+
+            if detector is None:
+                detector = cv2.FaceDetectorYN.create(
+                    model_path, "", (w, h),
+                    score_threshold=0.6, nms_threshold=0.3, top_k=5000
+                )
+            else:
+                detector.setInputSize((w, h))
+
+            _, faces = detector.detect(frame)
+
+            if faces is not None and len(faces) > 0:
+                # Ambil wajah terbesar
+                largest = max(faces, key=lambda f: f[2] * f[3])
+                x, y, fw, fh = largest[:4]
+                x /= scale_ratio
+                y /= scale_ratio
+                fw /= scale_ratio
+                fh /= scale_ratio
+                orig_w = w / scale_ratio
+                orig_h = h / scale_ratio
+
+                cx = (x + fw / 2.0) / orig_w
+                cy = (y + fh / 2.0) / orig_h
+
+                # Clamp ke range valid
+                cx = max(0.0, min(1.0, cx))
+                cy = max(0.0, min(1.0, cy))
+
+                last_cx, last_cy = cx, cy
+                keyframes.append((ts, cx, cy))
+            else:
+                # Wajah tidak terdeteksi, gunakan posisi terakhir
+                keyframes.append((ts, last_cx, last_cy))
+
+        cap.release()
+
+        if keyframes:
+            log.info(f"[face_keyframes] Detected {len(keyframes)} keyframes over {duration:.1f}s (interval={interval_sec}s)")
+        else:
+            log.warning("[face_keyframes] Tidak ada keyframe yang dihasilkan.")
+
+        return keyframes
+
+    except Exception as e:
+        log.warning(f"[face_keyframes] Error: {e}")
+        return []
+

@@ -465,9 +465,17 @@ class SettingsView(ft.Container):
             fail_count = result.get('fail_count', 0)
 
             if fail_count == 0:
-                self.sync_status_text.value = f"✅ {msg}"
+                self.sync_status_text.value = "✅ Restore berhasil! Memulai ulang aplikasi..."
                 self.sync_status_text.color = ft.Colors.GREEN_400
-                self._show_snackbar(f"Restore berhasil! ({success_count} item)", ft.Colors.GREEN_700)
+                self._show_snackbar("Restore berhasil! Memulai ulang aplikasi...", ft.Colors.GREEN_700)
+                self._page.update()
+                await asyncio.sleep(1.5)
+                try:
+                    self._page.window.destroy()
+                except Exception:
+                    pass
+                from core.utils import restart_app
+                restart_app()
             else:
                 self.sync_status_text.value = f"⚠️ {msg}"
                 self.sync_status_text.color = ft.Colors.ORANGE_400

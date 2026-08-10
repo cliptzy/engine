@@ -25,6 +25,7 @@ class ClipConfig(ft.Container):
             label="Mode Crop Video",
             options=[
                 ft.dropdown.Option("default", "Default (Center Crop)"),
+                ft.dropdown.Option("center_face", "Center Face Track (Dinamis Mengikuti Wajah)"),
                 ft.dropdown.Option("split_left", "Split Left (Top: Center, Bottom: Left Facecam)"),
                 ft.dropdown.Option("split_right", "Split Right (Top: Center, Bottom: Right Facecam)"),
                 ft.dropdown.Option("split_face", "Split Face Track (Top: Center, Bottom: Dynamic Face)"),
@@ -46,9 +47,16 @@ class ClipConfig(ft.Container):
             expand=1
         )
 
-        self.subtitle_check = ft.Checkbox(label="Auto Subtitle", on_change=self.on_subtitle_toggled)
+        self.libass_warning = ft.Container(
+            content=ft.Text("⚠️ FFmpeg tidak memiliki libass — subtitle tidak akan di-render.", color=ft.Colors.AMBER_200, size=12),
+            bgcolor=ft.Colors.with_opacity(0.15, ft.Colors.AMBER),
+            border_radius=6,
+            padding=ft.Padding(left=10, top=6, right=10, bottom=6),
+            visible=False,
+        )
         self.highlight_check = ft.Checkbox(label="Highlight Text")
         self.emotion_check = ft.Checkbox(label="Deteksi Emosi Wajah Visual")
+        self.voice_analysis_check = ft.Checkbox(label="Deteksi Emosi Suara (SER)")
         self.generate_intro_check = ft.Checkbox(label="Generate Intro", on_change=self.on_generate_intro_toggled)
         self.merge_clips_check = ft.Checkbox(label="Merge Clips", tooltip="Gabungkan semua klip (split) menjadi satu video kompilasi panjang")
         self.debug_mode_check = ft.Checkbox(label="Debug Mode", on_change=self.on_debug_mode_toggled)
@@ -106,6 +114,15 @@ class ClipConfig(ft.Container):
             options=[
                 ft.dropdown.Option("none", "Tanpa Animasi"),
                 ft.dropdown.Option("scale", "Timbul (Scale Up) Per Kata"),
+            ],
+            expand=1
+        )
+
+        self.style_combo = ft.Dropdown(
+            label="Style Subtitle",
+            options=[
+                ft.dropdown.Option("plain", "Plain (Teks Polos)"),
+                ft.dropdown.Option("full_color", "Full Color (Warna Emosi + Efek)"),
             ],
             expand=1
         )
@@ -174,11 +191,12 @@ class ClipConfig(ft.Container):
 
         grid_controls = cast(list[ft.Control], [
             ft.Row(cast(list[ft.Control], [self.crop_combo, self.ratio_combo])),
-            ft.Row(cast(list[ft.Control], [self.subtitle_check, self.highlight_check, self.emotion_check, self.generate_intro_check, self.merge_clips_check]), alignment=ft.MainAxisAlignment.CENTER),
+            self.libass_warning,
+            ft.Row(cast(list[ft.Control], [self.highlight_check, self.emotion_check, self.voice_analysis_check, self.generate_intro_check, self.merge_clips_check]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.whisper_combo, self.font_combo])),
             ft.Row(cast(list[ft.Control], [self.delay_spin, self.padding_spin, self.max_duration_spin]), alignment=ft.MainAxisAlignment.CENTER),
             ft.Row(cast(list[ft.Control], [self.color_combo, self.location_combo])),
-            ft.Row(cast(list[ft.Control], [self.bg_combo, self.anim_combo])),
+            ft.Row(cast(list[ft.Control], [self.bg_combo, self.anim_combo, self.style_combo])),
             ft.Row(cast(list[ft.Control], [self.max_words_spin, self.font_size_spin, self.hw_combo])),
             ft.Row(cast(list[ft.Control], [self.tts_lang_combo, self.tts_voice_combo])),
             ft.Row(cast(list[ft.Control], [self.watermark_pos_combo, self.debug_mode_check]), alignment=ft.MainAxisAlignment.CENTER),
@@ -192,9 +210,10 @@ class ClipConfig(ft.Container):
         self.crop_combo.value = config.crop_mode
         self.ratio_combo.value = config.output_ratio
 
-        self.subtitle_check.value = config.subtitle.enabled
+        # Subtitle is always enabled (mandatory) — no checkbox to load
         self.highlight_check.value = config.ai.use_highlight
         self.emotion_check.value = config.ai.use_emotion_detection
+        self.voice_analysis_check.value = config.ai.use_voice_analysis
         self.generate_intro_check.value = config.ai.use_generate_intro
         self.merge_clips_check.value = config.merge_clips
         self.on_generate_intro_toggled(None)
@@ -209,6 +228,7 @@ class ClipConfig(ft.Container):
         self.color_combo.value = config.subtitle.color
         self.bg_combo.value = str(config.subtitle.border_style)
         self.anim_combo.value = config.subtitle.animation
+        self.style_combo.value = config.subtitle.style
         self.max_words_spin.value = config.subtitle.max_words
         self.hw_combo.value = config.hw_accel
 
@@ -216,7 +236,7 @@ class ClipConfig(ft.Container):
         self.tts_voice_combo.value = config.tts_voice
         self.watermark_pos_combo.value = config.watermark_position
 
-        self.on_subtitle_toggled(None)
+        # Subtitle always enabled — no toggle needed
 
         if config.ui_locked:
             self._lock_ui(True)
@@ -284,14 +304,9 @@ class ClipConfig(ft.Container):
     def detect_libass(self) -> None:
         from core.utils import is_ffmpeg_libass_supported
         if not is_ffmpeg_libass_supported():
-            self.subtitle_check.disabled = True
-            self.subtitle_check.value = False
-            self.subtitle_check.label = "Auto Subtitle (Missing libass)"
-            self.subtitle_check.tooltip = "FFmpeg di sistem ini tidak memiliki library libass."
-            self.on_subtitle_toggled(None)
+            self.libass_warning.visible = True
         else:
-            self.subtitle_check.label = "Auto Subtitle"
-            self.subtitle_check.tooltip = ""
+            self.libass_warning.visible = False
         try:
             if self.page_ref: self.page_ref.update()
             else: self.update()
@@ -395,22 +410,7 @@ class ClipConfig(ft.Container):
             self.btn_watermark.color = None
             self.btn_watermark.on_click = self.on_watermark_picked
 
-    def on_subtitle_toggled(self, e) -> None:
-        checked = bool(self.subtitle_check.value)
-        self.whisper_combo.disabled = not checked
-        self.font_combo.disabled = not checked
-        self.location_combo.disabled = not checked
-        self.font_size_spin.disabled = not checked
-        self.color_combo.disabled = not checked
-        self.bg_combo.disabled = not checked
-        self.anim_combo.disabled = not checked
-        self.max_words_spin.disabled = not checked
-        self.delay_spin.disabled = not checked
-        try:
-            if self.page_ref: self.page_ref.update()
-            else: self.update()
-        except Exception:
-            pass
+
 
     def on_generate_intro_toggled(self, e) -> None:
         self.btn_intro.disabled = bool(self.generate_intro_check.value)
@@ -431,9 +431,10 @@ class ClipConfig(ft.Container):
         config_data = {
             "crop_mode": self.crop_combo.value,
             "output_ratio": self.ratio_combo.value,
-            "use_subtitle": bool(self.subtitle_check.value),
+            "use_subtitle": True,
             "use_highlight": bool(self.highlight_check.value),
             "use_emotion_detection": bool(self.emotion_check.value),
+            "use_voice_analysis": bool(self.voice_analysis_check.value),
             "use_generate_intro": bool(self.generate_intro_check.value),
             "merge_clips": bool(self.merge_clips_check.value),
             "whisper_model": self.whisper_combo.value,
@@ -445,6 +446,7 @@ class ClipConfig(ft.Container):
             "subtitle_bg_color": "&H80000000",
             "subtitle_border_style": int(self.bg_combo.value) if self.bg_combo.value else 3,
             "subtitle_animation": self.anim_combo.value,
+            "subtitle_style": self.style_combo.value,
             "subtitle_max_words": self.max_words_spin.value,
             "padding": self.padding_spin.value,
             "max_duration": self.max_duration_spin.value,
@@ -463,9 +465,9 @@ class ClipConfig(ft.Container):
     def _lock_ui(self, locked: bool) -> None:
         self.crop_combo.disabled = locked
         self.ratio_combo.disabled = locked
-        self.subtitle_check.disabled = locked
         self.highlight_check.disabled = locked
         self.emotion_check.disabled = locked
+        self.voice_analysis_check.disabled = locked
         self.generate_intro_check.disabled = locked
         self.merge_clips_check.disabled = locked
         self.padding_spin.disabled = locked
@@ -474,27 +476,23 @@ class ClipConfig(ft.Container):
         self.tts_lang_combo.disabled = locked
         self.tts_voice_combo.disabled = locked
         self.watermark_pos_combo.disabled = locked
+        self.whisper_combo.disabled = locked
+        self.font_combo.disabled = locked
+        self.location_combo.disabled = locked
+        self.font_size_spin.disabled = locked
+        self.color_combo.disabled = locked
+        self.bg_combo.disabled = locked
+        self.anim_combo.disabled = locked
+        self.max_words_spin.disabled = locked
+        self.delay_spin.disabled = locked
+        self.style_combo.disabled = locked
 
         if not locked:
             self.detect_libass()
-            self.on_subtitle_toggled(None)
             # type: ignore
             self.btn_lock_all.text = "🔒 Kunci dan Simpan Pengaturan"  # type: ignore
             self.btn_lock_all.style = ft.ButtonStyle()
         else:
-            self.whisper_combo.disabled = True
-            self.font_combo.disabled = True
-            self.location_combo.disabled = True
-            self.font_size_spin.disabled = True
-            self.color_combo.disabled = True
-            self.bg_combo.disabled = True
-            self.anim_combo.disabled = True
-            self.max_words_spin.disabled = True
-            self.delay_spin.disabled = True
-            self.tts_lang_combo.disabled = True
-            self.tts_voice_combo.disabled = True
-            self.watermark_pos_combo.disabled = True
-
             # type: ignore
             self.btn_lock_all.text = "🔓 Buka Kunci Pengaturan"  # type: ignore
             self.btn_lock_all.style = ft.ButtonStyle(bgcolor=ft.Colors.INDIGO_800, color=ft.Colors.INDIGO_200)

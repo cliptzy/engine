@@ -15,10 +15,19 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
     Data emosi akan langsung disematkan kembali ke dalam `words_data` di dalam
     key `voice_emotion` (misal: 'happy/excited', 'angry', 'neutral', dll) beserta fitur akustiknya.
     """
+    from core.config import config
+    if not config.ai.use_voice_analysis:
+        for w in words_data:
+            w['voice_emotion'] = 'neutral'
+        return
+
     try:
         import librosa
         from transformers import pipeline
     except Exception as e:
+        # Fallback: jika modul tidak terinstall, pastikan 'voice_emotion' tetap diisi 'neutral'
+        for w in words_data:
+            w['voice_emotion'] = 'neutral'
         log.warning(f"Modul transformers atau librosa belum terinstall. Lewati analisis emosi suara. Error: {e}")
         return
 

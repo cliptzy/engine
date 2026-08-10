@@ -83,7 +83,7 @@ def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float
                     actual_score = emotion_scores.get(dominant_emotion, 0)
                     final_box = {}
 
-                    if region and crop_mode in ["split_left", "split_right", "split_face", "full_face", "multi_face"]:
+                    if region and crop_mode in ["split_left", "split_right", "split_face", "full_face", "multi_face", "center_face"]:
                         # Kembalikan ke koordinat absolut raw video
                         raw_x = region.get('x', 0) + x1
                         raw_y = region.get('y', 0) + y1

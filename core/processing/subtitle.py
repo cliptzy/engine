@@ -103,7 +103,7 @@ def burn_subtitle_and_highlight(
 
             return "neutral"
 
-        if isinstance(enriched, list) and len(enriched) > 0:
+        if isinstance(enriched, list) and len(enriched) > 0 and config.subtitle.style != "plain":
             current_emotion = None
             current_vfx = "random"
             current_sfx = "random"

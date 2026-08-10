@@ -274,6 +274,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 if not chunk:
                     continue
                 
+                is_plain = config.subtitle.style == "plain"
+                
                 # Create multiple lines per chunk for active word highlighting
                 for active_idx, active_word in enumerate(chunk):
                     start_s = float(active_word.get("start", 0))
@@ -290,7 +292,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         word_str = w.get("word", "").strip()
                         if not word_str:
                             continue
-                            
+
+                        if is_plain:
+                            # Plain style: no emotion color, no uppercase, no animation
+                            line_text += f"{word_str} "
+                            continue
+
+                        # Full Color style: emotion-aware rendering
                         is_angry = (str(w.get("emotion", "")).lower() == "angry")
                         if is_angry:
                             word_str = word_str.upper()

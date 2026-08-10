@@ -109,8 +109,111 @@ def main(page: ft.Page) -> None:
         page.update()
 
     def on_login_success(*args, **kwargs):
-        """Handler saat login berhasil — unlock aplikasi."""
+        """Handler saat login berhasil — unlock aplikasi dan tawarkan restore config."""
         build_app_ui()
+        _show_restore_config_dialog()
+
+    def _show_restore_config_dialog():
+        """Tampilkan dialog info restore config setelah login berhasil."""
+        from core.logger import log
+        from typing import cast
+
+        restore_progress = ft.ProgressBar(visible=False, width=350)
+        restore_status = ft.Text("", size=12, color=ft.Colors.GREY_400, visible=False)
+
+        dialog_content = ft.Column([
+            ft.Text(
+                "Apakah Anda ingin memulihkan pengaturan (config, kredensial, dan channel) dari cloud?\n\n"
+                "Ini berguna jika Anda baru install ulang atau berpindah perangkat.",
+                size=14
+            ),
+            ft.Container(height=4),
+            restore_progress,
+            restore_status,
+        ], tight=True, spacing=8)
+
+        def close_dialog(e=None):
+            dialog.open = False
+            page.update()
+
+        def go_to_settings(e):
+            dialog.open = False
+            page.update()
+            app_state.set_page("settings")
+
+        def start_restore(e):
+            restore_progress.visible = True
+            restore_progress.value = None  # indeterminate
+            restore_status.visible = True
+            restore_status.value = "Memulai restore dari cloud..."
+            restore_status.color = ft.Colors.AMBER_400
+
+            # Disable buttons during restore
+            btn_restore.disabled = True
+            btn_settings.disabled = True
+            btn_skip.disabled = True
+            page.update()
+
+            async def do_restore():
+                import asyncio
+                from core.supabase_sync import supabase_sync
+
+                def on_progress(label: str, current: int, total: int):
+                    restore_status.value = label
+                    if total > 0:
+                        restore_progress.value = current / total
+                    try:
+                        page.update()
+                    except Exception:
+                        pass
+
+                result = await asyncio.to_thread(supabase_sync.restore_all, on_progress)
+
+                restore_progress.visible = False
+                fail_count = result.get("fail_count", 0)
+
+                if fail_count == 0:
+                    restore_status.value = "✅ Restore berhasil! Memulai ulang aplikasi..."
+                    restore_status.color = ft.Colors.GREEN_400
+                    page.update()
+                    await asyncio.sleep(1.5)
+                    try:
+                        page.window.destroy()
+                    except Exception:
+                        pass
+                    from core.utils import restart_app
+                    restart_app()
+                else:
+                    restore_status.value = f"⚠️ {result.get('message', 'Restore selesai dengan beberapa error.')}"
+                    restore_status.color = ft.Colors.ORANGE_400
+
+                # Re-enable close button
+                btn_restore.disabled = True  # sudah selesai, tidak perlu restore lagi
+                btn_settings.disabled = False
+                btn_skip.disabled = False
+                btn_skip.text = "Tutup"  # type: ignore
+                page.update()
+
+            page.run_task(do_restore)
+
+        btn_restore = ft.Button(
+            "☁️ Restore Sekarang",
+            on_click=start_restore,
+            style=ft.ButtonStyle(bgcolor=ft.Colors.DEEP_PURPLE_700, color=ft.Colors.WHITE)
+        )
+        btn_settings = ft.TextButton("Buka Settings", on_click=go_to_settings)
+        btn_skip = ft.TextButton("Nanti Saja", on_click=close_dialog)
+
+        dialog = ft.AlertDialog(
+            modal=False,
+            title=ft.Text("☁️ Restore Pengaturan dari Cloud?", weight=ft.FontWeight.BOLD),
+            content=dialog_content,
+            actions=cast(list[ft.Control], [btn_skip, btn_settings, btn_restore]),
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.overlay.append(dialog)
+        dialog.open = True
+        page.update()
 
     def on_logout(*args, **kwargs):
         """Handler saat logout — kunci aplikasi kembali ke login."""

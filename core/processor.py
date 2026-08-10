@@ -144,9 +144,26 @@ def process_single_clip(
             out_w, out_h = config.out_width, config.out_height
             
             cx_norm, cy_norm = 0.5, 0.5
-            if crop_mode in ["split_face", "full_face"]:
-                log.info( f"Detecting face position for dynamic crop in clip {index}...")
+            face_keyframes: list[tuple[float, float, float]] = []
 
+            if crop_mode == "center_face":
+                # Dynamic face tracking: deteksi wajah per interval waktu
+                log.info(f"Detecting face keyframes for dynamic center crop in clip {index}...")
+                try:
+                    from core.face_tracker import get_face_keyframes
+                    face_keyframes = get_face_keyframes(temp_file, interval_sec=3.0)
+                    if not face_keyframes:
+                        log.info(f"Clip {index}: Tidak ada keyframe wajah terdeteksi, fallback ke default.")
+                        crop_mode = "default"
+                    else:
+                        # Gunakan posisi pertama sebagai cx_norm/cy_norm fallback
+                        cx_norm, cy_norm = face_keyframes[0][1], face_keyframes[0][2]
+                except Exception as e:
+                    log.warning(f"Face keyframes module error: {e}")
+                    crop_mode = "default"
+
+            elif crop_mode in ["split_face", "full_face"]:
+                log.info( f"Detecting face position for dynamic crop in clip {index}...")
                 try:
                     from core.face_tracker import get_dominant_face_normalized_center
                     res_cx, res_cy, error_msg = get_dominant_face_normalized_center(temp_file)
@@ -160,7 +177,7 @@ def process_single_clip(
                     log.warning(f"Face tracking module error: {e}")
                     crop_mode = "full"
                     
-            cmd_crop = build_crop_command(temp_file, cropped_file, crop_mode, out_w, out_h, cx_norm, cy_norm)
+            cmd_crop = build_crop_command(temp_file, cropped_file, crop_mode, out_w, out_h, cx_norm, cy_norm, face_keyframes=face_keyframes)
 
             if callable(event_hook):
                 try:

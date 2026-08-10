@@ -123,7 +123,7 @@ class ClipperView(ft.Column):
             "mode": mode,
             "crop": self.clip_config.crop_combo.value,
             "ratio": self.clip_config.ratio_combo.value,
-            "subtitle": bool(self.clip_config.subtitle_check.value),
+            "subtitle": True,  # Subtitle is always enabled (mandatory)
             "use_highlight": bool(self.clip_config.highlight_check.value),
             "merge_clips": bool(self.clip_config.merge_clips_check.value),
             "whisper_model": self.clip_config.whisper_combo.value,
@@ -134,6 +134,7 @@ class ClipperView(ft.Column):
             "subtitle_color": self.clip_config.color_combo.value,
             "subtitle_border_style": int(self.clip_config.bg_combo.value or 3),
             "subtitle_animation": self.clip_config.anim_combo.value,
+            "subtitle_style": self.clip_config.style_combo.value,
             "subtitle_max_words": int(self.clip_config.max_words_spin.value or 3),
             "padding": int(self.clip_config.padding_spin.value or 0),
             "max_duration": int(self.clip_config.max_duration_spin.value or 0),
