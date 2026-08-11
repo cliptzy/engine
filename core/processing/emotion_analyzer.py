@@ -3,6 +3,33 @@ import os
 from typing import Dict, List, Any
 from core.logger import log
 
+_emotion_pipeline = None
+
+def get_emotion_pipeline():
+    global _emotion_pipeline
+    if _emotion_pipeline is None:
+        try:
+            import torch
+            from transformers import pipeline
+            device = 0 if torch.cuda.is_available() else -1
+            log.info("Memuat model emosi Hugging Face (dima806/facial_emotions_image_detection)...")
+            # dima806 model outputs 7 standard emotions
+            _emotion_pipeline = pipeline("image-classification", model="dima806/facial_emotions_image_detection", device=device)
+        except Exception as e:
+            log.error(f"Gagal memuat model emosi Hugging Face: {e}")
+            _emotion_pipeline = False
+    return _emotion_pipeline
+
+def map_hf_emotion(label: str) -> str:
+    label = label.lower()
+    mapping = {
+        'joy': 'happy',
+        'happiness': 'happy',
+        'anger': 'angry',
+        'sadness': 'sad'
+    }
+    return mapping.get(label, label)
+
 def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float = 0.5, interval_sec: float = 1.0, crop_mode: str = "raw") -> List[Dict[str, Any]]:
     """
     Mengekstrak frame dari video pada interval `interval_sec`.
@@ -12,8 +39,9 @@ def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float
     """
     try:
         from deepface import DeepFace
+        from retinaface import RetinaFace
     except ImportError:
-        log.warning("Modul deepface belum terinstall. Lewati analisis emosi visual.")
+        log.warning("Modul deepface atau retinaface belum terinstall. Lewati analisis emosi visual.")
         return []
 
     if not os.path.exists(video_path):
@@ -57,20 +85,42 @@ def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float
         if cropped_face.size > 0:
             try:
                 import typing
-                result = DeepFace.analyze(cropped_face, actions=['emotion'], detector_backend='mtcnn', enforce_detection=False, silent=True)
+                # Gunakan DeepFace untuk mendapatkan bounding box wajah
+                extracted = DeepFace.extract_faces(cropped_face, detector_backend='mtcnn', enforce_detection=False, align=True)
 
+                face_data = None
+                if isinstance(extracted, list) and len(extracted) > 0:
+                    face_data = extracted[0]
+                elif isinstance(extracted, dict):
+                    face_data = extracted
+
+                confidence = face_data.get("confidence", 0) if face_data else 0
+                region = {}
                 dominant_emotion = None
                 emotion_scores = {}
-                region = {}
-                if isinstance(result, list) and len(result) > 0:
-                    face_data = typing.cast(Dict[str, Any], result[0])
-                    dominant_emotion = face_data.get('dominant_emotion')
-                    emotion_scores = face_data.get('emotion', {})
-                    region = face_data.get('region', {})
-                elif isinstance(result, dict):
-                    dominant_emotion = result.get('dominant_emotion')
-                    emotion_scores = result.get('emotion', {})
-                    region = result.get('region', {})
+
+                if face_data and confidence > 0.5:
+                    region = face_data.get('facial_area', {})
+
+                    classifier = get_emotion_pipeline()
+
+                    if classifier:
+                        # Potong bagian wajah untuk diproses Hugging Face
+                        fx, fy, fw, fh = region.get('x', 0), region.get('y', 0), region.get('w', 0), region.get('h', 0)
+                        fx, fy = max(0, fx), max(0, fy)
+                        face_img_arr = cropped_face[fy:fy+fh, fx:fx+fw]
+
+                        if face_img_arr.size > 0:
+                            from PIL import Image
+                            face_img_rgb = cv2.cvtColor(face_img_arr, cv2.COLOR_BGR2RGB)
+                            pil_img = Image.fromarray(face_img_rgb)
+
+                            preds = classifier(pil_img)
+                            if preds:
+                                best_pred = preds[0]
+                                dominant_emotion = map_hf_emotion(best_pred['label'])
+                                for p in preds:
+                                    emotion_scores[map_hf_emotion(p['label'])] = p['score'] * 100
 
                 # Turunkan threshold menjadi 25.0 karena skor probabilitas dari 7 kelas sering terdistribusi
                 if dominant_emotion and dominant_emotion != 'neutral':

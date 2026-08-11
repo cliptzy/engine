@@ -229,12 +229,11 @@ ATURAN:
 2. Jika `words_data` ada, tulis ulang ke `enriched_transcript` dengan menambah field `emotion` dan `color` (Hex: #FFFF00 untuk netral, warna mencolok untuk emosi kuat).
 3. Tambahkan field `score` ke `enriched_transcript` untuk setiap kata, dengan nilai antara 0.0 hingga 1.0.
 4. SINTESIS EMOSI HOLISTIK:
-   Anda memiliki 3 sumber: Wajah (Visual Emotion), Suara (voice_emotion), dan Makna Teks.
-   Mengingat bahwa pendeteksi emosi wajah dan suara oleh AI/mesin sering kali kurang akurat (misalnya teriakan panik sering dideteksi sebagai "angry", atau ekspresi bingung disangka "sad"), JANGAN MENGGUNAKAN SKALA PRIORITAS KAKU.
-   Tugas Anda adalah MEMPERTIMBANGKAN KETIGA VARIABEL TERSEBUT SECARA KONTEKSTUAL untuk menentukan emosi yang paling logis.
-   - Gunakan makna teks sebagai panduan utama jika Wajah/Suara terlihat bertentangan atau ekstrem.
-   - Contoh: Jika Wajah/Suara mendeteksi "angry" namun teksnya menunjukkan kepanikan ("lari", "tolong", "aaaa"), maka emosi yang benar adalah "fear" atau "shock".
-   - Gabungkan sinyal dari ketiga sumber tersebut untuk menghasilkan 1 kesimpulan emosi akhir yang paling mewakili situasi sebenarnya.
+   Anda memiliki 3 sumber prediksi AI mentah: Wajah (Visual Emotion), Suara (voice_emotion), dan Teks (text_emotion).
+   Mengingat bahwa pendeteksi emosi AI terkadang kurang sinkron (misalnya teriakan panik sering dideteksi suara sebagai "angry", wajah mungkin "surprise"), JANGAN MENGGUNAKAN SKALA PRIORITAS KAKU.
+   Tugas Anda adalah MEMPERTIMBANGKAN KETIGA VARIABEL TERSEBUT SECARA KONTEKSTUAL untuk menentukan `emotion` akhir (final) yang paling logis.
+   - Jadikan `text_emotion` sebagai dasar utama, tetapi validasi dengan `voice_emotion` dan Visual Emotion.
+   - Gabungkan sinyal dari ketiga sumber tersebut untuk menghasilkan 1 kesimpulan `emotion` akhir yang paling mewakili situasi sebenarnya ke dalam kolom `emotion`.
 
 KATEGORI EMOSI VALID:
 {emotion_str}

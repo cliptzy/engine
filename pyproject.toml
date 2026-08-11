@@ -43,7 +43,8 @@ dependencies = [
     "transformers",
     "tokenizers",
     "librosa",
-    "setuptools<70.0.0"
+    "setuptools<70.0.0",
+    "retina-face>=0.0.18",
 ]
 
 [project.scripts]

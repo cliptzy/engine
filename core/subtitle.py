@@ -199,6 +199,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             # Combine all text for AI metadata generation
             full_transcript = " ".join([s.text.strip() for s in segments if s.text.strip()])
 
+            # Analyze text emotions per segment
+            from core.processing.text_analyzer import analyze_text_emotions
+            analyze_text_emotions(segments, words_data, language=target_lang if target_lang else "auto")
+
             # Analyze voice levels
             from core.processing.voice_analyzer import analyze_voice_emotions
             analyze_voice_emotions(audio_wav, words_data, language=target_lang if target_lang else "auto")

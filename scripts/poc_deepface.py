@@ -6,6 +6,32 @@ import os
 import json
 import typing
 
+_emotion_pipeline = None
+
+def get_emotion_pipeline():
+    global _emotion_pipeline
+    if _emotion_pipeline is None:
+        try:
+            import torch
+            from transformers import pipeline
+            device = 0 if torch.cuda.is_available() else -1
+            print("Memuat model emosi Hugging Face (dima806/facial_emotions_image_detection)...")
+            _emotion_pipeline = pipeline("image-classification", model="dima806/facial_emotions_image_detection", device=device)
+        except Exception as e:
+            print(f"Gagal memuat model emosi Hugging Face: {e}")
+            _emotion_pipeline = False
+    return _emotion_pipeline
+
+def map_hf_emotion(label: str) -> str:
+    label = label.lower()
+    mapping = {
+        'joy': 'happy',
+        'happiness': 'happy',
+        'anger': 'angry',
+        'sadness': 'sad'
+    }
+    return mapping.get(label, label)
+
 def test_deepface_video(media_path: str, interval_sec: float = 1.0, output_path: str = ""):
     try:
         # Suppress TensorFlow logging
@@ -50,34 +76,52 @@ def test_deepface_video(media_path: str, interval_sec: float = 1.0, output_path:
 
     print(f"Total frames: {total_frames}, Interval: {frame_interval} frames")
 
+    # Initialize pipeline
+    get_emotion_pipeline()
+
     while True:
         ret, frame = cap.read()
         if not ret or frame is None:
             break
 
         if current_frame % frame_interval == 0:
-            print(f"Processing frame {current_frame}/{total_frames} with DeepFace...", end='\r')
+            print(f"Processing frame {current_frame}/{total_frames} with DeepFace + Hugging Face...", end='\r')
             try:
-                # Gunakan detector_backend='mtcnn' karena ini adalah raw video penuh
-                result = DeepFace.analyze(frame, actions=['emotion'], detector_backend='mtcnn', enforce_detection=False, silent=True)
+                # Gunakan detector_backend='mtcnn' atau 'retinaface'
+                extracted = DeepFace.extract_faces(frame, detector_backend='mtcnn', enforce_detection=False, align=True)
 
-                dominant_emotion = None
-                emotion_dict = {}
+                face_data = None
+                if isinstance(extracted, list) and len(extracted) > 0:
+                    face_data = extracted[0]
+                elif isinstance(extracted, dict):
+                    face_data = extracted
+
+                confidence = face_data.get("confidence", 0) if face_data else 0
                 region = {}
+                dominant_emotion = None
 
-                if isinstance(result, list) and len(result) > 0:
-                    face_data = typing.cast(dict, result[0])
-                    dominant_emotion = face_data.get('dominant_emotion')
-                    emotion_dict = face_data.get('emotion', {})
-                    region = face_data.get('region', {})
-                elif isinstance(result, dict):
-                    dominant_emotion = result.get('dominant_emotion')
-                    emotion_dict = result.get('emotion', {})
-                    region = result.get('region', {})
+                if face_data and confidence > 0.5:
+                    region = face_data.get('facial_area', {})
+
+                    classifier = get_emotion_pipeline()
+                    if classifier:
+                        fx, fy, fw, fh = region.get('x', 0), region.get('y', 0), region.get('w', 0), region.get('h', 0)
+                        fx, fy = max(0, fx), max(0, fy)
+                        face_img_arr = frame[fy:fy+fh, fx:fx+fw]
+
+                        if face_img_arr.size > 0:
+                            from PIL import Image
+                            face_img_rgb = cv2.cvtColor(face_img_arr, cv2.COLOR_BGR2RGB)
+                            pil_img = Image.fromarray(face_img_rgb)
+
+                            preds = classifier(pil_img)
+                            if preds:
+                                best_pred = preds[0]
+                                dominant_emotion = map_hf_emotion(best_pred['label'])
+                                current_score = best_pred['score'] * 100
 
                 current_emotion = dominant_emotion
                 current_box = region
-                current_score = emotion_dict.get(dominant_emotion, 0) if dominant_emotion else 0.0
 
                 if dominant_emotion:
                     timestamp_sec = current_frame / fps
@@ -88,7 +132,7 @@ def test_deepface_video(media_path: str, interval_sec: float = 1.0, output_path:
                         "box": {k: int(v) for k, v in region.items() if k in ['x', 'y', 'w', 'h']} if region else {}
                     })
             except Exception as e:
-                print(f"\n[DeepFace Error on frame {current_frame}]: {e}")
+                print(f"\n[Error on frame {current_frame}]: {e}")
                 # Wajah tidak ditemukan
                 current_emotion = None
                 current_box = None
@@ -129,7 +173,6 @@ def test_deepface_video(media_path: str, interval_sec: float = 1.0, output_path:
                 filtered_timeline.append(entry)
                 last_non_neutral_time = t
             else:
-                # Masih dalam cooldown 5 detik dari emosi non-netral sebelumnya
                 filtered_timeline.append({"time": t, "emotion": "neutral", "score": entry.get("score"), "box": entry.get("box")})
         else:
             filtered_timeline.append(entry)
@@ -139,7 +182,7 @@ def test_deepface_video(media_path: str, interval_sec: float = 1.0, output_path:
     print(f"\nAnalyzed video saved to: {output_path}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Proof of Concept for DeepFace Emotion Detection (JSON & Video Output)")
+    parser = argparse.ArgumentParser(description="Proof of Concept for DeepFace + Hugging Face Emotion Detection (JSON & Video Output)")
     parser.add_argument("media_path", type=str, help="Path to video file to test")
     parser.add_argument("--interval", type=float, default=1.0, help="Interval in seconds between frames to analyze")
     parser.add_argument("--output", type=str, default="", help="Path for the output video file")
