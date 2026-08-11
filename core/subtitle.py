@@ -201,7 +201,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
             # Analyze voice levels
             from core.processing.voice_analyzer import analyze_voice_emotions
-            analyze_voice_emotions(audio_wav, words_data)
+            analyze_voice_emotions(audio_wav, words_data, language=target_lang if target_lang else "auto")
 
     except Exception as e:
         log.error(f"Failed to write subtitle file: {e}")

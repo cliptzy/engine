@@ -7,7 +7,7 @@ import numpy as np
 from typing import List, Dict, Any
 from core.logger import log
 
-def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) -> None:
+def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]], language: str) -> None:
     """
     Menganalisis emosi dari potongan audio per kata (berdasarkan words_data)
     menggunakan Deep Learning Transformer (Wav2Vec2) dan ekstraksi fitur (Librosa).
@@ -41,9 +41,17 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
     log.info(f"Memulai analisis emosi suara (Deep Learning SER) pada {len(words_data)} kata...")
 
     try:
-        log.info("Memuat Pre-trained Transformer Model (Wav2Vec2)...")
-        # pipeline akan mengunduh model ke cache HF pada run pertama kali
-        classifier = pipeline("audio-classification", model="superb/wav2vec2-base-superb-er")
+        # -----------------------------------------------------------------
+        # PENENTUAN MODEL BERDASARKAN BAHASA SECARA DINAMIS
+        # -----------------------------------------------------------------
+        if language.strip().lower() == 'id':
+            model_name = "alianurrahman/wav2vec2-base-indonesian-speech-emotion-recognition"
+            log.info("Bahasa [ID] terdeteksi. Memuat model spesifik Indonesia...")
+        else:
+            model_name = "superb/wav2vec2-base-superb-er"
+            log.info(f"Bahasa [{language}] terdeteksi. Memuat model SUPERB...")
+
+        classifier = pipeline("audio-classification", model=model_name)
 
         target_sr = 16000
         log.info("Memuat sinyal audio untuk analisis SER...")
@@ -74,63 +82,54 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]]) ->
                 preds = classifier({"array": y_segment, "sampling_rate": sr})
                 if preds:
                     best_pred = max(preds, key=lambda x: x['score'])
+                    raw_label = best_pred['label'].lower().strip()
+
+                    # ---------------------------------------------------------
+                    # PEMETAAN LABEL GABUNGAN (SUPERB & ALIANURRAHMAN)
+                    # ---------------------------------------------------------
                     label_map = {
+                        # Format SUPERB
                         'neu': 'neutral',
                         'hap': 'happy/excited',
                         'ang': 'angry',
-                        'sad': 'sad'
+                        'sad': 'sad',
+
+                        # Format Alianurrahman
+                        'neutral': 'neutral',
+                        'happy': 'happy/excited',
+                        'angry': 'angry',
+                        'fear': 'fear',         # Dipertahankan jika Anda ingin mengolah fear ke depan
+                        'disgust': 'disgust'    # Dipertahankan jika Anda ingin mengolah disgust ke depan
                     }
-                    emotion = label_map.get(best_pred['label'], best_pred['label'])
+                    emotion = label_map.get(raw_label, raw_label)
 
-                # 2. Ekstraksi Fitur Tradisional untuk Analytics
-                # MFCC
-                mfcc = librosa.feature.mfcc(y=y_segment, sr=sr, n_mfcc=13)
-                mfcc_mean = np.mean(mfcc, axis=1).tolist() if mfcc.size > 0 else [0]*13
-                # ZCR (Tingkat kebisingan/desis)
-                zcr = librosa.feature.zero_crossing_rate(y_segment)
-                zcr_mean = float(np.mean(zcr)) if zcr.size > 0 else 0.0
-                # RMS (Volume Segmen)
-                rms = librosa.feature.rms(y=y_segment)
-                rms_mean = float(np.mean(rms)) if rms.size > 0 else 0.0
+                # Skip
+                # # 2. Ekstraksi Fitur Tradisional untuk Analytics
+                # # MFCC
+                # mfcc = librosa.feature.mfcc(y=y_segment, sr=sr, n_mfcc=13)
+                # mfcc_mean = np.mean(mfcc, axis=1).tolist() if mfcc.size > 0 else [0]*13
+                # # ZCR (Tingkat kebisingan/desis)
+                # zcr = librosa.feature.zero_crossing_rate(y_segment)
+                # zcr_mean = float(np.mean(zcr)) if zcr.size > 0 else 0.0
+                # # RMS (Volume Segmen)
+                # rms = librosa.feature.rms(y=y_segment)
+                # rms_mean = float(np.mean(rms)) if rms.size > 0 else 0.0
 
-                # Pitch (F0)
-                try:
-                    f0 = librosa.yin(y_segment, fmin=50, fmax=300)
-                    valid_f0 = f0[f0 > 0]
-                    pitch_mean = float(np.mean(valid_f0)) if valid_f0.size > 0 else 0.0
-                except:
-                    pitch_mean = 0.0
+                # # Pitch (F0)
+                # try:
+                #     f0 = librosa.yin(y_segment, fmin=50, fmax=300)
+                #     valid_f0 = f0[f0 > 0]
+                #     pitch_mean = float(np.mean(valid_f0)) if valid_f0.size > 0 else 0.0
+                # except:
+                #     pitch_mean = 0.0
 
-                # 3. KOREKSI HYBRID (Deep Learning + Akustik Heuristik)
-                # Wav2Vec2 yang dilatih dengan bahasa Inggris sering mengira streamer Indonesia
-                # yang bersemangat sebagai 'angry'. Kita koreksi menggunakan Relative Energy.
-                rel_energy = rms_mean / (global_rms + 1e-6)
-
-                if emotion == 'angry':
-                    if rel_energy < 0.9:
-                        # Model bilang marah, tapi suaranya pelan di bawah rata-rata. Koreksi jadi netral/sedih.
-                        emotion = 'sad' if pitch_mean > 0 and pitch_mean < 120 else 'neutral'
-                    elif rel_energy < 1.1 and pitch_mean > 160 and zcr_mean < 0.08:
-                        # Model bilang marah, tapi nadanya sangat melengking bersih tanpa bising. Ini mungkin Happy.
-                        emotion = 'happy/excited'
-                elif emotion == 'happy/excited':
-                    if rel_energy > 1.3 and zcr_mean > 0.12:
-                        # Model bilang happy, tapi teriakannya sangat keras dan serak/bising (ZCR tinggi). Ini Marah.
-                        emotion = 'angry'
-                    elif rel_energy < 1.0 and pitch_mean < 140:
-                        # Model bilang happy, tapi nadanya rendah dan pelan. Pasti salah tebak.
-                        emotion = 'neutral'
-                elif emotion == 'neutral' and rel_energy > 1.8:
-                    # Model bilang netral, tapi suaranya melonjak ekstrim kerasnya.
-                    emotion = 'happy/excited' if pitch_mean > 160 and zcr_mean < 0.1 else 'angry'
-
-                words_data[i]['features'] = {
-                    "rms_energy": round(rms_mean, 4),
-                    "zero_crossing_rate": round(zcr_mean, 4),
-                    "pitch_f0": round(pitch_mean, 2),
-                    "mfcc_vector": [round(m, 2) for m in mfcc_mean],
-                    "relative_energy": round(rel_energy, 4)
-                }
+                # words_data[i]['features'] = {
+                #     "rms_energy": round(rms_mean, 4),
+                #     "zero_crossing_rate": round(zcr_mean, 4),
+                #     "pitch_f0": round(pitch_mean, 2),
+                #     "mfcc_vector": [round(m, 2) for m in mfcc_mean],
+                #     "relative_energy": round(rel_energy, 4)
+                # }
 
                 log.info(f"Word: {words_data[i]['word']}, Emotion: {emotion}")
 
