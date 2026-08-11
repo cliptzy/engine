@@ -146,7 +146,7 @@ def burn_subtitle_and_highlight(
 
             for block in blocks:
                 s = block[1]
-                if s - last_effect_time < 3:
+                if s - last_effect_time < 5:
                     continue
                 last_effect_time = s
                 filtered_blocks.append(block)
@@ -208,14 +208,34 @@ def burn_subtitle_and_highlight(
         standalone_effects = (
             metadata.get("standalone_video_effects", []) if metadata else []
         )
+        standalone_effects = sorted(standalone_effects, key=lambda x: float(x.get("time", 0.0)))
         for se in standalone_effects:
             ve_name = se.get("video_effect_override")
             s = float(se.get("time", 0.0))
+            
+            # Prevent overlap with other scheduled effects
+            overlap = False
+            for scheduled in scheduled_video_effects:
+                if abs(scheduled["start"] - s) < 5.0:
+                    overlap = True
+                    break
+            if overlap:
+                continue
+
             if ve_name and ve_name not in ["none", "random"]:
                 try:
                     from core.video_effects import video_effect_manager
 
                     effect = video_effect_manager.get_effect_by_name(ve_name)
+                    
+                    # Anti-spam: If effect was already used, try to pick an alternative with the same emotion
+                    if effect and effect.get("name") in selected_effects:
+                        emos = effect.get("emotions", [])
+                        if emos:
+                            alt_effect = video_effect_manager.get_effect(emos[0], exclude=selected_effects)
+                            if alt_effect:
+                                effect = alt_effect
+
                     if effect and effect.get("file"):
                         eff_file = os.path.join(
                             "assets", "video_effects", effect["file"]

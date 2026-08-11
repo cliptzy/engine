@@ -46,19 +46,26 @@ class VideoEffectManager:
         effects = self.effects_map.get(emotion, [])
         if not effects:
             return None
-        effect = random.choice(effects)
-        file_path = os.path.join(self.effects_dir, effect.get("file", ""))
-
-        if not os.path.exists(file_path):
-            effect = None
-        if exclude and effect and effect.get("name") in exclude:
-            effect = None
-
-        if not effect:
-            return self.get_effect(
-                emotion
-            )  # get random effect for the same emotion without exclusion
-        return effect
+            
+        # Filter out excluded effects if there are still alternatives left
+        valid_effects = []
+        for e in effects:
+            file_path = os.path.join(self.effects_dir, e.get("file", ""))
+            if os.path.exists(file_path):
+                if not exclude or e.get("name") not in exclude:
+                    valid_effects.append(e)
+                    
+        # If all valid effects were excluded, fallback to any existing effect
+        if not valid_effects:
+            for e in effects:
+                file_path = os.path.join(self.effects_dir, e.get("file", ""))
+                if os.path.exists(file_path):
+                    valid_effects.append(e)
+                    
+        if not valid_effects:
+            return None
+            
+        return random.choice(valid_effects)
 
     def get_effect_by_name(self, name: str) -> Optional[Dict]:
         for effect in self.all_effects:

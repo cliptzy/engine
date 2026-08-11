@@ -279,15 +279,18 @@ ATURAN:
 1. `highlight` sangat singkat (maks 3-4 kata).
 2. Jika `words_data` ada, tulis ulang ke `enriched_transcript` dengan menambah field `emotion` dan `color` (Hex: #FFFF00 untuk netral, warna mencolok untuk emosi kuat).
 3. Tambahkan field `score` ke `enriched_transcript` untuk setiap kata, dengan nilai antara 0.0 hingga 1.0.
-4. SINTESIS EMOSI HOLISTIK:
-   Anda memiliki 3 sumber prediksi AI mentah: Wajah (Visual Emotion), Suara (voice_emotion), dan Teks (text_emotion).
-   Mengingat bahwa pendeteksi emosi AI terkadang kurang sinkron (misalnya teriakan panik sering dideteksi suara sebagai "angry", wajah mungkin "surprise"), JANGAN MENGGUNAKAN SKALA PRIORITAS KAKU.
-   Tugas Anda adalah MEMPERTIMBANGKAN KETIGA VARIABEL TERSEBUT SECARA KONTEKSTUAL untuk menentukan `emotion` akhir (final) yang paling logis.
-   - Jadikan `text_emotion` sebagai dasar utama, tetapi validasi dengan `voice_emotion` dan Visual Emotion.
-   - Gabungkan sinyal dari ketiga sumber tersebut untuk menghasilkan 1 kesimpulan `emotion` akhir yang paling mewakili situasi sebenarnya ke dalam kolom `emotion`.
+4. SINTESIS EMOSI HOLISTIK (PENTING UNTUK STREAMER/GAMER):
+   Anda memiliki 3 sumber prediksi AI mentah: Wajah (Visual Emotion), Suara (voice_emotion/audio_event), dan Teks (text_emotion).
+   - STREAMER ROLEPLAY AWARENESS: Streamer sering mengucapkan kata ekstrem ("mati kau", "I'm dead") sambil bercanda. JANGAN PERCAYA TEKS 100%!
+   - Jika teks bermakna kuat (angry/fear/shock) NAMUN Wajah (Visual) atau Suara menunjukkan 'neutral' / 'happy', maka itu hanya roleplay/kasual. Anda WAJIB menjadikannya 'neutral' atau 'happy'.
+   - Emosi kuat (angry/fear/shock) HANYA BOLEH DIPILIH jika benar-benar didukung oleh bukti Wajah (panik/marah) ATAU Suara (teriakan/ledakan/gebrak meja).
+   - Tujuan Anda: Mencegah spam deteksi emosi pada obrolan kasual.
 5. PILIHAN EFEK VIDEO (VIDEO EFFECT OVERRIDE):
    Selain emosi, pilih spesifik nama efek video yang paling menggambarkan momen/kata tersebut dari daftar di bawah.
-   Tulis nama efek tersebut ke dalam field `video_effect_override`. Jika momen tidak memerlukan efek spesifik, tulis "random" atau "none".
+   Tulis nama efek tersebut ke dalam field `video_effect_override`.
+   - Jika momen adalah obrolan biasa atau tidak butuh penekanan, Anda WAJIB mengisi dengan "none".
+   - Jika momen adalah klimaks tapi Anda bingung pilih efek, isi "random".
+   - JANGAN LAKUKAN SPAM! Gunakan efek video (khususnya meme) hanya pada momen yang benar-benar lucu atau mengagetkan.
 6. Momen Tanpa Bicara (NON-VERBAL EVENTS):
    Jika ada momen jeritan (Scream) atau kejadian audio penting lainnya namun tidak ada kata yang terucap di `words_data` pada detik tersebut, Anda BISA meletakkan efek video ke dalam array `"standalone_video_effects"`.
    Isikan `"time"` (detik mulainya) dan `"video_effect_override"` dengan nama efek yang sesuai.
