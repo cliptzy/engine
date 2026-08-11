@@ -1,22 +1,25 @@
+from typing import Any, Callable, Optional
+
 import flet as ft
-from typing import Optional, Callable, Any
+
 from core.models import VideoInfo
+
 
 class VideoCard(ft.Card):
     def __init__(
         self,
         video_info: VideoInfo,
         on_click: Optional[Callable[[Any], Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         super().__init__(**kwargs)
         self.video_info = video_info
-        
+
         # Format duration
         mins = int(self.video_info.duration // 60)
         secs = int(self.video_info.duration % 60)
         duration_str = f"{mins}:{secs:02d}"
-        
+
         # Create thumbnail image
         thumbnail: ft.Control
         if self.video_info.thumbnail_url:
@@ -35,11 +38,11 @@ class VideoCard(ft.Card):
                 border_radius=8,
                 content=ft.Icon(ft.Icons.VIDEO_FILE, size=40, color="#CDD6F4"),
             )
-            
+
         def on_hover(e) -> None:
-            e.control.scale = 1.05 if e.data == "true" else 1.0 # type: ignore
-            e.control.update() # type: ignore
-            
+            e.control.scale = 1.05 if e.data == "true" else 1.0  # type: ignore
+            e.control.update()  # type: ignore
+
         self.content = ft.Container(
             width=200,
             on_click=on_click,
@@ -65,10 +68,10 @@ class VideoCard(ft.Card):
                                     f"{duration_str} • {self.video_info.video_id}",
                                     size=12,
                                     color=ft.Colors.ON_SURFACE_VARIANT,
-                                )
-                            ]
-                        )
-                    )
-                ]
-            )
+                                ),
+                            ],
+                        ),
+                    ),
+                ],
+            ),
         )

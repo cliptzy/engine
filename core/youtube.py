@@ -1,12 +1,15 @@
-import re
 import json
-import subprocess
 import os
-from typing import Optional, List, Dict, Any
-from urllib.parse import urlparse, parse_qs
+import re
+import subprocess
+from typing import Any, Dict, List, Optional
+from urllib.parse import parse_qs, urlparse
+
 import requests
+
 from core.logger import log
 from core.yt_dlp_logger import create_yt_dlp_logger
+
 
 def extract_video_id(url: str) -> Optional[str]:
     """
@@ -27,34 +30,37 @@ def extract_video_id(url: str) -> Optional[str]:
 
     return None
 
+
 def fetch_most_replayed(video_id: str, min_score: float) -> List[Dict[str, Any]]:
     """
     Fetches and parses YouTube 'Most Replayed' heatmap data using yt-dlp.
     Returns a list of high-engagement segments.
     """
     log.info(f"Reading YouTube heatmap data for video ID: {video_id}")
-    
-    import yt_dlp
+
     from typing import Any
+
+    import yt_dlp
+
     from core.config import config
-    
+
     ydl_opts: dict[str, Any] = {
-        'skip_download': True,
-        'no_warnings': True,
-        'remote_components': ['ejs:github'],
-        'logger': create_yt_dlp_logger('[yt-dlp:heatmap]'),
+        "skip_download": True,
+        "no_warnings": True,
+        "remote_components": ["ejs:github"],
+        "logger": create_yt_dlp_logger("[yt-dlp:heatmap]"),
     }
-    
+
     if config.youtube.session and os.path.exists(config.youtube.session):
-        ydl_opts['cookiefile'] = config.youtube.session
-        
+        ydl_opts["cookiefile"] = config.youtube.session
+
     url = f"https://youtu.be/{video_id}"
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
             data: Any = ydl.extract_info(url, download=False)
         heatmap = data.get("heatmap")
-        
+
         if not heatmap:
             log.warning("No heatmap markers found in the video data.")
             return []
@@ -67,11 +73,9 @@ def fetch_most_replayed(video_id: str, min_score: float) -> List[Dict[str, Any]]
                     start = float(marker.get("start_time", 0))
                     end = float(marker.get("end_time", 0))
                     duration = end - start
-                    results.append({
-                        "start": start,
-                        "duration": duration,
-                        "score": score
-                    })
+                    results.append(
+                        {"start": start, "duration": duration, "score": score}
+                    )
             except Exception:
                 continue
 
@@ -81,29 +85,32 @@ def fetch_most_replayed(video_id: str, min_score: float) -> List[Dict[str, Any]]
         log.error(f"Failed to fetch YouTube page/heatmap: {e}")
         return []
 
+
 def get_video_duration(video_id: str) -> int:
     """
     Retrieves the total duration of a YouTube video in seconds using yt-dlp.
     """
-    import yt_dlp
     from typing import Any
+
+    import yt_dlp
+
     from core.config import config
-    
+
     ydl_opts: dict[str, Any] = {
-        'skip_download': True,
-        'no_warnings': True,
-        'remote_components': ['ejs:github'],
-        'extract_flat': True,
-        'logger': create_yt_dlp_logger('[yt-dlp:duration]'),
+        "skip_download": True,
+        "no_warnings": True,
+        "remote_components": ["ejs:github"],
+        "extract_flat": True,
+        "logger": create_yt_dlp_logger("[yt-dlp:duration]"),
     }
-    
+
     if config.youtube.session and os.path.exists(config.youtube.session):
-        ydl_opts['cookiefile'] = config.youtube.session
-        
+        ydl_opts["cookiefile"] = config.youtube.session
+
     url = f"https://youtu.be/{video_id}"
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
             data: Any = ydl.extract_info(url, download=False)
         duration = data.get("duration")
         if duration:

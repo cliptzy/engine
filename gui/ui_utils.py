@@ -1,9 +1,10 @@
 import flet as ft
 
+
 def show_snackbar(page: ft.Page, message: str, error: bool = False) -> None:
     """
     Menampilkan SnackBar di layar Flet.
-    
+
     Args:
         page (ft.Page): Referensi page aplikasi Flet
         message (str): Pesan yang ingin ditampilkan

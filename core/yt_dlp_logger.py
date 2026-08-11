@@ -14,7 +14,8 @@ Design Principles (SOLID):
   not on specific GUI or event-bus details.
 """
 
-from typing import Optional, Callable, Any
+from typing import Any, Callable, Optional
+
 from core.logger import log
 
 

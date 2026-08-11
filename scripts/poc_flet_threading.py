@@ -119,7 +119,9 @@ def main(page: ft.Page) -> None:
         def worker(worker_id: int) -> None:
             time.sleep(0.5 * worker_id)  # Stagger
             with lock:
-                results.append(f"Worker-{worker_id} done at {time.strftime('%H:%M:%S')}")
+                results.append(
+                    f"Worker-{worker_id} done at {time.strftime('%H:%M:%S')}"
+                )
                 count[0] += 1
                 if count[0] == 3:
                     concurrent_results.value = "\n".join(results)

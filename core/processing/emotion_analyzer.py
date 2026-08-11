@@ -1,9 +1,12 @@
-import cv2
 import os
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
+import cv2
+
 from core.logger import log
 
 _emotion_pipeline = None
+
 
 def get_emotion_pipeline():
     global _emotion_pipeline
@@ -11,26 +14,36 @@ def get_emotion_pipeline():
         try:
             import torch
             from transformers import pipeline
+
             device = 0 if torch.cuda.is_available() else -1
-            log.info("Memuat model emosi Hugging Face (dima806/facial_emotions_image_detection)...")
+            log.info(
+                "Memuat model emosi Hugging Face (dima806/facial_emotions_image_detection)..."
+            )
             # dima806 model outputs 7 standard emotions
-            _emotion_pipeline = pipeline("image-classification", model="dima806/facial_emotions_image_detection", device=device)
+            _emotion_pipeline = pipeline(
+                "image-classification",
+                model="dima806/facial_emotions_image_detection",
+                device=device,
+            )
         except Exception as e:
             log.error(f"Gagal memuat model emosi Hugging Face: {e}")
             _emotion_pipeline = False
     return _emotion_pipeline
 
+
 def map_hf_emotion(label: str) -> str:
     label = label.lower()
-    mapping = {
-        'joy': 'happy',
-        'happiness': 'happy',
-        'anger': 'angry',
-        'sadness': 'sad'
-    }
+    mapping = {"joy": "happy", "happiness": "happy", "anger": "angry", "sadness": "sad"}
     return mapping.get(label, label)
 
-def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float = 0.5, interval_sec: float = 1.0, crop_mode: str = "raw") -> List[Dict[str, Any]]:
+
+def analyze_video_emotions(
+    video_path: str,
+    cx_norm: float = 0.5,
+    cy_norm: float = 0.5,
+    interval_sec: float = 1.0,
+    crop_mode: str = "raw",
+) -> List[Dict[str, Any]]:
     """
     Mengekstrak frame dari video pada interval `interval_sec`.
     Jika crop_mode adalah mode split (full_face, split_face, dll), kita potong (crop) separuh bawah layar
@@ -41,7 +54,9 @@ def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float
         from deepface import DeepFace
         from retinaface import RetinaFace
     except ImportError:
-        log.warning("Modul deepface atau retinaface belum terinstall. Lewati analisis emosi visual.")
+        log.warning(
+            "Modul deepface atau retinaface belum terinstall. Lewati analisis emosi visual."
+        )
         return []
 
     if not os.path.exists(video_path):
@@ -85,8 +100,14 @@ def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float
         if cropped_face.size > 0:
             try:
                 import typing
+
                 # Gunakan DeepFace untuk mendapatkan bounding box wajah
-                extracted = DeepFace.extract_faces(cropped_face, detector_backend='mtcnn', enforce_detection=False, align=True)
+                extracted = DeepFace.extract_faces(
+                    cropped_face,
+                    detector_backend="mtcnn",
+                    enforce_detection=False,
+                    align=True,
+                )
 
                 face_data = None
                 if isinstance(extracted, list) and len(extracted) > 0:
@@ -100,49 +121,65 @@ def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float
                 emotion_scores = {}
 
                 if face_data and confidence > 0.5:
-                    region = face_data.get('facial_area', {})
+                    region = face_data.get("facial_area", {})
 
                     classifier = get_emotion_pipeline()
 
                     if classifier:
                         # Potong bagian wajah untuk diproses Hugging Face
-                        fx, fy, fw, fh = region.get('x', 0), region.get('y', 0), region.get('w', 0), region.get('h', 0)
+                        fx, fy, fw, fh = (
+                            region.get("x", 0),
+                            region.get("y", 0),
+                            region.get("w", 0),
+                            region.get("h", 0),
+                        )
                         fx, fy = max(0, fx), max(0, fy)
-                        face_img_arr = cropped_face[fy:fy+fh, fx:fx+fw]
+                        face_img_arr = cropped_face[fy : fy + fh, fx : fx + fw]
 
                         if face_img_arr.size > 0:
                             from PIL import Image
+
                             face_img_rgb = cv2.cvtColor(face_img_arr, cv2.COLOR_BGR2RGB)
                             pil_img = Image.fromarray(face_img_rgb)
 
                             preds = classifier(pil_img)
                             if preds:
                                 best_pred = preds[0]
-                                dominant_emotion = map_hf_emotion(best_pred['label'])
+                                dominant_emotion = map_hf_emotion(best_pred["label"])
                                 for p in preds:
-                                    emotion_scores[map_hf_emotion(p['label'])] = p['score'] * 100
+                                    emotion_scores[map_hf_emotion(p["label"])] = (
+                                        p["score"] * 100
+                                    )
 
                 # Turunkan threshold menjadi 25.0 karena skor probabilitas dari 7 kelas sering terdistribusi
-                if dominant_emotion and dominant_emotion != 'neutral':
+                if dominant_emotion and dominant_emotion != "neutral":
                     score = emotion_scores.get(dominant_emotion, 0)
                     if score < 25.0:
-                        dominant_emotion = 'neutral'
+                        dominant_emotion = "neutral"
 
                 if dominant_emotion:
                     timestamp_sec = current_frame / fps
                     actual_score = emotion_scores.get(dominant_emotion, 0)
                     final_box = {}
 
-                    if region and crop_mode in ["split_left", "split_right", "split_face", "full_face", "multi_face", "center_face"]:
+                    if region and crop_mode in [
+                        "split_left",
+                        "split_right",
+                        "split_face",
+                        "full_face",
+                        "multi_face",
+                        "center_face",
+                    ]:
                         # Kembalikan ke koordinat absolut raw video
-                        raw_x = region.get('x', 0) + x1
-                        raw_y = region.get('y', 0) + y1
-                        raw_w = region.get('w', 0)
-                        raw_h = region.get('h', 0)
+                        raw_x = region.get("x", 0) + x1
+                        raw_y = region.get("y", 0) + y1
+                        raw_w = region.get("w", 0)
+                        raw_h = region.get("h", 0)
 
                         # Kalkulasi matematis pemetaan (mapping) koordinat FFmpeg
                         from core.config import config
                         from core.ffmpeg import get_split_heights
+
                         out_w = config.out_width or 720
                         out_h = config.out_height or 1280
                         _, bottom_h = get_split_heights(out_h, config.bottom_height)
@@ -152,8 +189,12 @@ def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float
                         scaled_w = w * S
                         scaled_h = h * S
 
-                        x_offset = max(0, min(w * cx_norm * S - out_w / 2, scaled_w - out_w))
-                        y_offset = max(0, min(h * cy_norm * S - bottom_h / 2, scaled_h - bottom_h))
+                        x_offset = max(
+                            0, min(w * cx_norm * S - out_w / 2, scaled_w - out_w)
+                        )
+                        y_offset = max(
+                            0, min(h * cy_norm * S - bottom_h / 2, scaled_h - bottom_h)
+                        )
 
                         bottom_x = raw_x * S - x_offset
                         bottom_y = raw_y * S - y_offset
@@ -165,19 +206,27 @@ def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float
                         final_y = bg_y_offset + top_h + bottom_y
 
                         final_box = {
-                            'x': int(final_x), 'y': int(final_y),
-                            'w': int(raw_w * S), 'h': int(raw_h * S)
+                            "x": int(final_x),
+                            "y": int(final_y),
+                            "w": int(raw_w * S),
+                            "h": int(raw_h * S),
                         }
                     elif region:
-                        final_box = {k: int(v) for k, v in region.items() if k in ['x', 'y', 'w', 'h']}
+                        final_box = {
+                            k: int(v)
+                            for k, v in region.items()
+                            if k in ["x", "y", "w", "h"]
+                        }
 
                     data = {
                         "time": round(timestamp_sec, 2),
                         "emotion": dominant_emotion,
                         "score": round(float(actual_score), 1),
-                        "box": final_box
+                        "box": final_box,
                     }
-                    log.info(f"[visual emotion]: {data['time']} -> {data['emotion']} ({data['score']}%) box={data['box']}")
+                    log.info(
+                        f"[visual emotion]: {data['time']} -> {data['emotion']} ({data['score']}%) box={data['box']}"
+                    )
                     emotion_timeline.append(data)
             except Exception as e:
                 log.error(f"[visual emotion] Error: {e}")
@@ -200,12 +249,21 @@ def analyze_video_emotions(video_path: str, cx_norm: float = 0.5, cy_norm: float
                 last_non_neutral_time = t
             else:
                 # Masih dalam cooldown 5 detik dari emosi non-netral sebelumnya
-                filtered_timeline.append({"time": t, "emotion": "neutral", "score": entry.get("score", 0), "box": entry.get("box", {})})
+                filtered_timeline.append(
+                    {
+                        "time": t,
+                        "emotion": "neutral",
+                        "score": entry.get("score", 0),
+                        "box": entry.get("box", {}),
+                    }
+                )
         else:
             filtered_timeline.append(entry)
 
     if filtered_timeline:
-        log.info(f"Berhasil mengekstrak {len(filtered_timeline)} data emosi visual wajah dari klip.")
+        log.info(
+            f"Berhasil mengekstrak {len(filtered_timeline)} data emosi visual wajah dari klip."
+        )
     else:
         log.info("Tidak ada emosi dominan yang terdeteksi secara visual.")
 

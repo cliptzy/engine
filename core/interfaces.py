@@ -1,5 +1,5 @@
-from typing import Protocol, Any, Dict, List, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Protocol
 
 
 class ProgressReporter(Protocol):
@@ -38,13 +38,18 @@ class AIProvider(Protocol):
         """
         ...
 
+
 from typing import Callable
 
-def create_reporter_hook(reporter: Optional[ProgressReporter]) -> Callable[[str, Any], None]:
+
+def create_reporter_hook(
+    reporter: Optional[ProgressReporter],
+) -> Callable[[str, Any], None]:
     """
     Factory modular untuk menghasilkan fungsi event_hook standar.
     Mencegah redundansi pembuatan fungsi hook secara manual di setiap UseCase.
     """
+
     def hook(event: str, data: Any = None):
         if not reporter:
             return
@@ -58,7 +63,5 @@ def create_reporter_hook(reporter: Optional[ProgressReporter]) -> Callable[[str,
                 reporter.on_progress(stage, idx, tot)
         elif event == "total_targets":
             reporter.on_progress("total_targets", int(data), int(data))
-            
+
     return hook
-
-

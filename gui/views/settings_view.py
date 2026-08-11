@@ -1,7 +1,10 @@
-from gui.ui_utils import show_snackbar
+from typing import Any, cast
+
 import flet as ft
-from typing import cast, Any
+
 from core.config import config
+from gui.ui_utils import show_snackbar
+
 
 class SettingsView(ft.Container):
     def __init__(self, page: ft.Page):
@@ -16,30 +19,63 @@ class SettingsView(ft.Container):
             options=[
                 ft.dropdown.Option("ollama", "Local Ollama (Offline / Local)"),
                 ft.dropdown.Option("gemini", "Google Gemini API (Online)"),
-                ft.dropdown.Option("openai", "OpenAI GPT API (Online)")
+                ft.dropdown.Option("openai", "OpenAI GPT API (Online)"),
             ],
             value=config.ai.provider,
-            on_select=self.on_ai_provider_changed, # type: ignore
-            expand=True
+            on_select=self.on_ai_provider_changed,  # type: ignore
+            expand=True,
         )
 
-        self.ai_key_input = ft.TextField(label="Ollama Host / API Key", value=config.ai.ollama_host, expand=True)
-        self.ai_model_input = ft.TextField(label="Model Name", value=config.ai.ollama_model, hint_text="misal: llama3, gemini-1.5-flash, gpt-4o-mini", expand=True)
-        self.ai_base_url_input = ft.TextField(label="Base URL", value=config.ai.openai_base_url, expand=True, hint_text="Opsional, untuk 3rd party OpenAI API", visible=False)
+        self.ai_key_input = ft.TextField(
+            label="Ollama Host / API Key", value=config.ai.ollama_host, expand=True
+        )
+        self.ai_model_input = ft.TextField(
+            label="Model Name",
+            value=config.ai.ollama_model,
+            hint_text="misal: llama3, gemini-1.5-flash, gpt-4o-mini",
+            expand=True,
+        )
+        self.ai_base_url_input = ft.TextField(
+            label="Base URL",
+            value=config.ai.openai_base_url,
+            expand=True,
+            hint_text="Opsional, untuk 3rd party OpenAI API",
+            visible=False,
+        )
 
-        self.on_ai_provider_changed(None) # init fields
+        self.on_ai_provider_changed(None)  # init fields
 
-        ai_settings_content = ft.Column([
-            ft.Row(cast(list[ft.Control], [self.ai_provider_dropdown, self.ai_key_input]), expand=True),
-            ft.Row(cast(list[ft.Control], [self.ai_base_url_input, self.ai_model_input]), expand=True)
-        ], spacing=10)
+        ai_settings_content = ft.Column(
+            [
+                ft.Row(
+                    cast(
+                        list[ft.Control], [self.ai_provider_dropdown, self.ai_key_input]
+                    ),
+                    expand=True,
+                ),
+                ft.Row(
+                    cast(
+                        list[ft.Control], [self.ai_base_url_input, self.ai_model_input]
+                    ),
+                    expand=True,
+                ),
+            ],
+            spacing=10,
+        )
 
         # --- System Settings ---
-        self.output_dir_input = ft.TextField(label="Direktori Output (Default: clips)", value=config.output_dir, expand=True)
+        self.output_dir_input = ft.TextField(
+            label="Direktori Output (Default: clips)",
+            value=config.output_dir,
+            expand=True,
+        )
 
-        system_settings_content = ft.Column([
-            ft.Row(cast(list[ft.Control], [self.output_dir_input]), expand=True),
-        ], spacing=10)
+        system_settings_content = ft.Column(
+            [
+                ft.Row(cast(list[ft.Control], [self.output_dir_input]), expand=True),
+            ],
+            spacing=10,
+        )
 
         # --- Platform Settings Pickers ---
         self.tt_cookies_picker = ft.FilePicker()
@@ -54,112 +90,163 @@ class SettingsView(ft.Container):
             hint_text="#Shorts #Viral #Cliptzy #fyp",
             multiline=True,
             min_lines=3,
-            expand=True
+            expand=True,
         )
 
-        self.yt_client_id = ft.TextField(label="Client ID (OAuth 2.0)", value=config.youtube.client_id, expand=True)
-        self.yt_client_secret = ft.TextField(label="Client Secret", value=config.youtube.client_secret, password=True, can_reveal_password=True, expand=True)
+        self.yt_client_id = ft.TextField(
+            label="Client ID (OAuth 2.0)", value=config.youtube.client_id, expand=True
+        )
+        self.yt_client_secret = ft.TextField(
+            label="Client Secret",
+            value=config.youtube.client_secret,
+            password=True,
+            can_reveal_password=True,
+            expand=True,
+        )
         self.yt_visibility = ft.Dropdown(
             label="Default Visibility",
-            options=[ft.dropdown.Option("Public"), ft.dropdown.Option("Unlisted"), ft.dropdown.Option("Private")],
+            options=[
+                ft.dropdown.Option("Public"),
+                ft.dropdown.Option("Unlisted"),
+                ft.dropdown.Option("Private"),
+            ],
             value=config.youtube.visibility or "Public",
-            expand=True
+            expand=True,
         )
 
         yt_tab_content = ft.Container(
-            content=ft.Column([
-                ft.Row(cast(list[ft.Control], [self.yt_client_id]), expand=True),
-                ft.Row(cast(list[ft.Control], [self.yt_client_secret]), expand=True),
-                ft.Row(cast(list[ft.Control], [self.yt_visibility]), expand=True)
-            ], spacing=10),
-            padding=16
+            content=ft.Column(
+                [
+                    ft.Row(cast(list[ft.Control], [self.yt_client_id]), expand=True),
+                    ft.Row(
+                        cast(list[ft.Control], [self.yt_client_secret]), expand=True
+                    ),
+                    ft.Row(cast(list[ft.Control], [self.yt_visibility]), expand=True),
+                ],
+                spacing=10,
+            ),
+            padding=16,
         )
 
-        self.tt_session = ft.TextField(label="File Cookies TikTok (.txt/.json)", value=config.tiktok.session, expand=True)
+        self.tt_session = ft.TextField(
+            label="File Cookies TikTok (.txt/.json)",
+            value=config.tiktok.session,
+            expand=True,
+        )
         self.btn_import_tt_cookies = ft.Button(
             content=ft.Text("Import Cookies"),
-            on_click=self.on_import_tt_cookies_clicked
+            on_click=self.on_import_tt_cookies_clicked,
         )
         self.tt_privacy = ft.Dropdown(
             label="Privasi Posting",
-            options=[ft.dropdown.Option("Public (Semua Orang)"), ft.dropdown.Option("Friends (Teman)"), ft.dropdown.Option("Private (Hanya Saya)")],
+            options=[
+                ft.dropdown.Option("Public (Semua Orang)"),
+                ft.dropdown.Option("Friends (Teman)"),
+                ft.dropdown.Option("Private (Hanya Saya)"),
+            ],
             value=config.tiktok.privacy or "Public (Semua Orang)",
-            expand=True
+            expand=True,
         )
 
         tt_tab_content = ft.Container(
-            content=ft.Column([
-                ft.Row(cast(list[ft.Control], [self.tt_session, self.btn_import_tt_cookies]), expand=True),
-                ft.Row(cast(list[ft.Control], [self.tt_privacy]), expand=True)
-            ], spacing=10),
-            padding=16
+            content=ft.Column(
+                [
+                    ft.Row(
+                        cast(
+                            list[ft.Control],
+                            [self.tt_session, self.btn_import_tt_cookies],
+                        ),
+                        expand=True,
+                    ),
+                    ft.Row(cast(list[ft.Control], [self.tt_privacy]), expand=True),
+                ],
+                spacing=10,
+            ),
+            padding=16,
         )
 
-        self.ig_session = ft.TextField(label="File Cookies Instagram (.txt/.json)", value=config.instagram.session, expand=True)
+        self.ig_session = ft.TextField(
+            label="File Cookies Instagram (.txt/.json)",
+            value=config.instagram.session,
+            expand=True,
+        )
         self.btn_import_ig_cookies = ft.Button(
             content=ft.Text("Import Cookies"),
-            on_click=self.on_import_ig_cookies_clicked
+            on_click=self.on_import_ig_cookies_clicked,
         )
 
         ig_tab_content = ft.Container(
-            content=ft.Column([
-                ft.Row(cast(list[ft.Control], [self.ig_session, self.btn_import_ig_cookies]), expand=True)
-            ], spacing=10),
-            padding=16
+            content=ft.Column(
+                [
+                    ft.Row(
+                        cast(
+                            list[ft.Control],
+                            [self.ig_session, self.btn_import_ig_cookies],
+                        ),
+                        expand=True,
+                    )
+                ],
+                spacing=10,
+            ),
+            padding=16,
         )
 
         self.platform_tabs = ft.Tabs(
             selected_index=0,
             length=3,
-            content=ft.Column([
-                ft.TabBar(
-                    tabs=[
-                        ft.Tab(label=ft.Text("🔴 YouTube Shorts")), # type: ignore
-                        ft.Tab(label=ft.Text("🎵 TikTok")), # type: ignore
-                        ft.Tab(label=ft.Text("📸 Instagram Reels")), # type: ignore
-                    ]
-                ),
-                ft.TabBarView(
-                    controls=[
-                        yt_tab_content,
-                        tt_tab_content,
-                        ig_tab_content
-                    ],
-                    expand=True
-                )
-            ], expand=True),
+            content=ft.Column(
+                [
+                    ft.TabBar(
+                        tabs=[
+                            ft.Tab(label=ft.Text("🔴 YouTube Shorts")),  # type: ignore
+                            ft.Tab(label=ft.Text("🎵 TikTok")),  # type: ignore
+                            ft.Tab(label=ft.Text("📸 Instagram Reels")),  # type: ignore
+                        ]
+                    ),
+                    ft.TabBarView(
+                        controls=[yt_tab_content, tt_tab_content, ig_tab_content],
+                        expand=True,
+                    ),
+                ],
+                expand=True,
+            ),
             expand=1,
-            height=350
+            height=350,
         )
 
         self.btn_check_all_auth = ft.Button(
             content=ft.Row(
-                controls=cast(list[ft.Control], [
-                    ft.Icon(ft.Icons.LOCK_OPEN, size=18),
-                    ft.Text("🔍 Cek Status Autentikasi Semua Platform")
-                ]),
+                controls=cast(
+                    list[ft.Control],
+                    [
+                        ft.Icon(ft.Icons.LOCK_OPEN, size=18),
+                        ft.Text("🔍 Cek Status Autentikasi Semua Platform"),
+                    ],
+                ),
                 tight=True,
-                spacing=8
+                spacing=8,
             ),
             on_click=self.check_all_platforms_auth,
-            style=ft.ButtonStyle(
-                bgcolor=ft.Colors.INDIGO_700,
-                color=ft.Colors.WHITE
-            )
+            style=ft.ButtonStyle(bgcolor=ft.Colors.INDIGO_700, color=ft.Colors.WHITE),
         )
         self.auth_check_progress = ft.ProgressBar(visible=False, width=400)
         self.auth_check_result_text = ft.Text("", size=13, color=ft.Colors.GREY_400)
 
-        platform_settings_layout = ft.Column([
-            ft.Row(cast(list[ft.Control], [self.default_hashtags]), expand=True),
-            ft.Container(height=10),
-            self.platform_tabs,
-            ft.Container(height=10),
-            ft.Row(cast(list[ft.Control], [self.btn_check_all_auth]), alignment=ft.MainAxisAlignment.START),
-            ft.Container(height=4),
-            self.auth_check_progress,
-            self.auth_check_result_text
-        ])
+        platform_settings_layout = ft.Column(
+            [
+                ft.Row(cast(list[ft.Control], [self.default_hashtags]), expand=True),
+                ft.Container(height=10),
+                self.platform_tabs,
+                ft.Container(height=10),
+                ft.Row(
+                    cast(list[ft.Control], [self.btn_check_all_auth]),
+                    alignment=ft.MainAxisAlignment.START,
+                ),
+                ft.Container(height=4),
+                self.auth_check_progress,
+                self.auth_check_result_text,
+            ]
+        )
 
         # --- Cloud Sync / Account Settings ---
         cloud_sync_content = self._build_cloud_sync_section()
@@ -175,15 +262,15 @@ class SettingsView(ft.Container):
             controls=[
                 ft.ExpansionPanel(
                     header=ft.ListTile(title=ft.Text("🤖 Pengaturan AI Highlights")),
-                    content=ft.Container(ai_settings_content, padding=16)
+                    content=ft.Container(ai_settings_content, padding=16),
                 ),
                 ft.ExpansionPanel(
                     header=ft.ListTile(title=ft.Text("⚙️ Pengaturan Sistem")),
-                    content=ft.Container(system_settings_content, padding=16)
+                    content=ft.Container(system_settings_content, padding=16),
                 ),
                 ft.ExpansionPanel(
                     header=ft.ListTile(title=ft.Text("🌐 Konfigurasi Platform")),
-                    content=ft.Container(platform_settings_layout, padding=16)
+                    content=ft.Container(platform_settings_layout, padding=16),
                 ),
                 ft.ExpansionPanel(
                     header=ft.ListTile(title=ft.Text("☁️ Akun & Cloud Sync")),
@@ -191,27 +278,21 @@ class SettingsView(ft.Container):
                 ),
                 ft.ExpansionPanel(
                     header=ft.ListTile(title=ft.Text("📦 Pengelola Dependensi Sistem")),
-                    content=ft.Container(dep_manager_content, padding=16)
-                )
-            ]
+                    content=ft.Container(dep_manager_content, padding=16),
+                ),
+            ],
         )
 
         self.save_btn = ft.Button(
-            content=ft.Text("💾 Simpan Pengaturan"), # type: ignore
+            content=ft.Text("💾 Simpan Pengaturan"),  # type: ignore
             on_click=self.save_settings,
-            style=ft.ButtonStyle(
-                bgcolor=ft.Colors.BLUE_700,
-                color=ft.Colors.WHITE
-            )
+            style=ft.ButtonStyle(bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE),
         )
 
         self.clear_cache_btn = ft.Button(
-            content=ft.Text("🧹 Bersihkan Cache (Menghitung...)"), # type: ignore
+            content=ft.Text("🧹 Bersihkan Cache (Menghitung...)"),  # type: ignore
             on_click=self.clear_cache,
-            style=ft.ButtonStyle(
-                bgcolor=ft.Colors.RED_700,
-                color=ft.Colors.WHITE
-            )
+            style=ft.ButtonStyle(bgcolor=ft.Colors.RED_700, color=ft.Colors.WHITE),
         )
 
         self.content = ft.Column(
@@ -219,15 +300,18 @@ class SettingsView(ft.Container):
                 ft.Text("Settings", size=24, weight=ft.FontWeight.BOLD),
                 self.expansion_panel,
                 ft.Row(
-                    controls=cast(list[ft.Control], [
-                        self.clear_cache_btn,
-                        ft.Container(expand=True),
-                        self.save_btn
-                    ])
-                )
+                    controls=cast(
+                        list[ft.Control],
+                        [
+                            self.clear_cache_btn,
+                            ft.Container(expand=True),
+                            self.save_btn,
+                        ],
+                    )
+                ),
             ],
             scroll=ft.ScrollMode.AUTO,
-            spacing=20
+            spacing=20,
         )
 
     def _build_cloud_sync_section(self) -> ft.Column:
@@ -241,27 +325,30 @@ class SettingsView(ft.Container):
 
         # Avatar
         if avatar_url:
-            avatar_widget = ft.CircleAvatar(
-                foreground_image_src=avatar_url,
-                radius=28
-            )
+            avatar_widget = ft.CircleAvatar(foreground_image_src=avatar_url, radius=28)
         else:
-            avatar_widget = ft.CircleAvatar( # type: ignore
+            avatar_widget = ft.CircleAvatar(  # type: ignore
                 content=ft.Text(user_name[0].upper() if user_name else "?", size=24),
                 radius=28,
-                bgcolor=ft.Colors.BLUE_700
+                bgcolor=ft.Colors.BLUE_700,
             )
 
         user_info = ft.Row(
-            controls=cast(list[ft.Control], [
-                avatar_widget,
-                ft.Column([
-                    ft.Text(user_name, size=16, weight=ft.FontWeight.BOLD),
-                    ft.Text(user_email, size=13, color=ft.Colors.GREY_400),
-                ], spacing=2)
-            ]),
+            controls=cast(
+                list[ft.Control],
+                [
+                    avatar_widget,
+                    ft.Column(
+                        [
+                            ft.Text(user_name, size=16, weight=ft.FontWeight.BOLD),
+                            ft.Text(user_email, size=13, color=ft.Colors.GREY_400),
+                        ],
+                        spacing=2,
+                    ),
+                ],
+            ),
             spacing=12,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
         # Status sync
@@ -269,63 +356,62 @@ class SettingsView(ft.Container):
             "Siap untuk backup atau restore.",
             size=13,
             color=ft.Colors.GREY_400,
-            italic=True
+            italic=True,
         )
 
         self.sync_progress = ft.ProgressBar(visible=False, width=400)
 
         # Tombol Backup
         self.backup_btn = ft.Button(
-            content=ft.Row( # type: ignore
-                controls=cast(list[ft.Control], [
-                    ft.Icon(ft.Icons.CLOUD_UPLOAD, size=18),
-                    ft.Text("Backup ke Cloud")
-                ]),
+            content=ft.Row(  # type: ignore
+                controls=cast(
+                    list[ft.Control],
+                    [
+                        ft.Icon(ft.Icons.CLOUD_UPLOAD, size=18),
+                        ft.Text("Backup ke Cloud"),
+                    ],
+                ),
                 tight=True,
-                spacing=8
+                spacing=8,
             ),
             on_click=self._on_backup_click,
-            style=ft.ButtonStyle(
-                bgcolor=ft.Colors.TEAL_700,
-                color=ft.Colors.WHITE
-            ),
-            tooltip="Upload config.json dan semua file di folder cred/ ke Supabase"
+            style=ft.ButtonStyle(bgcolor=ft.Colors.TEAL_700, color=ft.Colors.WHITE),
+            tooltip="Upload config.json dan semua file di folder cred/ ke Supabase",
         )
 
         # Tombol Restore
         self.restore_btn = ft.Button(
-            content=ft.Row( # type: ignore
-                controls=cast(list[ft.Control], [
-                    ft.Icon(ft.Icons.CLOUD_DOWNLOAD, size=18),
-                    ft.Text("Restore dari Cloud")
-                ]),
+            content=ft.Row(  # type: ignore
+                controls=cast(
+                    list[ft.Control],
+                    [
+                        ft.Icon(ft.Icons.CLOUD_DOWNLOAD, size=18),
+                        ft.Text("Restore dari Cloud"),
+                    ],
+                ),
                 tight=True,
-                spacing=8
+                spacing=8,
             ),
             on_click=self._on_restore_click,
             style=ft.ButtonStyle(
-                bgcolor=ft.Colors.DEEP_PURPLE_700,
-                color=ft.Colors.WHITE
+                bgcolor=ft.Colors.DEEP_PURPLE_700, color=ft.Colors.WHITE
             ),
-            tooltip="Download config.json dan semua file di folder cred/ dari Supabase"
+            tooltip="Download config.json dan semua file di folder cred/ dari Supabase",
         )
 
         # Tombol Logout
         self.logout_btn = ft.Button(
-            content=ft.Row( # type: ignore
-                controls=cast(list[ft.Control], [
-                    ft.Icon(ft.Icons.LOGOUT, size=18),
-                    ft.Text("Logout")
-                ]),
+            content=ft.Row(  # type: ignore
+                controls=cast(
+                    list[ft.Control],
+                    [ft.Icon(ft.Icons.LOGOUT, size=18), ft.Text("Logout")],
+                ),
                 tight=True,
-                spacing=8
+                spacing=8,
             ),
             on_click=self._on_logout_click,
-            style=ft.ButtonStyle(
-                bgcolor=ft.Colors.RED_700,
-                color=ft.Colors.WHITE
-            ),
-            tooltip="Keluar dari akun dan kunci aplikasi"
+            style=ft.ButtonStyle(bgcolor=ft.Colors.RED_700, color=ft.Colors.WHITE),
+            tooltip="Keluar dari akun dan kunci aplikasi",
         )
 
         # Keterangan
@@ -333,31 +419,41 @@ class SettingsView(ft.Container):
             "Backup & Restore menyimpan/memulihkan config.json dan seluruh channel dan kredensial Anda ke/dari database.",
             size=12,
             color=ft.Colors.GREY_500,
-            italic=True
+            italic=True,
         )
 
-        return ft.Column([
-            user_info,
-            ft.Divider(height=16, color=ft.Colors.with_opacity(0.2, ft.Colors.WHITE)),
-            info_text,
-            ft.Container(height=8),
-            ft.Row(
-                controls=cast(list[ft.Control], [
-                    self.backup_btn,
-                    self.restore_btn,
-                ]),
-                spacing=12,
-                wrap=True
-            ),
-            ft.Container(height=4),
-            self.sync_progress,
-            self.sync_status_text,
-            ft.Divider(height=16, color=ft.Colors.with_opacity(0.2, ft.Colors.WHITE)),
-            ft.Row(
-                controls=cast(list[ft.Control], [self.logout_btn]),
-                alignment=ft.MainAxisAlignment.END
-            )
-        ], spacing=8)
+        return ft.Column(
+            [
+                user_info,
+                ft.Divider(
+                    height=16, color=ft.Colors.with_opacity(0.2, ft.Colors.WHITE)
+                ),
+                info_text,
+                ft.Container(height=8),
+                ft.Row(
+                    controls=cast(
+                        list[ft.Control],
+                        [
+                            self.backup_btn,
+                            self.restore_btn,
+                        ],
+                    ),
+                    spacing=12,
+                    wrap=True,
+                ),
+                ft.Container(height=4),
+                self.sync_progress,
+                self.sync_status_text,
+                ft.Divider(
+                    height=16, color=ft.Colors.with_opacity(0.2, ft.Colors.WHITE)
+                ),
+                ft.Row(
+                    controls=cast(list[ft.Control], [self.logout_btn]),
+                    alignment=ft.MainAxisAlignment.END,
+                ),
+            ],
+            spacing=8,
+        )
 
     def _set_sync_buttons_enabled(self, enabled: bool) -> None:
         """Enable/disable tombol backup, restore, logout."""
@@ -376,6 +472,7 @@ class SettingsView(ft.Container):
 
         async def do_backup():
             import asyncio
+
             from core.supabase_sync import supabase_sync
 
             def on_progress(label: str, current: int, total: int):
@@ -393,13 +490,23 @@ class SettingsView(ft.Container):
             self.sync_progress.visible = False
 
             if result.get("success"):
-                self.sync_status_text.value = f"✅ {result.get('message', 'Backup berhasil!')}"
+                self.sync_status_text.value = (
+                    f"✅ {result.get('message', 'Backup berhasil!')}"
+                )
                 self.sync_status_text.color = ft.Colors.GREEN_400
-                show_snackbar(self.page, f"Backup berhasil! ({result.get('success_count', 0)} item)", False)
+                show_snackbar(
+                    self.page,
+                    f"Backup berhasil! ({result.get('success_count', 0)} item)",
+                    False,
+                )
             else:
                 self.sync_status_text.value = f"⚠️ {result.get('message', 'Backup selesai dengan beberapa error.')}"
                 self.sync_status_text.color = ft.Colors.ORANGE_400
-                show_snackbar(self.page, result.get('message', 'Backup selesai dengan error.'), True)
+                show_snackbar(
+                    self.page,
+                    result.get("message", "Backup selesai dengan error."),
+                    True,
+                )
 
             self._page.update()
 
@@ -426,7 +533,11 @@ class SettingsView(ft.Container):
             ),
             actions=[
                 ft.TextButton("Batal", on_click=on_cancel),
-                ft.TextButton("Ya, Restore", on_click=on_confirm, style=ft.ButtonStyle(color=ft.Colors.RED_400)),
+                ft.TextButton(
+                    "Ya, Restore",
+                    on_click=on_confirm,
+                    style=ft.ButtonStyle(color=ft.Colors.RED_400),
+                ),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -445,6 +556,7 @@ class SettingsView(ft.Container):
 
         async def do_restore():
             import asyncio
+
             from core.supabase_sync import supabase_sync
 
             def on_progress(label: str, current: int, total: int):
@@ -461,14 +573,18 @@ class SettingsView(ft.Container):
             self._set_sync_buttons_enabled(True)
             self.sync_progress.visible = False
 
-            msg = result.get('message', 'Restore selesai.')
-            success_count = result.get('success_count', 0)
-            fail_count = result.get('fail_count', 0)
+            msg = result.get("message", "Restore selesai.")
+            success_count = result.get("success_count", 0)
+            fail_count = result.get("fail_count", 0)
 
             if fail_count == 0:
-                self.sync_status_text.value = "✅ Restore berhasil! Memulai ulang aplikasi..."
+                self.sync_status_text.value = (
+                    "✅ Restore berhasil! Memulai ulang aplikasi..."
+                )
                 self.sync_status_text.color = ft.Colors.GREEN_400
-                show_snackbar(self.page, "Restore berhasil! Memulai ulang aplikasi...", False)
+                show_snackbar(
+                    self.page, "Restore berhasil! Memulai ulang aplikasi...", False
+                )
                 self._page.update()
                 await asyncio.sleep(1.5)
                 try:
@@ -476,6 +592,7 @@ class SettingsView(ft.Container):
                 except Exception:
                     pass
                 from core.utils import restart_app
+
                 restart_app()
             else:
                 self.sync_status_text.value = f"⚠️ {msg}"
@@ -507,7 +624,11 @@ class SettingsView(ft.Container):
             ),
             actions=[
                 ft.TextButton("Batal", on_click=on_cancel),
-                ft.TextButton("Ya, Logout", on_click=on_confirm, style=ft.ButtonStyle(color=ft.Colors.RED_400)),
+                ft.TextButton(
+                    "Ya, Logout",
+                    on_click=on_confirm,
+                    style=ft.ButtonStyle(color=ft.Colors.RED_400),
+                ),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -546,7 +667,9 @@ class SettingsView(ft.Container):
         # Check Deno
         deno_ok, deno_ver, deno_path = get_dependency_info("deno")
         if deno_ok:
-            self.deno_status_text.value = f"Terpasang (v{deno_ver})\nLokasi: {deno_path}"
+            self.deno_status_text.value = (
+                f"Terpasang (v{deno_ver})\nLokasi: {deno_path}"
+            )
             self.deno_status_text.color = ft.Colors.GREEN_400
         else:
             self.deno_status_text.value = "❌ Tidak Terpasang"
@@ -559,38 +682,68 @@ class SettingsView(ft.Container):
             pass
 
     def _build_dep_manager_section(self) -> ft.Column:
-        self.dep_status_text = ft.Text("Klik tombol di bawah untuk memeriksa/memasang dependensi.", size=13, color=ft.Colors.GREY_400)
+        self.dep_status_text = ft.Text(
+            "Klik tombol di bawah untuk memeriksa/memasang dependensi.",
+            size=13,
+            color=ft.Colors.GREY_400,
+        )
         self.dep_progress = ft.ProgressBar(visible=False, width=400)
 
-        self.ffmpeg_status_text = ft.Text("Memeriksa...", color=ft.Colors.GREY_400, size=13)
-        self.deno_status_text = ft.Text("Memeriksa...", color=ft.Colors.GREY_400, size=13)
+        self.ffmpeg_status_text = ft.Text(
+            "Memeriksa...", color=ft.Colors.GREY_400, size=13
+        )
+        self.deno_status_text = ft.Text(
+            "Memeriksa...", color=ft.Colors.GREY_400, size=13
+        )
 
-        self.dep_info_table = ft.Column([
-            ft.Row(controls=cast(list[ft.Control], [
-                ft.Text("🎬 FFmpeg:", weight=ft.FontWeight.BOLD, size=13, width=90),
-                self.ffmpeg_status_text
-            ]), vertical_alignment=ft.CrossAxisAlignment.START),
-            ft.Row(controls=cast(list[ft.Control], [
-                ft.Text("🦕 Deno:", weight=ft.FontWeight.BOLD, size=13, width=90),
-                self.deno_status_text
-            ]), vertical_alignment=ft.CrossAxisAlignment.START)
-        ], spacing=10)
+        self.dep_info_table = ft.Column(
+            [
+                ft.Row(
+                    controls=cast(
+                        list[ft.Control],
+                        [
+                            ft.Text(
+                                "🎬 FFmpeg:",
+                                weight=ft.FontWeight.BOLD,
+                                size=13,
+                                width=90,
+                            ),
+                            self.ffmpeg_status_text,
+                        ],
+                    ),
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                ),
+                ft.Row(
+                    controls=cast(
+                        list[ft.Control],
+                        [
+                            ft.Text(
+                                "🦕 Deno:", weight=ft.FontWeight.BOLD, size=13, width=90
+                            ),
+                            self.deno_status_text,
+                        ],
+                    ),
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                ),
+            ],
+            spacing=10,
+        )
 
         self.btn_install_deps = ft.Button(
             content=ft.Row(
-                controls=cast(list[ft.Control], [
-                    ft.Icon(ft.Icons.DOWNLOAD, size=18),
-                    ft.Text("⬇️ Install / Reinstall Dependencies")
-                ]),
+                controls=cast(
+                    list[ft.Control],
+                    [
+                        ft.Icon(ft.Icons.DOWNLOAD, size=18),
+                        ft.Text("⬇️ Install / Reinstall Dependencies"),
+                    ],
+                ),
                 tight=True,
-                spacing=8
+                spacing=8,
             ),
             on_click=self.start_dependency_installation,
-            style=ft.ButtonStyle(
-                bgcolor=ft.Colors.BLUE_700,
-                color=ft.Colors.WHITE
-            ),
-            tooltip="Unduh Deno dan FFmpeg ke direktori bin aplikasi"
+            style=ft.ButtonStyle(bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE),
+            tooltip="Unduh Deno dan FFmpeg ke direktori bin aplikasi",
         )
 
         desc = ft.Text(
@@ -598,19 +751,24 @@ class SettingsView(ft.Container):
             "(FFmpeg untuk pemrosesan video, Deno untuk eksekusi skrip). Dependensi ini akan di-install di "
             "folder lokal aplikasi agar tidak mengganggu sistem bawaan Anda.",
             size=13,
-            color=ft.Colors.GREY_400
+            color=ft.Colors.GREY_400,
         )
 
-        return ft.Column([
-            desc,
-            ft.Container(height=4),
-            self.dep_info_table,
-            ft.Divider(height=16, color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
-            self.btn_install_deps,
-            ft.Container(height=4),
-            self.dep_progress,
-            self.dep_status_text
-        ], spacing=8)
+        return ft.Column(
+            [
+                desc,
+                ft.Container(height=4),
+                self.dep_info_table,
+                ft.Divider(
+                    height=16, color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE)
+                ),
+                self.btn_install_deps,
+                ft.Container(height=4),
+                self.dep_progress,
+                self.dep_status_text,
+            ],
+            spacing=8,
+        )
 
     def start_dependency_installation(self, e) -> None:
         from core.dependency_manager import install_dependencies
@@ -633,6 +791,7 @@ class SettingsView(ft.Container):
 
         async def do_installation():
             import asyncio
+
             success = await asyncio.to_thread(install_dependencies, emit_log)
 
             self.btn_install_deps.disabled = False
@@ -643,7 +802,9 @@ class SettingsView(ft.Container):
                 self.dep_status_text.color = ft.Colors.GREEN_400
                 show_snackbar(self.page, "Instalasi dependensi berhasil!", False)
             else:
-                self.dep_status_text.value = "❌ Gagal memasang beberapa dependensi. Periksa log."
+                self.dep_status_text.value = (
+                    "❌ Gagal memasang beberapa dependensi. Periksa log."
+                )
                 self.dep_status_text.color = ft.Colors.RED_400
                 show_snackbar(self.page, "Gagal memasang dependensi.", True)
 
@@ -656,11 +817,12 @@ class SettingsView(ft.Container):
     async def on_import_tt_cookies_clicked(self, e) -> None:
         files = await self.tt_cookies_picker.pick_files(
             dialog_title="Pilih File Cookies TikTok (JSON/TXT)",
-            allowed_extensions=["txt", "json"]
+            allowed_extensions=["txt", "json"],
         )
         if files and len(files) > 0 and files[0].path:
-            import shutil
             import os
+            import shutil
+
             try:
                 config.ensure_cred_dir()
                 target_path = "cred/tiktok_cookies.txt"
@@ -670,18 +832,23 @@ class SettingsView(ft.Container):
                     self.tt_session.update()
                 except Exception:
                     pass
-                show_snackbar(self.page, f"File cookies TikTok berhasil diimpor ke '{target_path}'", False)
+                show_snackbar(
+                    self.page,
+                    f"File cookies TikTok berhasil diimpor ke '{target_path}'",
+                    False,
+                )
             except Exception as ex:
                 show_snackbar(self.page, f"Gagal mengimpor cookies: {ex}", True)
 
     async def on_import_ig_cookies_clicked(self, e) -> None:
         files = await self.ig_cookies_picker.pick_files(
             dialog_title="Pilih File Cookies Instagram (JSON/TXT)",
-            allowed_extensions=["txt", "json"]
+            allowed_extensions=["txt", "json"],
         )
         if files and len(files) > 0 and files[0].path:
-            import shutil
             import os
+            import shutil
+
             try:
                 config.ensure_cred_dir()
                 target_path = "cred/instagram_cookies.txt"
@@ -691,7 +858,11 @@ class SettingsView(ft.Container):
                     self.ig_session.update()
                 except Exception:
                     pass
-                show_snackbar(self.page, f"File cookies Instagram berhasil diimpor ke '{target_path}'", False)
+                show_snackbar(
+                    self.page,
+                    f"File cookies Instagram berhasil diimpor ke '{target_path}'",
+                    False,
+                )
             except Exception as ex:
                 show_snackbar(self.page, f"Gagal mengimpor cookies: {ex}", True)
 
@@ -699,13 +870,20 @@ class SettingsView(ft.Container):
         self.btn_check_all_auth.disabled = True
         self.auth_check_progress.visible = True
         self.auth_check_progress.value = None
-        self.auth_check_result_text.value = "Memeriksa status autentikasi semua platform..."
+        self.auth_check_result_text.value = (
+            "Memeriksa status autentikasi semua platform..."
+        )
         self.auth_check_result_text.color = ft.Colors.AMBER_400
         self._page.update()
 
         async def do_check():
             import asyncio
-            from core.auth_checker import check_youtube_auth, check_tiktok_auth, check_instagram_auth
+
+            from core.auth_checker import (
+                check_instagram_auth,
+                check_tiktok_auth,
+                check_youtube_auth,
+            )
 
             # Cek YouTube
             self.auth_check_result_text.value = "Memeriksa YouTube Shorts..."
@@ -745,7 +923,7 @@ class SettingsView(ft.Container):
 
         self._page.run_task(do_check)
 
-    def on_ai_provider_changed(self, e = None) -> None:
+    def on_ai_provider_changed(self, e=None) -> None:
         provider = self.ai_provider_dropdown.value
         if provider == "ollama":
             self.ai_key_input.label = "Ollama Host"
@@ -776,7 +954,9 @@ class SettingsView(ft.Container):
     def save_settings(self, e) -> None:
         provider = self.ai_provider_dropdown.value
         val = self.ai_key_input.value.strip() if self.ai_key_input.value else ""
-        model_val = self.ai_model_input.value.strip() if self.ai_model_input.value else ""
+        model_val = (
+            self.ai_model_input.value.strip() if self.ai_model_input.value else ""
+        )
 
         config.ai.provider = provider or "ollama"
         if provider == "ollama":
@@ -788,15 +968,22 @@ class SettingsView(ft.Container):
         elif provider == "openai":
             config.ai.openai_key = val
             config.ai.openai_model = model_val
-            config.ai.openai_base_url = self.ai_base_url_input.value.strip() if self.ai_base_url_input.value else ""
+            config.ai.openai_base_url = (
+                self.ai_base_url_input.value.strip()
+                if self.ai_base_url_input.value
+                else ""
+            )
 
         # System settings
-        if self.output_dir_input.value: config.output_dir = self.output_dir_input.value
+        if self.output_dir_input.value:
+            config.output_dir = self.output_dir_input.value
 
         # Normalize hashtags
         config.default_hashtags = self.default_hashtags.value or ""
         config.default_hashtags = " ".join(config.default_hashtags.splitlines())
-        config.default_hashtags = " ".join(list(dict.fromkeys(config.default_hashtags.split(" "))))
+        config.default_hashtags = " ".join(
+            list(dict.fromkeys(config.default_hashtags.split(" ")))
+        )
 
         # Platform settings
         config.youtube.client_id = self.yt_client_id.value or ""
@@ -831,7 +1018,9 @@ class SettingsView(ft.Container):
                 return total_size / (1024 * 1024)
 
             size_mb = await asyncio.to_thread(calc)
-            self.clear_cache_btn.content = ft.Text(f"🧹 Bersihkan Cache ({size_mb:.2f} MB)") # type: ignore
+            self.clear_cache_btn.content = ft.Text(
+                f"🧹 Bersihkan Cache ({size_mb:.2f} MB)"
+            )  # type: ignore
             try:
                 self.clear_cache_btn.update()
             except Exception:
@@ -841,7 +1030,7 @@ class SettingsView(ft.Container):
 
     def clear_cache(self, e) -> None:
         self.clear_cache_btn.disabled = True
-        self.clear_cache_btn.content = ft.Text("🧹 Sedang membersihkan...") # type: ignore
+        self.clear_cache_btn.content = ft.Text("🧹 Sedang membersihkan...")  # type: ignore
         try:
             self.clear_cache_btn.update()
         except Exception:
@@ -849,8 +1038,8 @@ class SettingsView(ft.Container):
 
         async def run_clear():
             import asyncio
-            import shutil
             import os
+            import shutil
 
             def clear_ops():
                 folder_path = "clips"
@@ -864,6 +1053,7 @@ class SettingsView(ft.Container):
                                 shutil.rmtree(file_path)
                         except Exception as ex:
                             from core.logger import log
+
                             log.warning(f"Gagal menghapus {file_path}: {ex}")
 
             await asyncio.to_thread(clear_ops)

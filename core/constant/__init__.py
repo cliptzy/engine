@@ -7,5 +7,5 @@ EMOTION_DESCRIPTIONS = {
     "shock": "Kaget, terkejut, tidak percaya",
     "fear": "Takut, panik, ngeri",
     "confused": "Bingung, heran, tidak mengerti, berpikir",
-    "neutral": "Normal, datar, informatif biasa, atau tidak ada emosi yang menonjol."
+    "neutral": "Normal, datar, informatif biasa, atau tidak ada emosi yang menonjol.",
 }

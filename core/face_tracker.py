@@ -1,8 +1,13 @@
-import cv2
 import os
+
+import cv2
+
 from core.logger import log
 
-def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) -> tuple[float | None, float | None, str]:
+
+def get_dominant_face_normalized_center(
+    video_path: str, max_samples: int = 10
+) -> tuple[float | None, float | None, str]:
     """
     Reads a video and samples frames to detect faces.
     Returns the median normalized center (cx_norm, cy_norm, error_message) of the largest face detected.
@@ -14,58 +19,75 @@ def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) 
 
     try:
         import sys
+
         model_dir = "models"
         os.makedirs(model_dir, exist_ok=True)
         model_path = os.path.join(model_dir, "face_detection_yunet.onnx")
-        
+
         if not os.path.exists(model_path):
             log.info(f"YuNet model not found. Downloading to {model_path}...")
             import urllib.request
+
             url = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
             try:
                 urllib.request.urlretrieve(url, model_path)
                 log.info("YuNet model downloaded successfully.")
             except Exception as e:
                 log.error(f"Failed to download YuNet model: {e}")
-                return None, None, "Gagal mengunduh model AI pendeteksi wajah (YuNet). Pastikan koneksi internet stabil."
+                return (
+                    None,
+                    None,
+                    "Gagal mengunduh model AI pendeteksi wajah (YuNet). Pastikan koneksi internet stabil.",
+                )
 
         cap = cv2.VideoCapture(video_path)
-        
+
         frames_list = []
-        
+
         # Check if OpenCV can read the file
         ret, test_frame = cap.read()
         if not cap.isOpened() or not ret:
-            log.info("OpenCV VideoCapture failed (likely codec issue). Falling back to FFmpeg frame extraction...")
+            log.info(
+                "OpenCV VideoCapture failed (likely codec issue). Falling back to FFmpeg frame extraction..."
+            )
             cap.release()
             try:
-                import tempfile
                 import glob
                 import subprocess
+                import tempfile
+
                 tmpdir = tempfile.mkdtemp()
-                
+
                 cmd = [
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                    "-i", video_path,
-                    "-vf", "fps=1",
-                    "-vframes", str(max_samples),
-                    os.path.join(tmpdir, "frame_%03d.jpg")
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    video_path,
+                    "-vf",
+                    "fps=1",
+                    "-vframes",
+                    str(max_samples),
+                    os.path.join(tmpdir, "frame_%03d.jpg"),
                 ]
                 subprocess.run(cmd, check=True)
-                
+
                 for fpath in glob.glob(os.path.join(tmpdir, "*.jpg")):
                     img = cv2.imread(fpath)
                     if img is not None:
                         frames_list.append(img)
-                        
+
                 import shutil
+
                 shutil.rmtree(tmpdir, ignore_errors=True)
             except Exception as e:
                 log.warning(f"FFmpeg fallback extraction failed: {e}")
         else:
             # OpenCV works, append the first frame we already read
             frames_list.append(test_frame)
-            
+
             frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             if frame_count <= 0:
                 frame_count = 300  # Fallback
@@ -80,22 +102,26 @@ def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) 
             cap.release()
 
         if not frames_list:
-            return None, None, "Sistem gagal membaca stream video (kemungkinan codec tidak didukung)."
+            return (
+                None,
+                None,
+                "Sistem gagal membaca stream video (kemungkinan codec tidak didukung).",
+            )
 
         centers = []
         detector = None
-        
+
         for frame in frames_list:
             h, w = frame.shape[:2]
-            
+
             # Downscale frame if it's too large to improve speed
             scale_ratio = 1.0
             max_dim = 1280
             if max(h, w) > max_dim:
                 scale_ratio = max_dim / float(max(h, w))
-                frame = cv2.resize(frame, (0,0), fx=scale_ratio, fy=scale_ratio)
+                frame = cv2.resize(frame, (0, 0), fx=scale_ratio, fy=scale_ratio)
                 h, w = frame.shape[:2]
-            
+
             if detector is None:
                 # Create detector on first frame with exact dimensions
                 detector = cv2.FaceDetectorYN.create(
@@ -104,45 +130,51 @@ def get_dominant_face_normalized_center(video_path: str, max_samples: int = 10) 
                     (w, h),
                     score_threshold=0.6,
                     nms_threshold=0.3,
-                    top_k=5000
+                    top_k=5000,
                 )
             else:
                 detector.setInputSize((w, h))
-            
+
             # Detect faces
             ret, faces = detector.detect(frame)
-            
+
             if faces is not None and len(faces) > 0:
                 # Find the largest face by bounding box area (w * h)
                 # faces format: [x, y, w, h, x_re, y_re, x_le, y_le, x_nt, y_nt, x_rcm, y_rcm, x_lcm, y_lcm, score]
                 largest_face = max(faces, key=lambda f: f[2] * f[3])
                 x, y, fw, fh = largest_face[:4]
-                
+
                 # Map coordinates back to original scale
                 x = x / scale_ratio
                 y = y / scale_ratio
                 fw = fw / scale_ratio
                 fh = fh / scale_ratio
-                
+
                 # Calculate original image center
                 orig_h, orig_w = h / scale_ratio, w / scale_ratio
-                
+
                 cx = x + fw / 2.0
                 cy = y + fh / 2.0
                 centers.append((cx / orig_w, cy / orig_h))
 
         if not centers:
             log.info("No face detected in sampled frames.")
-            return None, None, "Secara alami tidak ada wajah manusia (atau terlalu buram) yang terdeteksi pada klip ini."
+            return (
+                None,
+                None,
+                "Secara alami tidak ada wajah manusia (atau terlalu buram) yang terdeteksi pada klip ini.",
+            )
 
         # Calculate median center to ignore outliers
         centers.sort(key=lambda c: c[0])
         median_cx = centers[len(centers) // 2][0]
-        
+
         centers.sort(key=lambda c: c[1])
         median_cy = centers[len(centers) // 2][1]
-        
-        log.info(f"Dominant face detected at normalized center ({median_cx:.2f}, {median_cy:.2f})")
+
+        log.info(
+            f"Dominant face detected at normalized center ({median_cx:.2f}, {median_cy:.2f})"
+        )
         return median_cx, median_cy, ""
 
     except Exception as e:
@@ -170,13 +202,18 @@ def get_two_faces_normalized_centers(
         if not os.path.exists(model_path):
             log.info(f"YuNet model not found. Downloading to {model_path}...")
             import urllib.request
+
             url = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
             try:
                 urllib.request.urlretrieve(url, model_path)
                 log.info("YuNet model downloaded successfully.")
             except Exception as e:
                 log.error(f"Failed to download YuNet model: {e}")
-                return None, None, "Gagal mengunduh model AI pendeteksi wajah (YuNet). Pastikan koneksi internet stabil."
+                return (
+                    None,
+                    None,
+                    "Gagal mengunduh model AI pendeteksi wajah (YuNet). Pastikan koneksi internet stabil.",
+                )
 
         cap = cv2.VideoCapture(video_path)
 
@@ -185,20 +222,30 @@ def get_two_faces_normalized_centers(
         # Check if OpenCV can read the file
         ret, test_frame = cap.read()
         if not cap.isOpened() or not ret:
-            log.info("OpenCV VideoCapture failed (likely codec issue). Falling back to FFmpeg frame extraction...")
+            log.info(
+                "OpenCV VideoCapture failed (likely codec issue). Falling back to FFmpeg frame extraction..."
+            )
             cap.release()
             try:
-                import tempfile
                 import glob
                 import subprocess
+                import tempfile
+
                 tmpdir = tempfile.mkdtemp()
 
                 cmd = [
-                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                    "-i", video_path,
-                    "-vf", "fps=1",
-                    "-vframes", str(max_samples),
-                    os.path.join(tmpdir, "frame_%03d.jpg")
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    video_path,
+                    "-vf",
+                    "fps=1",
+                    "-vframes",
+                    str(max_samples),
+                    os.path.join(tmpdir, "frame_%03d.jpg"),
                 ]
                 subprocess.run(cmd, check=True)
 
@@ -208,6 +255,7 @@ def get_two_faces_normalized_centers(
                         frames_list.append(img)
 
                 import shutil
+
                 shutil.rmtree(tmpdir, ignore_errors=True)
             except Exception as e:
                 log.warning(f"FFmpeg fallback extraction failed: {e}")
@@ -228,7 +276,11 @@ def get_two_faces_normalized_centers(
             cap.release()
 
         if not frames_list:
-            return None, None, "Sistem gagal membaca stream video (kemungkinan codec tidak didukung)."
+            return (
+                None,
+                None,
+                "Sistem gagal membaca stream video (kemungkinan codec tidak didukung).",
+            )
 
         # Collect ALL detected face centers (not just the largest) per frame
         all_face_centers: list[tuple[float, float]] = []
@@ -252,7 +304,7 @@ def get_two_faces_normalized_centers(
                     (w, h),
                     score_threshold=0.6,
                     nms_threshold=0.3,
-                    top_k=5000
+                    top_k=5000,
                 )
             else:
                 detector.setInputSize((w, h))
@@ -275,8 +327,14 @@ def get_two_faces_normalized_centers(
 
         if len(all_face_centers) < 4:
             # Need at least 2 frames with 2 faces each to be confident
-            log.info(f"Multi-face detection: only found {len(all_face_centers)} face samples (need ≥4). Not enough for 2-face mode.")
-            return None, None, "Tidak cukup data wajah ganda terdeteksi. Diperlukan minimal 2 frame dengan 2 wajah."
+            log.info(
+                f"Multi-face detection: only found {len(all_face_centers)} face samples (need ≥4). Not enough for 2-face mode."
+            )
+            return (
+                None,
+                None,
+                "Tidak cukup data wajah ganda terdeteksi. Diperlukan minimal 2 frame dengan 2 wajah.",
+            )
 
         # Cluster into 2 groups using x-coordinate median split (podcast = side by side)
         median_x = sorted(c[0] for c in all_face_centers)[len(all_face_centers) // 2]
@@ -285,7 +343,11 @@ def get_two_faces_normalized_centers(
         right_faces = [c for c in all_face_centers if c[0] > median_x]
 
         if not left_faces or not right_faces:
-            return None, None, "Gagal memisahkan 2 wajah yang berbeda (kemungkinan wajah terlalu berdekatan)."
+            return (
+                None,
+                None,
+                "Gagal memisahkan 2 wajah yang berbeda (kemungkinan wajah terlalu berdekatan).",
+            )
 
         # Median of each cluster
         left_faces.sort(key=lambda c: c[0])
@@ -298,7 +360,9 @@ def get_two_faces_normalized_centers(
         right_faces.sort(key=lambda c: c[1])
         cy2 = right_faces[len(right_faces) // 2][1]
 
-        log.info(f"Multi-face detected: Face1=({cx1:.2f}, {cy1:.2f}), Face2=({cx2:.2f}, {cy2:.2f})")
+        log.info(
+            f"Multi-face detected: Face1=({cx1:.2f}, {cy1:.2f}), Face2=({cx2:.2f}, {cy2:.2f})"
+        )
         return (cx1, cy1), (cx2, cy2), ""
 
     except Exception as e:
@@ -332,6 +396,7 @@ def get_face_keyframes(
         if not os.path.exists(model_path):
             log.info(f"YuNet model not found. Downloading to {model_path}...")
             import urllib.request
+
             url = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
             try:
                 urllib.request.urlretrieve(url, model_path)
@@ -389,8 +454,12 @@ def get_face_keyframes(
 
             if detector is None:
                 detector = cv2.FaceDetectorYN.create(
-                    model_path, "", (w, h),
-                    score_threshold=0.6, nms_threshold=0.3, top_k=5000
+                    model_path,
+                    "",
+                    (w, h),
+                    score_threshold=0.6,
+                    nms_threshold=0.3,
+                    top_k=5000,
                 )
             else:
                 detector.setInputSize((w, h))
@@ -424,7 +493,9 @@ def get_face_keyframes(
         cap.release()
 
         if keyframes:
-            log.info(f"[face_keyframes] Detected {len(keyframes)} keyframes over {duration:.1f}s (interval={interval_sec}s)")
+            log.info(
+                f"[face_keyframes] Detected {len(keyframes)} keyframes over {duration:.1f}s (interval={interval_sec}s)"
+            )
         else:
             log.warning("[face_keyframes] Tidak ada keyframe yang dihasilkan.")
 
@@ -433,4 +504,3 @@ def get_face_keyframes(
     except Exception as e:
         log.warning(f"[face_keyframes] Error: {e}")
         return []
-

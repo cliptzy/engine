@@ -192,15 +192,9 @@ def main(page: ft.Page) -> None:
         label_type=ft.NavigationRailLabelType.ALL,
         min_width=100,
         destinations=[
-            ft.NavigationRailDestination(
-                icon=ft.Icons.DASHBOARD, label="Dashboard"
-            ),
-            ft.NavigationRailDestination(
-                icon=ft.Icons.SETTINGS, label="Settings"
-            ),
-            ft.NavigationRailDestination(
-                icon=ft.Icons.CHECK_CIRCLE, label="Results"
-            ),
+            ft.NavigationRailDestination(icon=ft.Icons.DASHBOARD, label="Dashboard"),
+            ft.NavigationRailDestination(icon=ft.Icons.SETTINGS, label="Settings"),
+            ft.NavigationRailDestination(icon=ft.Icons.CHECK_CIRCLE, label="Results"),
         ],
         on_change=on_nav_change,
     )

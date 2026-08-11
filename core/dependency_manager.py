@@ -1,19 +1,21 @@
 import os
-import sys
-import ssl
-import zipfile
-import urllib.request
-import subprocess
 import shutil
-from typing import Optional, Callable
+import ssl
+import subprocess
+import sys
+import urllib.request
+import zipfile
+from typing import Callable, Optional
+
 from core.config import APP_ROOT
 from core.logger import log
+
 
 def get_dependency_info(name: str) -> tuple[bool, str, str]:
     """Memeriksa status, versi, dan lokasi path dari FFmpeg dan Deno."""
     is_windows = sys.platform == "win32"
     bin_name = name + ".exe" if is_windows else name
-    
+
     # Cek lokal dulu
     local_path = os.path.abspath(os.path.join(APP_ROOT, "bin", bin_name))
     bin_path = None
@@ -21,32 +23,50 @@ def get_dependency_info(name: str) -> tuple[bool, str, str]:
         bin_path = local_path
     else:
         bin_path = shutil.which(name)
-        
+
     if not bin_path:
         return False, "Tidak terpasang", "Tidak ditemukan di PATH atau folder bin/"
-        
+
     try:
         bin_dir = os.path.dirname(bin_path)
         env = os.environ.copy()
         env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
-        
+
         if name == "ffmpeg":
-            res = subprocess.run([bin_path, "-version"], capture_output=True, text=True, check=True, timeout=3, env=env)
+            res = subprocess.run(
+                [bin_path, "-version"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=3,
+                env=env,
+            )
             first_line = res.stdout.splitlines()[0]
-            version = first_line.split("Copyright")[0].replace("ffmpeg version", "").strip()
+            version = (
+                first_line.split("Copyright")[0].replace("ffmpeg version", "").strip()
+            )
         elif name == "deno":
-            res = subprocess.run([bin_path, "--version"], capture_output=True, text=True, check=True, timeout=3, env=env)
+            res = subprocess.run(
+                [bin_path, "--version"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=3,
+                env=env,
+            )
             first_line = res.stdout.splitlines()[0]
             version = first_line.replace("deno", "").strip()
         else:
             version = "Unknown"
     except Exception as e:
         version = f"Gagal membaca versi ({e})"
-        
+
     return True, version, bin_path
+
 
 def install_dependencies(on_progress: Optional[Callable[[str], None]] = None) -> bool:
     """Mengunduh dan mengekstrak FFmpeg dan Deno ke folder bin lokal."""
+
     def emit_log(msg: str):
         log.info(msg)
         if on_progress:
@@ -80,11 +100,11 @@ def install_dependencies(on_progress: Optional[Callable[[str], None]] = None) ->
 
         deno_zip = os.path.join(bin_dir, "deno.zip")
         emit_log(f"Mengunduh Deno dari {deno_url}...")
-        
+
         try:
             urllib.request.urlretrieve(deno_url, deno_zip)
             emit_log("Berhasil mengunduh Deno. Mengekstrak...")
-            with zipfile.ZipFile(deno_zip, 'r') as zip_ref:
+            with zipfile.ZipFile(deno_zip, "r") as zip_ref:
                 zip_ref.extractall(bin_dir)
             os.remove(deno_zip)
             emit_log("Deno berhasil diekstrak.")
@@ -102,9 +122,13 @@ def install_dependencies(on_progress: Optional[Callable[[str], None]] = None) ->
             try:
                 urllib.request.urlretrieve(ffmpeg_url, ffmpeg_zip)
                 emit_log("Berhasil mengunduh FFmpeg. Mengekstrak...")
-                with zipfile.ZipFile(ffmpeg_zip, 'r') as zip_ref:
+                with zipfile.ZipFile(ffmpeg_zip, "r") as zip_ref:
                     for file_info in zip_ref.infolist():
-                        if file_info.filename.endswith("ffmpeg.exe") or file_info.filename.endswith("ffprobe.exe") or file_info.filename.endswith("ffplay.exe"):
+                        if (
+                            file_info.filename.endswith("ffmpeg.exe")
+                            or file_info.filename.endswith("ffprobe.exe")
+                            or file_info.filename.endswith("ffplay.exe")
+                        ):
                             file_info.filename = os.path.basename(file_info.filename)
                             zip_ref.extract(file_info, bin_dir)
                 os.remove(ffmpeg_zip)
@@ -118,7 +142,21 @@ def install_dependencies(on_progress: Optional[Callable[[str], None]] = None) ->
             try:
                 urllib.request.urlretrieve(ffmpeg_url, ffmpeg_tar)
                 emit_log("Berhasil mengunduh FFmpeg. Mengekstrak...")
-                subprocess.run(["tar", "-xf", ffmpeg_tar, "-C", bin_dir, "--strip-components=1", "--wildcards", "*/ffmpeg", "*/ffprobe", "*/ffplay"], check=True)
+                subprocess.run(
+                    [
+                        "tar",
+                        "-xf",
+                        ffmpeg_tar,
+                        "-C",
+                        bin_dir,
+                        "--strip-components=1",
+                        "--wildcards",
+                        "*/ffmpeg",
+                        "*/ffprobe",
+                        "*/ffplay",
+                    ],
+                    check=True,
+                )
                 os.remove(ffmpeg_tar)
                 emit_log("FFmpeg berhasil diekstrak.")
             except Exception as e:
@@ -130,7 +168,7 @@ def install_dependencies(on_progress: Optional[Callable[[str], None]] = None) ->
             try:
                 urllib.request.urlretrieve(ffmpeg_url, ffmpeg_zip)
                 emit_log("Berhasil mengunduh FFmpeg. Mengekstrak...")
-                with zipfile.ZipFile(ffmpeg_zip, 'r') as zip_ref:
+                with zipfile.ZipFile(ffmpeg_zip, "r") as zip_ref:
                     zip_ref.extractall(bin_dir)
                 os.remove(ffmpeg_zip)
                 os.chmod(os.path.join(bin_dir, "ffmpeg"), 0o755)

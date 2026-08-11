@@ -6,8 +6,8 @@ Verifikasi bahwa semua dependensi kritis Cliptzy dapat di-import
 bersama Flet tanpa konflik dalam satu environment.
 """
 
-import sys
 import importlib
+import sys
 import time
 
 # Daftar dependensi kritis yang harus kompatibel
@@ -92,6 +92,7 @@ def main() -> None:
         # Check Video control (in flet_video package)
         try:
             from flet_video import Video, VideoMedia
+
             print("  ✅ flet_video.Video control available")
             total_pass += 1
         except ImportError:
@@ -132,6 +133,7 @@ def main() -> None:
         # Check replacement libraries
         try:
             import pystray
+
             print("  ✅ pystray (System Tray replacement) available")
             total_pass += 1
         except ImportError:
@@ -140,6 +142,7 @@ def main() -> None:
 
         try:
             from desktop_notifier import DesktopNotifier
+
             print("  ✅ desktop-notifier (Notification replacement) available")
             total_pass += 1
         except ImportError:

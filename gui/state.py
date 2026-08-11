@@ -1,23 +1,23 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from core.models import VideoInfo, ClipSegment
-from gui.event_bus import event_bus
+from core.models import ClipSegment, VideoInfo
 from gui import events
+from gui.event_bus import event_bus
 
 
 @dataclass
 class AppState:
     """Centralized observable state for the GUI."""
-    
+
     current_page: str = "clipper"
     current_video: Optional[VideoInfo] = None
     scan_results: List[ClipSegment] = field(default_factory=list)
-    
+
     is_processing: bool = False
     progress_label: str = ""
     progress_value: float = 0.0
-    
+
     log_messages: List[str] = field(default_factory=list)
 
     def set_page(self, page_name: str) -> None:
@@ -40,6 +40,7 @@ class AppState:
         self.log_messages.append(message)
         # We also publish a specific log event for real-time console viewers
         event_bus.publish(events.LOG_MESSAGE, message=message)
+
 
 # Global application state instance
 app_state = AppState()

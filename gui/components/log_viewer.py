@@ -1,10 +1,13 @@
-import flet as ft
-from gui.event_bus import event_bus
-from gui import events
-from typing import Any
 import logging
+from typing import Any
+
+import flet as ft
+
+from gui import events
+from gui.event_bus import event_bus
 
 MAX_LOG_LINES = 500
+
 
 class LogViewer(ft.Container):
     def __init__(self, **kwargs: Any):
@@ -23,34 +26,44 @@ class LogViewer(ft.Container):
             ("DEBUG", logging.DEBUG, "#A6ADC8"),
             ("INFO", logging.INFO, "#CDD6F4"),
             ("WARNING", logging.WARNING, "#F9E2AF"),
-            ("ERROR", logging.ERROR, "#F38BA8")
+            ("ERROR", logging.ERROR, "#F38BA8"),
         ]
-        self._level_idx = 1 # Default to INFO
+        self._level_idx = 1  # Default to INFO
         self._current_min_level = self._levels[self._level_idx][1]
 
         self.level_button = ft.Button(
-            content=ft.Text(self._levels[self._level_idx][0], size=11, color=self._levels[self._level_idx][2], weight=ft.FontWeight.BOLD),
+            content=ft.Text(
+                self._levels[self._level_idx][0],
+                size=11,
+                color=self._levels[self._level_idx][2],
+                weight=ft.FontWeight.BOLD,
+            ),
             style=ft.ButtonStyle(
                 padding=ft.Padding(8, 2, 8, 2),
                 bgcolor=ft.Colors.TRANSPARENT,
             ),
-            on_click=self._on_level_cycle
+            on_click=self._on_level_cycle,
         )
 
         self.header = ft.Container(
-            content=ft.Row([
-                ft.Text("Logs", weight=ft.FontWeight.BOLD, size=13),
-                ft.Container(expand=True),
-                self.level_button
-            ]),
-            padding=ft.Padding(8, 2, 8, 2)
+            content=ft.Row(
+                [
+                    ft.Text("Logs", weight=ft.FontWeight.BOLD, size=13),
+                    ft.Container(expand=True),
+                    self.level_button,
+                ]
+            ),
+            padding=ft.Padding(8, 2, 8, 2),
         )
 
-        self.content = ft.Column([
-            self.header,
-            ft.Divider(height=1, thickness=1),
-            ft.Container(self.log_list, expand=True)
-        ], spacing=0)
+        self.content = ft.Column(
+            [
+                self.header,
+                ft.Divider(height=1, thickness=1),
+                ft.Container(self.log_list, expand=True),
+            ],
+            spacing=0,
+        )
         self._mounted = False
 
     def _on_level_cycle(self, e: Any) -> None:
@@ -77,10 +90,14 @@ class LogViewer(ft.Container):
             pass
 
     def _get_level_from_msg(self, msg: str) -> int:
-        if "| DEBUG" in msg: return logging.DEBUG
-        if "| WARNING" in msg: return logging.WARNING
-        if "| ERROR" in msg: return logging.ERROR
-        if "| CRITICAL" in msg: return logging.CRITICAL
+        if "| DEBUG" in msg:
+            return logging.DEBUG
+        if "| WARNING" in msg:
+            return logging.WARNING
+        if "| ERROR" in msg:
+            return logging.ERROR
+        if "| CRITICAL" in msg:
+            return logging.CRITICAL
         # Teks plain dari UI atau app_state.append_log() (tanpa prefix)
         if msg.startswith("Error:") or msg.startswith("[UPLOAD] ❌ Gagal"):
             return logging.ERROR
@@ -103,7 +120,9 @@ class LogViewer(ft.Container):
                     pass
 
         self._log_handler = EventBusLogHandler()
-        formatter = logging.Formatter("%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S")
+        formatter = logging.Formatter(
+            "%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%H:%M:%S"
+        )
         self._log_handler.setFormatter(formatter)
         self._log_handler.setLevel(self._current_min_level)
         core_log.addHandler(self._log_handler)
@@ -112,7 +131,8 @@ class LogViewer(ft.Container):
         self._mounted = False
         event_bus.unsubscribe(events.LOG_MESSAGE, self._on_log_message)
         from core.logger import log as core_log
-        if hasattr(self, '_log_handler'):
+
+        if hasattr(self, "_log_handler"):
             core_log.removeHandler(self._log_handler)
 
     def _on_log_message(self, message: str) -> None:
@@ -135,7 +155,7 @@ class LogViewer(ft.Container):
             font_family="monospace",
             color=color,
             selectable=True,
-            visible=level >= self._current_min_level
+            visible=level >= self._current_min_level,
         )
         self.log_list.controls.append(text)
 

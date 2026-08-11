@@ -10,8 +10,8 @@ Verifikasi library pengganti:
 Jalankan: python scripts/poc_flet_notifications.py
 """
 
-import sys
 import importlib
+import sys
 
 
 def check_pystray() -> dict:

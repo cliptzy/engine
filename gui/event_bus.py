@@ -1,6 +1,7 @@
 import threading
 from collections import defaultdict
-from typing import Callable, Any, Dict, List
+from typing import Any, Callable, Dict, List
+
 
 class EventBus:
     """Thread-safe publish/subscribe event system. Replaces pyqtSignal."""
@@ -25,13 +26,17 @@ class EventBus:
         """Publish an event with keyword arguments."""
         with self._lock:
             listeners = list(self._subscribers.get(event, []))
-            
+
         for callback in listeners:
             try:
                 callback(**kwargs)
             except Exception as e:
                 import traceback
-                print(f"Error in event listener for '{event}': {e}\\n{traceback.format_exc()}")
+
+                print(
+                    f"Error in event listener for '{event}': {e}\\n{traceback.format_exc()}"
+                )
+
 
 # Global singleton event bus
 event_bus = EventBus()

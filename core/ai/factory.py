@@ -1,7 +1,8 @@
 from core.ai.base_provider import AIProvider
-from core.ai.ollama_provider import OllamaProvider
 from core.ai.gemini_provider import GeminiProvider
+from core.ai.ollama_provider import OllamaProvider
 from core.ai.openai_provider import OpenAIProvider
+
 
 class AIProviderFactory:
     @staticmethod

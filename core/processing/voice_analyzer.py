@@ -1,13 +1,21 @@
 import os
-import shutil
 import pathlib
+import shutil
+
 # Bypassing Windows symlink errors (penting untuk HuggingFace model cache di Windows)
-pathlib.Path.symlink_to = lambda self, target, *args, **kwargs: shutil.copy(target, self) # type: ignore
+pathlib.Path.symlink_to = lambda self, target, *args, **kwargs: shutil.copy(
+    target, self
+)  # type: ignore
+from typing import Any, Dict, List
+
 import numpy as np
-from typing import List, Dict, Any
+
 from core.logger import log
 
-def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]], language: str) -> None:
+
+def analyze_voice_emotions(
+    audio_path: str, words_data: List[Dict[str, Any]], language: str
+) -> None:
     """
     Menganalisis emosi dari potongan audio per kata (berdasarkan words_data)
     menggunakan Deep Learning Transformer (Wav2Vec2) dan ekstraksi fitur (Librosa).
@@ -16,9 +24,10 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]], la
     key `voice_emotion` (misal: 'happy/excited', 'angry', 'neutral', dll) beserta fitur akustiknya.
     """
     from core.config import config
+
     if not config.ai.use_voice_analysis:
         for w in words_data:
-            w['voice_emotion'] = 'neutral'
+            w["voice_emotion"] = "neutral"
         return
 
     try:
@@ -27,8 +36,10 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]], la
     except Exception as e:
         # Fallback: jika modul tidak terinstall, pastikan 'voice_emotion' tetap diisi 'neutral'
         for w in words_data:
-            w['voice_emotion'] = 'neutral'
-        log.warning(f"Modul transformers atau librosa belum terinstall. Lewati analisis emosi suara. Error: {e}")
+            w["voice_emotion"] = "neutral"
+        log.warning(
+            f"Modul transformers atau librosa belum terinstall. Lewati analisis emosi suara. Error: {e}"
+        )
         return
 
     if not os.path.exists(audio_path):
@@ -38,14 +49,18 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]], la
     if not words_data:
         return
 
-    log.info(f"Memulai analisis emosi suara (Deep Learning SER) pada {len(words_data)} kata...")
+    log.info(
+        f"Memulai analisis emosi suara (Deep Learning SER) pada {len(words_data)} kata..."
+    )
 
     try:
         # -----------------------------------------------------------------
         # PENENTUAN MODEL BERDASARKAN BAHASA SECARA DINAMIS
         # -----------------------------------------------------------------
-        if language.strip().lower() == 'id':
-            model_name = "alianurrahman/wav2vec2-base-indonesian-speech-emotion-recognition"
+        if language.strip().lower() == "id":
+            model_name = (
+                "alianurrahman/wav2vec2-base-indonesian-speech-emotion-recognition"
+            )
             log.info("Bahasa [ID] terdeteksi. Memuat model spesifik Indonesia...")
         else:
             model_name = "superb/wav2vec2-base-superb-er"
@@ -63,8 +78,8 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]], la
 
         log.info("Mengekstrak fitur dan memprediksi emosi per kata...")
         for i, w in enumerate(words_data):
-            start_time = w.get('start', 0.0)
-            end_time = w.get('end', 0.0)
+            start_time = w.get("start", 0.0)
+            end_time = w.get("end", 0.0)
 
             start_sample = int(start_time * sr)
             end_sample = int(end_time * sr)
@@ -76,30 +91,29 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]], la
 
             y_segment = y[slice_start:slice_end]
 
-            emotion = 'neutral'
+            emotion = "neutral"
             if len(y_segment) > 1000:
                 # 1. Klasifikasi dengan Transformer (Wav2Vec2)
                 preds = classifier({"array": y_segment, "sampling_rate": sr})
                 if preds:
-                    best_pred = max(preds, key=lambda x: x['score'])
-                    raw_label = best_pred['label'].lower().strip()
+                    best_pred = max(preds, key=lambda x: x["score"])
+                    raw_label = best_pred["label"].lower().strip()
 
                     # ---------------------------------------------------------
                     # PEMETAAN LABEL GABUNGAN (SUPERB & ALIANURRAHMAN)
                     # ---------------------------------------------------------
                     label_map = {
                         # Format SUPERB
-                        'neu': 'neutral',
-                        'hap': 'happy/excited',
-                        'ang': 'angry',
-                        'sad': 'sad',
-
+                        "neu": "neutral",
+                        "hap": "happy/excited",
+                        "ang": "angry",
+                        "sad": "sad",
                         # Format Alianurrahman
-                        'neutral': 'neutral',
-                        'happy': 'happy/excited',
-                        'angry': 'angry',
-                        'fear': 'fear',         # Dipertahankan jika Anda ingin mengolah fear ke depan
-                        'disgust': 'disgust'    # Dipertahankan jika Anda ingin mengolah disgust ke depan
+                        "neutral": "neutral",
+                        "happy": "happy/excited",
+                        "angry": "angry",
+                        "fear": "fear",  # Dipertahankan jika Anda ingin mengolah fear ke depan
+                        "disgust": "disgust",  # Dipertahankan jika Anda ingin mengolah disgust ke depan
                     }
                     emotion = label_map.get(raw_label, raw_label)
 
@@ -134,9 +148,11 @@ def analyze_voice_emotions(audio_path: str, words_data: List[Dict[str, Any]], la
                 log.info(f"Word: {words_data[i]['word']}, Emotion: {emotion}")
 
             # Sematkan emosi yang didapat
-            words_data[i]['voice_emotion'] = emotion
+            words_data[i]["voice_emotion"] = emotion
 
         log.info("Analisis emosi suara Deep Learning selesai secara menyeluruh.")
 
     except Exception as ex:
-        log.error(f"Gagal melakukan analisis emosi suara dengan model Deep Learning: {ex}")
+        log.error(
+            f"Gagal melakukan analisis emosi suara dengan model Deep Learning: {ex}"
+        )

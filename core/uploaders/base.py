@@ -1,5 +1,6 @@
-from typing import Protocol, Dict, Any, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, Optional, Protocol
+
 
 @dataclass
 class UploadResult:
@@ -8,10 +9,13 @@ class UploadResult:
     url: Optional[str] = None
     error_msg: Optional[str] = None
 
+
 class BaseUploader(Protocol):
     platform_name: str
-    
-    def upload(self, file_path: str, metadata: Dict[str, Any], event_hook=None) -> UploadResult:
+
+    def upload(
+        self, file_path: str, metadata: Dict[str, Any], event_hook=None
+    ) -> UploadResult:
         """
         Uploads the given file to the platform.
         metadata contains keys like: 'title', 'description', 'privacy', 'tags'.

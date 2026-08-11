@@ -1,46 +1,82 @@
 from typing import Optional
+
 from core.config import config
-from core.ffmpeg import build_cover_scale_crop_vf, build_cover_scale_vf, get_split_heights
+from core.ffmpeg import (
+    build_cover_scale_crop_vf,
+    build_cover_scale_vf,
+    get_split_heights,
+)
 from core.processing.utils import get_video_codec_args
 
-def build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w: Optional[int], out_h: Optional[int], cx_norm: float = 0.5, cy_norm: float = 0.5, cx2_norm: float = 0.5, cy2_norm: float = 0.5, face_keyframes: Optional[list[tuple[float, float, float]]] = None) -> list:
+
+def build_crop_command(
+    temp_file: str,
+    cropped_file: str,
+    crop_mode: str,
+    out_w: Optional[int],
+    out_h: Optional[int],
+    cx_norm: float = 0.5,
+    cy_norm: float = 0.5,
+    cx2_norm: float = 0.5,
+    cy2_norm: float = 0.5,
+    face_keyframes: Optional[list[tuple[float, float, float]]] = None,
+) -> list:
     """Helper function to build FFmpeg crop/split command."""
     if crop_mode == "default":
         if config.output_ratio == "original":
-            return [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                "-i", temp_file,
-            ] + get_video_codec_args() + [
-                "-c:a", "aac", "-b:a", "128k",
-                cropped_file
-            ]
+            return (
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "info",
+                    "-i",
+                    temp_file,
+                ]
+                + get_video_codec_args()
+                + ["-c:a", "aac", "-b:a", "128k", cropped_file]
+            )
         else:
             vf = build_cover_scale_crop_vf(out_w, out_h)
-            return [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                "-i", temp_file,
-                "-vf", vf,
-            ] + get_video_codec_args() + [
-                "-c:a", "aac", "-b:a", "128k",
-                cropped_file
-            ]
+            return (
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "info",
+                    "-i",
+                    temp_file,
+                    "-vf",
+                    vf,
+                ]
+                + get_video_codec_args()
+                + ["-c:a", "aac", "-b:a", "128k", cropped_file]
+            )
 
     elif crop_mode == "center_face":
         # Center Face Track: crop dinamis mengikuti posisi wajah per interval waktu
         if config.output_ratio == "original" or not out_w or not out_h:
             # Fallback ke default jika rasio original
-            vf = build_cover_scale_crop_vf(out_w, out_h) if config.output_ratio != "original" else None
+            vf = (
+                build_cover_scale_crop_vf(out_w, out_h)
+                if config.output_ratio != "original"
+                else None
+            )
             cmd = [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                "-i", temp_file,
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "info",
+                "-i",
+                temp_file,
             ]
             if vf:
                 cmd.extend(["-vf", vf])
             cmd.extend(get_video_codec_args())
-            cmd.extend([
-                "-c:a", "aac", "-b:a", "128k",
-                cropped_file
-            ])
+            cmd.extend(["-c:a", "aac", "-b:a", "128k", cropped_file])
             return cmd
         else:
             scaled = build_cover_scale_vf(out_w, out_h)
@@ -73,23 +109,29 @@ def build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w:
                         if cx == last_cx and cy == last_cy:
                             continue
                         simplified_keyframes.append((ts, cx, cy))
-                
-                face_keyframes = simplified_keyframes if simplified_keyframes else stable_keyframes
+
+                face_keyframes = (
+                    simplified_keyframes if simplified_keyframes else stable_keyframes
+                )
 
                 # Dynamic mode: buat ekspresi crop x/y yang berubah berdasarkan waktu (t)
                 # Menggunakan nested if(lt(t, timestamp), ...) agar crop mengikuti wajah
                 # Format keyframe: (timestamp, cx_norm, cy_norm)
                 # Ekspresi: if(lt(t,t1), expr0, if(lt(t,t2), expr1, ... exprN))
 
-                def _make_offset_expr(keyframes: list[tuple[float, float, float]], axis: str) -> str:
+                def _make_offset_expr(
+                    keyframes: list[tuple[float, float, float]], axis: str
+                ) -> str:
                     """Buat nested if(lt(t,...)) expression untuk crop x atau y."""
                     # axis: 'x' → pakai cx_norm (index 1), 'y' → pakai cy_norm (index 2)
-                    idx = 1 if axis == 'x' else 2
-                    dim = out_w if axis == 'x' else out_h
-                    ivar = 'iw' if axis == 'x' else 'ih'
+                    idx = 1 if axis == "x" else 2
+                    dim = out_w if axis == "x" else out_h
+                    ivar = "iw" if axis == "x" else "ih"
 
                     def _offset(norm: float) -> str:
-                        return f"max(0\\,min({ivar}*{norm:.4f}-({dim}/2)\\,{ivar}-{dim}))"
+                        return (
+                            f"max(0\\,min({ivar}*{norm:.4f}-({dim}/2)\\,{ivar}-{dim}))"
+                        )
 
                     if len(keyframes) == 1:
                         return _offset(keyframes[0][idx])
@@ -103,8 +145,8 @@ def build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w:
 
                     return expr
 
-                x_expr = _make_offset_expr(face_keyframes, 'x')
-                y_expr = _make_offset_expr(face_keyframes, 'y')
+                x_expr = _make_offset_expr(face_keyframes, "x")
+                y_expr = _make_offset_expr(face_keyframes, "y")
 
                 vf = f"{scaled},crop={out_w}:{out_h}:{x_expr}:{y_expr}"
             else:
@@ -113,29 +155,42 @@ def build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w:
                 y_offset = f"max(0\\,min(ih*{cy_norm}-({out_h}/2)\\,ih-{out_h}))"
                 vf = f"{scaled},crop={out_w}:{out_h}:{x_offset}:{y_offset}"
 
-            return [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                "-i", temp_file,
-                "-vf", vf,
-            ] + get_video_codec_args() + [
-                "-c:a", "aac", "-b:a", "128k",
-                cropped_file
-            ]
+            return (
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "info",
+                    "-i",
+                    temp_file,
+                    "-vf",
+                    vf,
+                ]
+                + get_video_codec_args()
+                + ["-c:a", "aac", "-b:a", "128k", cropped_file]
+            )
 
     elif crop_mode in ["split_left", "split_right", "split_face", "full_face"]:
         if config.output_ratio == "original" or not out_w or not out_h or out_h < out_w:
-            vf = build_cover_scale_crop_vf(out_w or 720, out_h or 1280) if config.output_ratio != "original" else None
+            vf = (
+                build_cover_scale_crop_vf(out_w or 720, out_h or 1280)
+                if config.output_ratio != "original"
+                else None
+            )
             cmd = [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                "-i", temp_file,
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "info",
+                "-i",
+                temp_file,
             ]
             if vf:
                 cmd.extend(["-vf", vf])
             cmd.extend(get_video_codec_args())
-            cmd.extend([
-                "-c:a", "aac", "-b:a", "128k",
-                cropped_file
-            ])
+            cmd.extend(["-c:a", "aac", "-b:a", "128k", cropped_file])
             return cmd
         else:
             top_h, bottom_h = get_split_heights(out_h, config.bottom_height)
@@ -143,7 +198,9 @@ def build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w:
 
             if crop_mode in ["split_face", "full_face"]:
                 x_offset_bottom = f"max(0\\,min(iw*{cx_norm}-({out_w}/2)\\,iw-{out_w}))"
-                y_offset_bottom = f"max(0\\,min(ih*{cy_norm}-({bottom_h}/2)\\,ih-{bottom_h}))"
+                y_offset_bottom = (
+                    f"max(0\\,min(ih*{cy_norm}-({bottom_h}/2)\\,ih-{bottom_h}))"
+                )
             else:
                 x_offset_bottom = "0" if crop_mode == "split_left" else f"iw-{out_w}"
                 y_offset_bottom = f"ih-{bottom_h}"
@@ -171,63 +228,108 @@ def build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w:
                     f"[top][bottom]vstack[out]"
                 )
 
-            return [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                "-i", temp_file,
-                "-filter_complex", vf,
-                "-map", "[out]", "-map", "0:a?",
-            ] + get_video_codec_args() + [
-                "-c:a", "aac", "-b:a", "128k",
-                cropped_file
-            ]
+            return (
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "info",
+                    "-i",
+                    temp_file,
+                    "-filter_complex",
+                    vf,
+                    "-map",
+                    "[out]",
+                    "-map",
+                    "0:a?",
+                ]
+                + get_video_codec_args()
+                + ["-c:a", "aac", "-b:a", "128k", cropped_file]
+            )
 
     elif crop_mode == "full":
         if config.output_ratio == "original" or not out_w or not out_h:
-            return [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                "-i", temp_file,
-            ] + get_video_codec_args() + [
-                "-c:a", "aac", "-b:a", "128k",
-                cropped_file
-            ]
+            return (
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "info",
+                    "-i",
+                    temp_file,
+                ]
+                + get_video_codec_args()
+                + ["-c:a", "aac", "-b:a", "128k", cropped_file]
+            )
         else:
             vf = (
                 f"[0:v]scale={out_w}:{out_h}:force_original_aspect_ratio=increase,crop={out_w}:{out_h},boxblur=20:20[bg];"
                 f"[0:v]scale={out_w}:{out_h}:force_original_aspect_ratio=decrease[fg];"
                 f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1[out]"
             )
-            return [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                "-i", temp_file,
-                "-filter_complex", vf,
-                "-map", "[out]", "-map", "0:a?",
-            ] + get_video_codec_args() + [
-                "-c:a", "aac", "-b:a", "128k",
-                cropped_file
-            ]
+            return (
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "info",
+                    "-i",
+                    temp_file,
+                    "-filter_complex",
+                    vf,
+                    "-map",
+                    "[out]",
+                    "-map",
+                    "0:a?",
+                ]
+                + get_video_codec_args()
+                + ["-c:a", "aac", "-b:a", "128k", cropped_file]
+            )
 
     elif crop_mode == "multi_face":
         # Multi Face Tracker (Podcast Mode)
         # Layout vstack: Face1 crop (atas) → Full video scaled (tengah) → Face2 crop (bawah)
         if abs(cx_norm - cx2_norm) < 0.05 and abs(cy_norm - cy2_norm) < 0.05:
             from core.logger import log
-            log.warning("[cropper] Deteksi wajah Face 1 dan Face 2 sama/sangat dekat, melakukan fallback ke full_face.")
-            return build_crop_command(temp_file, cropped_file, "full_face", out_w, out_h, cx_norm, cy_norm, cx2_norm, cy2_norm)
+
+            log.warning(
+                "[cropper] Deteksi wajah Face 1 dan Face 2 sama/sangat dekat, melakukan fallback ke full_face."
+            )
+            return build_crop_command(
+                temp_file,
+                cropped_file,
+                "full_face",
+                out_w,
+                out_h,
+                cx_norm,
+                cy_norm,
+                cx2_norm,
+                cy2_norm,
+            )
 
         if config.output_ratio == "original" or not out_w or not out_h or out_h < out_w:
             # Fallback: jika rasio output tidak portrait, lakukan full mode saja
-            vf = build_cover_scale_crop_vf(out_w or 720, out_h or 1280) if config.output_ratio != "original" else None
+            vf = (
+                build_cover_scale_crop_vf(out_w or 720, out_h or 1280)
+                if config.output_ratio != "original"
+                else None
+            )
             cmd = [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                "-i", temp_file,
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "info",
+                "-i",
+                temp_file,
             ]
             if vf:
                 cmd.extend(["-vf", vf])
             cmd.extend(get_video_codec_args())
-            cmd.extend([
-                "-c:a", "aac", "-b:a", "128k",
-                cropped_file
-            ])
+            cmd.extend(["-c:a", "aac", "-b:a", "128k", cropped_file])
             return cmd
         else:
             # Bagi tinggi output menjadi 3 bagian: face1 (atas), full (tengah), face2 (bawah)
@@ -267,14 +369,24 @@ def build_crop_command(temp_file: str, cropped_file: str, crop_mode: str, out_w:
                 f"[bg][stacked]overlay=(W-w)/2:(H-h)/2[out]"
             )
 
-            return [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
-                "-i", temp_file,
-                "-filter_complex", vf,
-                "-map", "[out]", "-map", "0:a?",
-            ] + get_video_codec_args() + [
-                "-c:a", "aac", "-b:a", "128k",
-                cropped_file
-            ]
+            return (
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "info",
+                    "-i",
+                    temp_file,
+                    "-filter_complex",
+                    vf,
+                    "-map",
+                    "[out]",
+                    "-map",
+                    "0:a?",
+                ]
+                + get_video_codec_args()
+                + ["-c:a", "aac", "-b:a", "128k", cropped_file]
+            )
 
     raise ValueError(f"Unknown crop mode: {crop_mode}")

@@ -1,6 +1,9 @@
-import flet as ft
 from typing import Any, cast
+
+import flet as ft
+
 from core import config
+
 
 class Preview(ft.Container):
     def __init__(self, on_selection_changed=None, on_ai_scan_requested=None):
@@ -16,25 +19,26 @@ class Preview(ft.Container):
         self.border = ft.Border.all(1, ft.Colors.OUTLINE_VARIANT)
 
         # UI Elements
-        self.video_title = ft.Text("Masukkan URL YouTube lalu klik Load Video", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE)
+        self.video_title = ft.Text(
+            "Masukkan URL YouTube lalu klik Load Video",
+            size=14,
+            weight=ft.FontWeight.BOLD,
+            color=ft.Colors.WHITE,
+        )
         self.video_uploader = ft.Text("Uploader: -", color=ft.Colors.WHITE_54)
         self.video_duration = ft.Text("Durasi: -", color=ft.Colors.WHITE_54)
 
         self.thumbnail_image = ft.Image(
-            src="",
-            width=160,
-            height=90,
-            fit=ft.BoxFit.CONTAIN,
-            visible=False
+            src="", width=160, height=90, fit=ft.BoxFit.CONTAIN, visible=False
         )
         self.thumbnail_placeholder = ft.Container(
             content=ft.Text("No Video Loaded", color=ft.Colors.BLUE_GREY_400),
             width=160,
             height=90,
             bgcolor=ft.Colors.BLUE_GREY_900,
-            border=ft.Border.all(1, ft.Colors.BLUE_GREY_700), # type: ignore
+            border=ft.Border.all(1, ft.Colors.BLUE_GREY_700),  # type: ignore
             border_radius=8,
-            alignment=ft.Alignment.CENTER # type: ignore
+            alignment=ft.Alignment.CENTER,  # type: ignore
         )
 
         # Mode selection
@@ -42,50 +46,76 @@ class Preview(ft.Container):
             options=[
                 ft.dropdown.Option("heatmap", "1. Heatmap (Most Replayed)"),
                 ft.dropdown.Option("custom", "2. Kustom Range (Manual)"),
-                ft.dropdown.Option("ai", "3. AI Highlight Detector (LLM)")
+                ft.dropdown.Option("ai", "3. AI Highlight Detector (LLM)"),
             ],
             value="heatmap",
-            on_select=self.on_mode_changed, # type: ignore
-            expand=True
+            on_select=self.on_mode_changed,  # type: ignore
+            expand=True,
         )
 
         # Heatmap Page
-        self.segment_count_label = ft.Text("Pilih Segmen Heatmap:", color=ft.Colors.WHITE_54)
-        self.segment_list = ft.ListView(height=160, spacing=4, )
-        self.heatmap_view = ft.Column([
-            ft.Row([
-                self.segment_count_label,
-                ft.Container(expand=True),
-                ft.TextButton("Select All", on_click=self.select_all_segments),
-                ft.TextButton("Deselect All", on_click=self.deselect_all_segments),
-            ]),
-            ft.Row([ft.Container(
-                content=self.segment_list,
-                border_radius=6,
-                border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
-                expand=True
-                )
-            ])
-        ], visible=True)
+        self.segment_count_label = ft.Text(
+            "Pilih Segmen Heatmap:", color=ft.Colors.WHITE_54
+        )
+        self.segment_list = ft.ListView(
+            height=160,
+            spacing=4,
+        )
+        self.heatmap_view = ft.Column(
+            [
+                ft.Row(
+                    [
+                        self.segment_count_label,
+                        ft.Container(expand=True),
+                        ft.TextButton("Select All", on_click=self.select_all_segments),
+                        ft.TextButton(
+                            "Deselect All", on_click=self.deselect_all_segments
+                        ),
+                    ]
+                ),
+                ft.Row(
+                    [
+                        ft.Container(
+                            content=self.segment_list,
+                            border_radius=6,
+                            border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
+                            expand=True,
+                        )
+                    ]
+                ),
+            ],
+            visible=True,
+        )
 
         # Custom Page
-        self.start_input = ft.TextField(label="Waktu Mulai", hint_text="detik (contoh: 30) atau MM:SS", expand=True)
-        self.end_input = ft.TextField(label="Waktu Selesai", hint_text="detik (contoh: 90) atau MM:SS", expand=True)
-        self.custom_view = ft.Row([
-            ft.Text("Waktu Mulai:"),
-            self.start_input,
-            ft.Text("Waktu Selesai:"),
-            self.end_input
-        ], visible=False)
+        self.start_input = ft.TextField(
+            label="Waktu Mulai", hint_text="detik (contoh: 30) atau MM:SS", expand=True
+        )
+        self.end_input = ft.TextField(
+            label="Waktu Selesai",
+            hint_text="detik (contoh: 90) atau MM:SS",
+            expand=True,
+        )
+        self.custom_view = ft.Row(
+            [
+                ft.Text("Waktu Mulai:"),
+                self.start_input,
+                ft.Text("Waktu Selesai:"),
+                self.end_input,
+            ],
+            visible=False,
+        )
 
         # AI Page
         self.btn_run_ai_scan = ft.Button(
-            content=ft.Text("🤖 Scan Highlights dengan AI"), # type: ignore
+            content=ft.Text("🤖 Scan Highlights dengan AI"),  # type: ignore
             on_click=self.on_run_ai_scan,
             style=ft.ButtonStyle(bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE),
-            height=40
+            height=40,
         )
-        self.force_rescan_checkbox = ft.Checkbox(label="Force Rescan (Abaikan Cache AI)")
+        self.force_rescan_checkbox = ft.Checkbox(
+            label="Force Rescan (Abaikan Cache AI)"
+        )
 
         self.custom_prompt_input = ft.TextField(
             label="Konteks Prompt Tambahan (Custom Context)",
@@ -93,57 +123,71 @@ class Preview(ft.Container):
             min_lines=2,
             max_lines=3,
             hint_text="Contoh: Fokus pada momen lucu atau komedi. Abaikan bagian yang membosankan.",
-            expand=True
+            expand=True,
         )
 
-        self.ai_segment_count_label = ft.Text("Segmen AI Highlight (Transkripsi Whisper + LLM):", color=ft.Colors.WHITE_54)
+        self.ai_segment_count_label = ft.Text(
+            "Segmen AI Highlight (Transkripsi Whisper + LLM):", color=ft.Colors.WHITE_54
+        )
         self.ai_segment_list = ft.ListView(height=140, spacing=4)
-        self.ai_view = ft.Column([
-            ft.Row([self.btn_run_ai_scan, self.force_rescan_checkbox]),
-            ft.Row([self.custom_prompt_input]),
-            self.ai_segment_count_label,
-            self.ai_segment_list
-        ], visible=False)
+        self.ai_view = ft.Column(
+            [
+                ft.Row([self.btn_run_ai_scan, self.force_rescan_checkbox]),
+                ft.Row([self.custom_prompt_input]),
+                self.ai_segment_count_label,
+                self.ai_segment_list,
+            ],
+            visible=False,
+        )
 
-        self.mode_stack = ft.Column([
-            self.heatmap_view,
-            self.custom_view,
-            self.ai_view
-        ])
+        self.mode_stack = ft.Column([self.heatmap_view, self.custom_view, self.ai_view])
 
         # Main layout
-        self.content = ft.Column([
-            ft.Text("📺 Video Preview & Segment Selection", size=18, weight=ft.FontWeight.BOLD),
-            ft.Row([
-                ft.Stack([
-                    self.thumbnail_placeholder,
-                    self.thumbnail_image
-                ]),
-                ft.Column([
-                    self.video_title,
-                    self.video_uploader,
-                    self.video_duration
-                ], expand=True)
-            ]),
-            ft.Row([
-                ft.Text("Metode Penentuan Klip:", weight=ft.FontWeight.BOLD),
-                self.mode_dropdown
-            ]),
-            self.mode_stack
-        ], spacing=12)
+        self.content = ft.Column(
+            [
+                ft.Text(
+                    "📺 Video Preview & Segment Selection",
+                    size=18,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                ft.Row(
+                    [
+                        ft.Stack([self.thumbnail_placeholder, self.thumbnail_image]),
+                        ft.Column(
+                            [
+                                self.video_title,
+                                self.video_uploader,
+                                self.video_duration,
+                            ],
+                            expand=True,
+                        ),
+                    ]
+                ),
+                ft.Row(
+                    [
+                        ft.Text("Metode Penentuan Klip:", weight=ft.FontWeight.BOLD),
+                        self.mode_dropdown,
+                    ]
+                ),
+                self.mode_stack,
+            ],
+            spacing=12,
+        )
 
     def set_ai_scanning(self, scanning: bool) -> None:
         if scanning:
             self.btn_run_ai_scan.disabled = True
             # type: ignore
-            self.btn_run_ai_scan.text = "⏳ Memproses AI Scan (Whisper + LLM)..." # type: ignore
+            self.btn_run_ai_scan.text = "⏳ Memproses AI Scan (Whisper + LLM)..."  # type: ignore
         else:
             self.btn_run_ai_scan.disabled = False
             # type: ignore
-            self.btn_run_ai_scan.text = "🤖 Scan Highlights dengan AI" # type: ignore
+            self.btn_run_ai_scan.text = "🤖 Scan Highlights dengan AI"  # type: ignore
         try:
-            if self.page: self.page.update()
-            else: self.update()
+            if self.page:
+                self.page.update()
+            else:
+                self.update()
         except Exception:
             pass
 
@@ -158,7 +202,7 @@ class Preview(ft.Container):
             "openai_model": getattr(config.ai, "openai_model", "gpt-4o-mini"),
             "openai_base_url": getattr(config.ai, "openai_base_url", ""),
             "custom_prompt": self.custom_prompt_input.value or "",
-            "force_rescan": self.force_rescan_checkbox.value
+            "force_rescan": self.force_rescan_checkbox.value,
         }
         if self.on_ai_scan_requested:
             self.on_ai_scan_requested(ai_config)
@@ -183,8 +227,10 @@ class Preview(ft.Container):
             self.thumbnail_placeholder.visible = True
 
         try:
-            if self.page: self.page.update()
-            else: self.update()
+            if self.page:
+                self.page.update()
+            else:
+                self.update()
         except Exception:
             pass
 
@@ -192,7 +238,9 @@ class Preview(ft.Container):
         self.segments_data = scan_result.get("segments", [])
         self.segment_list.controls.clear()
 
-        self.segment_count_label.value = f"Segmen Heatmap Ditemukan ({len(self.segments_data)}):"
+        self.segment_count_label.value = (
+            f"Segmen Heatmap Ditemukan ({len(self.segments_data)}):"
+        )
 
         for idx, seg in enumerate(self.segments_data, start=1):
             seg["original_index"] = idx
@@ -204,13 +252,22 @@ class Preview(ft.Container):
             m2, s2 = divmod(start_s + dur_s, 60)
             time_str = f"{m1:02d}:{s1:02d} - {m2:02d}:{s2:02d}"
 
-            item_text = f"Klip #{idx} | {time_str} (durasi: {dur_s}s) | Score: {score:.2f}"
-            checkbox = ft.Checkbox(label=item_text, value=True, data=seg, on_change=self.on_checkbox_changed)
+            item_text = (
+                f"Klip #{idx} | {time_str} (durasi: {dur_s}s) | Score: {score:.2f}"
+            )
+            checkbox = ft.Checkbox(
+                label=item_text,
+                value=True,
+                data=seg,
+                on_change=self.on_checkbox_changed,
+            )
             self.segment_list.controls.append(checkbox)
 
         try:
-            if self.page: self.page.update()
-            else: self.update()
+            if self.page:
+                self.page.update()
+            else:
+                self.update()
         except Exception:
             pass
 
@@ -218,7 +275,9 @@ class Preview(ft.Container):
         self.ai_segments_data = ai_result.get("segments", [])
         self.ai_segment_list.controls.clear()
 
-        self.ai_segment_count_label.value = f"Segmen AI Highlights Ditemukan ({len(self.ai_segments_data)}):"
+        self.ai_segment_count_label.value = (
+            f"Segmen AI Highlights Ditemukan ({len(self.ai_segments_data)}):"
+        )
 
         for idx, seg in enumerate(self.ai_segments_data, start=1):
             seg["original_index"] = idx
@@ -232,36 +291,55 @@ class Preview(ft.Container):
             time_str = f"{m1:02d}:{s1:02d} - {m2:02d}:{s2:02d}"
 
             item_text = f"🤖 Klip #{idx} | {title} [{time_str}] ({dur_s}s) | {reason}"
-            checkbox = ft.Checkbox(label=item_text, value=True, data=seg, on_change=self.on_checkbox_changed)
+            checkbox = ft.Checkbox(
+                label=item_text,
+                value=True,
+                data=seg,
+                on_change=self.on_checkbox_changed,
+            )
             self.ai_segment_list.controls.append(checkbox)
 
         try:
-            if self.page: self.page.update()
-            else: self.update()
+            if self.page:
+                self.page.update()
+            else:
+                self.update()
         except Exception:
             pass
 
     def select_all_segments(self, e: Any = None) -> None:
-        target_list = self.ai_segment_list if self.mode_dropdown.value == "ai" else self.segment_list
+        target_list = (
+            self.ai_segment_list
+            if self.mode_dropdown.value == "ai"
+            else self.segment_list
+        )
         for c in target_list.controls:
             if isinstance(c, ft.Checkbox):
                 c.value = True
         try:
-            if self.page: self.page.update()
-            else: self.update()
+            if self.page:
+                self.page.update()
+            else:
+                self.update()
         except Exception:
             pass
         if self.on_selection_changed:
             self.on_selection_changed()
 
     def deselect_all_segments(self, e: Any = None) -> None:
-        target_list = self.ai_segment_list if self.mode_dropdown.value == "ai" else self.segment_list
+        target_list = (
+            self.ai_segment_list
+            if self.mode_dropdown.value == "ai"
+            else self.segment_list
+        )
         for c in target_list.controls:
             if isinstance(c, ft.Checkbox):
                 c.value = False
         try:
-            if self.page: self.page.update()
-            else: self.update()
+            if self.page:
+                self.page.update()
+            else:
+                self.update()
         except Exception:
             pass
         if self.on_selection_changed:
@@ -277,8 +355,10 @@ class Preview(ft.Container):
         self.custom_view.visible = val == "custom"
         self.ai_view.visible = val == "ai"
         try:
-            if self.page: self.page.update()
-            else: self.update()
+            if self.page:
+                self.page.update()
+            else:
+                self.update()
         except Exception:
             pass
         if self.on_selection_changed:
@@ -289,7 +369,11 @@ class Preview(ft.Container):
         return str(mode) if mode else "heatmap"
 
     def get_selected_segments(self) -> list:
-        target_list = self.ai_segment_list if self.mode_dropdown.value == "ai" else self.segment_list
+        target_list = (
+            self.ai_segment_list
+            if self.mode_dropdown.value == "ai"
+            else self.segment_list
+        )
         selected = []
         for c in target_list.controls:
             if isinstance(c, ft.Checkbox) and c.value:

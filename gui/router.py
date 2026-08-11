@@ -1,10 +1,12 @@
 import flet as ft
-from gui.state import AppState, app_state
-from gui.event_bus import event_bus
+
 from gui import events
+from gui.event_bus import event_bus
+from gui.state import AppState, app_state
 from gui.views.clipper_view import ClipperView
 from gui.views.creator_hub_view import CreatorHubView
 from gui.views.settings_view import SettingsView
+
 
 class Router:
     def __init__(self, page: ft.Page, state: AppState):
@@ -36,14 +38,19 @@ class Router:
             if route == "clipper":
                 self._view_cache[route] = ClipperView(self.page)
             elif route == "creator_hub":
-                self._view_cache[route] = CreatorHubView(on_video_select=self.handle_creator_hub_video_select)
+                self._view_cache[route] = CreatorHubView(
+                    on_video_select=self.handle_creator_hub_video_select
+                )
             elif route == "settings":
                 self._view_cache[route] = SettingsView(self.page)
             elif route == "debugger":
                 from gui.views.debugger_view import DebuggerView
+
                 self._view_cache[route] = DebuggerView(self.page)
             elif route == "logs":
-                self._view_cache[route] = ft.Text("Logs View (To Be Implemented)", size=24)
+                self._view_cache[route] = ft.Text(
+                    "Logs View (To Be Implemented)", size=24
+                )
             else:
                 # Jangan cache unknown view
                 return ft.Text("Unknown View", size=24)

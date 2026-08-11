@@ -1,7 +1,10 @@
-import flet as ft
 from typing import Any, cast
-from gui.event_bus import event_bus
+
+import flet as ft
+
 from gui.components.progress_indicator import ProgressIndicator
+from gui.event_bus import event_bus
+
 
 class TaskRow(ft.Container):
     def __init__(self, clip_index: int, initial_stage: str):
@@ -12,18 +15,26 @@ class TaskRow(ft.Container):
         self.bgcolor = ft.Colors.TRANSPARENT
 
         self.icon = ft.Icon(ft.Icons.MOVIE, color=ft.Colors.INDIGO, size=20)
-        title_text = "Merge Video / Global" if clip_index == 0 else f"Klip #{clip_index}"
+        title_text = (
+            "Merge Video / Global" if clip_index == 0 else f"Klip #{clip_index}"
+        )
         self.title_ui = ft.Text(title_text, weight=ft.FontWeight.BOLD, size=13)
         self.stage_ui = ft.Text(initial_stage, size=12, color=ft.Colors.INDIGO)
         self.spinner = ft.ProgressRing(width=16, height=16, stroke_width=2)
 
-        self.content = ft.Row([
-            self.icon,
-            ft.Column([self.title_ui, self.stage_ui], spacing=2, expand=True),
-            self.spinner
-        ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+        self.content = ft.Row(
+            [
+                self.icon,
+                ft.Column([self.title_ui, self.stage_ui], spacing=2, expand=True),
+                self.spinner,
+            ],
+            alignment=ft.MainAxisAlignment.START,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
 
-    def update_state(self, new_stage: str, is_done: bool = False, is_error: bool = False):
+    def update_state(
+        self, new_stage: str, is_done: bool = False, is_error: bool = False
+    ):
         self.stage_ui.value = new_stage
         if is_error:
             self.spinner.visible = False
@@ -42,6 +53,7 @@ class TaskRow(ft.Container):
         except Exception:
             pass
 
+
 class ProcessControl(ft.Container):
     def __init__(self, page: ft.Page):
         super().__init__()
@@ -52,26 +64,32 @@ class ProcessControl(ft.Container):
         self.border = ft.Border.all(1, ft.Colors.OUTLINE_VARIANT)
 
         # Header
-        title = ft.Text("🚀 Dashboard & Kontrol Pemrosesan", size=18, weight=ft.FontWeight.BOLD)
+        title = ft.Text(
+            "🚀 Dashboard & Kontrol Pemrosesan", size=18, weight=ft.FontWeight.BOLD
+        )
 
-        self.stage_text = ft.Text("Status: Idle", size=12, weight=ft.FontWeight.BOLD, color=ft.Colors.ON_PRIMARY_CONTAINER)
+        self.stage_text = ft.Text(
+            "Status: Idle",
+            size=12,
+            weight=ft.FontWeight.BOLD,
+            color=ft.Colors.ON_PRIMARY_CONTAINER,
+        )
         self.stage_badge = ft.Container(
             content=self.stage_text,
             padding=ft.Padding(left=10, top=4, right=10, bottom=4),
             bgcolor=ft.Colors.PRIMARY_CONTAINER,
             border_radius=6,
-            border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT)
+            border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
         )
 
         # Global Progress
-        self.progress_indicator = ProgressIndicator(label="0 / 0 Klip Selesai (0%)", value=0.0)
+        self.progress_indicator = ProgressIndicator(
+            label="0 / 0 Klip Selesai (0%)", value=0.0
+        )
 
         # Tasks List
         self.tasks_list = ft.ListView(
-            spacing=8,
-            height=180,
-            padding=10,
-            auto_scroll=True
+            spacing=8, height=180, padding=10, auto_scroll=True
         )
         self.tasks_container = ft.Container(
             content=self.tasks_list,
@@ -82,35 +100,46 @@ class ProcessControl(ft.Container):
         self.active_tasks_map: dict[int, TaskRow] = {}
         self.tasks_list.controls.append(
             ft.Container(
-                content=ft.Text("Menunggu instruksi pemrosesan...", color=ft.Colors.OUTLINE, italic=True),
+                content=ft.Text(
+                    "Menunggu instruksi pemrosesan...",
+                    color=ft.Colors.OUTLINE,
+                    italic=True,
+                ),
                 padding=20,
-                alignment=ft.Alignment(0, 0)
+                alignment=ft.Alignment(0, 0),
             )
         )
 
         # Buttons
         self.start_btn = ft.Button(
             content=ft.Text("▶ MULAI PROSES KLIP", weight=ft.FontWeight.BOLD),
-            style=ft.ButtonStyle(bgcolor=ft.Colors.INDIGO_600, color=ft.Colors.WHITE, padding=16),
+            style=ft.ButtonStyle(
+                bgcolor=ft.Colors.INDIGO_600, color=ft.Colors.WHITE, padding=16
+            ),
             on_click=self.on_start_requested,
-            expand=True
+            expand=True,
         )
         self.cancel_btn = ft.Button(
             content=ft.Text("⏹ BATALKAN", weight=ft.FontWeight.BOLD),
-            style=ft.ButtonStyle(bgcolor=ft.Colors.ERROR, color=ft.Colors.ON_ERROR, padding=16),
+            style=ft.ButtonStyle(
+                bgcolor=ft.Colors.ERROR, color=ft.Colors.ON_ERROR, padding=16
+            ),
             disabled=True,
             on_click=self.on_cancel_requested,
-            expand=True
+            expand=True,
         )
 
-        self.content = ft.Column([
-            ft.Row([title, ft.Container(expand=True), self.stage_badge]),
-            ft.Divider(height=1, color=ft.Colors.OUTLINE_VARIANT),
-            self.progress_indicator,
-            ft.Text("Daftar Pemrosesan Aktif:", size=14, weight=ft.FontWeight.BOLD),
-            self.tasks_container,
-            ft.Row([self.start_btn, self.cancel_btn], spacing=12)
-        ], spacing=16)
+        self.content = ft.Column(
+            [
+                ft.Row([title, ft.Container(expand=True), self.stage_badge]),
+                ft.Divider(height=1, color=ft.Colors.OUTLINE_VARIANT),
+                self.progress_indicator,
+                ft.Text("Daftar Pemrosesan Aktif:", size=14, weight=ft.FontWeight.BOLD),
+                self.tasks_container,
+                ft.Row([self.start_btn, self.cancel_btn], spacing=12),
+            ],
+            spacing=16,
+        )
 
     def on_start_requested(self, e: Any = None) -> None:
         self.start_btn.disabled = True
@@ -151,10 +180,14 @@ class ProcessControl(ft.Container):
         except (ValueError, TypeError):
             pass
 
-        is_done = (stage_name == "done_clip")
+        is_done = stage_name == "done_clip"
 
         # Remove placeholder if it exists
-        if len(self.tasks_list.controls) == 1 and isinstance(self.tasks_list.controls[0], ft.Container) and not isinstance(self.tasks_list.controls[0], TaskRow):
+        if (
+            len(self.tasks_list.controls) == 1
+            and isinstance(self.tasks_list.controls[0], ft.Container)
+            and not isinstance(self.tasks_list.controls[0], TaskRow)
+        ):
             self.tasks_list.controls.clear()
 
         # Track individual clip tasks
@@ -170,18 +203,26 @@ class ProcessControl(ft.Container):
 
             # Update global progress safely
             # Hitung jumlah task yang sudah selesai (icon = CHECK_CIRCLE) dan clip_index > 0
-            done_count = sum(1 for t in self.active_tasks_map.values() if not t.spinner.visible and t.icon.name == ft.Icons.CHECK_CIRCLE and t.clip_index > 0)
+            done_count = sum(
+                1
+                for t in self.active_tasks_map.values()
+                if not t.spinner.visible
+                and t.icon.name == ft.Icons.CHECK_CIRCLE
+                and t.clip_index > 0
+            )
 
             if self.total_clips > 0:
                 pct = min(1.0, done_count / self.total_clips)
                 self.progress_indicator.value = pct
-                self.progress_indicator.label = f"{done_count} / {self.total_clips} Klip Selesai ({int(pct*100)}%)"
+                self.progress_indicator.label = f"{done_count} / {self.total_clips} Klip Selesai ({int(pct * 100)}%)"
         else:
             task_ui.update_state(display, is_done=False)
 
         try:
-            if self.page: self.page.update()
-            else: self.update()
+            if self.page:
+                self.page.update()
+            else:
+                self.update()
         except Exception:
             pass
 
@@ -190,8 +231,10 @@ class ProcessControl(ft.Container):
         self.progress_indicator.value = 0.0
         self.progress_indicator.label = f"0 / {total} Klip Selesai (0%)"
         try:
-            if self.page: self.page.update()
-            else: self.update()
+            if self.page:
+                self.page.update()
+            else:
+                self.update()
         except Exception:
             pass
 
@@ -215,14 +258,20 @@ class ProcessControl(ft.Container):
             if not self.tasks_list.controls:
                 self.tasks_list.controls.append(
                     ft.Container(
-                        content=ft.Text("Menunggu instruksi pemrosesan...", color=ft.Colors.OUTLINE, italic=True),
+                        content=ft.Text(
+                            "Menunggu instruksi pemrosesan...",
+                            color=ft.Colors.OUTLINE,
+                            italic=True,
+                        ),
                         padding=20,
-                        alignment=ft.Alignment(0, 0)
+                        alignment=ft.Alignment(0, 0),
                     )
                 )
 
         try:
-            if self.page: self.page.update()
-            else: self.update()
+            if self.page:
+                self.page.update()
+            else:
+                self.update()
         except Exception:
             pass

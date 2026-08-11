@@ -1,8 +1,9 @@
 import json
 import re
-from typing import List, Dict, Any, Optional
-from core.logger import log
+from typing import Any, Dict, List, Optional
+
 from core.ai.factory import AIProviderFactory
+from core.logger import log
 
 DEFAULT_PROMPT_TEMPLATE = """
 Anda adalah seorang Produser Konten Viral dan Editor Video Profesional ahli pencari momen (highlight detector).
@@ -46,13 +47,14 @@ Transkrip Video:
 {transcript_text}
 """
 
+
 class AIHighlightDetector:
     def detect_highlights(
         self,
         transcript_segments: List[Dict[str, Any]],
         ai_config: Dict[str, Any],
         event_hook: Optional[Any] = None,
-        video_id: Optional[str] = None
+        video_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Sends transcript to configured AI model provider and returns structured highlight segments.
@@ -91,16 +93,21 @@ class AIHighlightDetector:
         language = "Indonesia"
         if video_id:
             from core.utils import get_preview_data
+
             preview_data = get_preview_data(video_id=video_id)
             if preview_data.get("language"):
                 language = preview_data["language"]
 
         all_highlights = []
-        provider_name = (ai_config.get("provider") or ai_config.get("ai_provider") or "ollama").lower()
+        provider_name = (
+            ai_config.get("provider") or ai_config.get("ai_provider") or "ollama"
+        ).lower()
         provider = AIProviderFactory.create(provider_name)
 
         custom_prompt = ai_config.get("custom_prompt", "")
-        custom_context_str = f"\nKonteks Tambahan Pengguna:\n{custom_prompt}\n" if custom_prompt else ""
+        custom_context_str = (
+            f"\nKonteks Tambahan Pengguna:\n{custom_prompt}\n" if custom_prompt else ""
+        )
 
         for i, chunk_text in enumerate(chunks):
             template = DEFAULT_PROMPT_TEMPLATE
@@ -109,9 +116,13 @@ class AIHighlightDetector:
             prompt = prompt.replace("{custom_context}", custom_context_str)
 
             if len(chunks) > 1:
-                log.info( f"[AI] Mengirim transkrip (Bagian {i+1}/{len(chunks)}) ke AI Provider: {provider_name.upper()}...")
+                log.info(
+                    f"[AI] Mengirim transkrip (Bagian {i + 1}/{len(chunks)}) ke AI Provider: {provider_name.upper()}..."
+                )
             else:
-                log.info( f"[AI] Mengirim transkrip ke AI Provider: {provider_name.upper()}...")
+                log.info(
+                    f"[AI] Mengirim transkrip ke AI Provider: {provider_name.upper()}..."
+                )
 
             raw_response = provider.generate(prompt, ai_config, event_hook)
             highlights = self._parse_json_highlights(raw_response)
@@ -120,7 +131,9 @@ class AIHighlightDetector:
         # Mengurutkan semua highlight berdasarkan waktu mulai
         all_highlights.sort(key=lambda x: float(x.get("start", 0)))
 
-        log.info( f"[AI] Berhasil mendeteksi total {len(all_highlights)} momen highlight dari AI!")
+        log.info(
+            f"[AI] Berhasil mendeteksi total {len(all_highlights)} momen highlight dari AI!"
+        )
 
         return all_highlights
 
@@ -130,7 +143,7 @@ class AIHighlightDetector:
             return []
 
         # Find JSON array [...] or JSON object {...} in text
-        match_arr = re.search(r'\[\s*\{.*\}\s*\]', raw_text, re.DOTALL)
+        match_arr = re.search(r"\[\s*\{.*\}\s*\]", raw_text, re.DOTALL)
         match_obj = re.search(r'\{\s*".*"\s*:.*\s*\}', raw_text, re.DOTALL)
 
         if match_arr:
@@ -144,7 +157,12 @@ class AIHighlightDetector:
             parsed = json.loads(json_str)
             if isinstance(parsed, dict):
                 # If LLM returned {"segments": [...]}, {"highlights": [...]}, or similar
-                items = parsed.get("segments") or parsed.get("highlights") or parsed.get("clips") or list(parsed.values())[0]
+                items = (
+                    parsed.get("segments")
+                    or parsed.get("highlights")
+                    or parsed.get("clips")
+                    or list(parsed.values())[0]
+                )
             else:
                 items = parsed
 
@@ -156,23 +174,29 @@ class AIHighlightDetector:
                 try:
                     start = float(item.get("start", 0))
                     dur = float(item.get("duration", 20))
-                    title = item.get("title") or item.get("reason") or "Momen Menarik AI"
+                    title = (
+                        item.get("title") or item.get("reason") or "Momen Menarik AI"
+                    )
                     reason = item.get("reason", "Dideteksi oleh AI model")
                     score = float(item.get("score", 0.9))
-                    clean_highlights.append({
-                        "start": start,
-                        "duration": dur,
-                        "title": title,
-                        "reason": reason,
-                        "score": score
-                    })
+                    clean_highlights.append(
+                        {
+                            "start": start,
+                            "duration": dur,
+                            "title": title,
+                            "reason": reason,
+                            "score": score,
+                        }
+                    )
                 except Exception:
                     continue
 
             clean_highlights.sort(key=lambda x: x["start"])
             return clean_highlights
         except Exception as e:
-            log.warning(f"Gagal meng-parse JSON dari respon AI: {e}. Raw text: {raw_text[:200]}")
+            log.warning(
+                f"Gagal meng-parse JSON dari respon AI: {e}. Raw text: {raw_text[:200]}"
+            )
             return []
 
     def generate_metadata(
@@ -186,7 +210,8 @@ class AIHighlightDetector:
         event_hook: Optional[Any] = None,
         language: str = "Indonesia",
         words_data: Optional[List[Dict[str, Any]]] = None,
-        visual_emotions: Optional[List[Dict[str, Any]]] = None
+        visual_emotions: Optional[List[Dict[str, Any]]] = None,
+        audio_emotions: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         if not clip_text or not clip_text.strip():
             log.warning("Teks subtitle klip kosong, tidak dapat men-generate metadata.")
@@ -196,24 +221,50 @@ class AIHighlightDetector:
         if len(clip_text) > 10000:
             clip_text = clip_text[:10000] + "..."
 
-        context_str = f"- Konteks Tambahan dari Pengguna: {user_context}\n" if user_context else ""
-        from core.constant import VALID_EMOTIONS, EMOTION_DESCRIPTIONS
+        context_str = (
+            f"- Konteks Tambahan dari Pengguna: {user_context}\n"
+            if user_context
+            else ""
+        )
+        from core.constant import EMOTION_DESCRIPTIONS, VALID_EMOTIONS
 
         emotion_lines = []
         i = 1
         for emo in VALID_EMOTIONS:
-            if emo == "neutral": continue
+            if emo == "neutral":
+                continue
             desc = EMOTION_DESCRIPTIONS.get(emo, emo)
-            emotion_lines.append(f"{i}. \"{emo}\" : {desc}")
+            emotion_lines.append(f'{i}. "{emo}" : {desc}')
             i += 1
 
-        emotion_lines.append(f"{i}. \"neutral\" : Normal, datar, informatif biasa, atau tidak ada emosi yang menonjol.")
+        emotion_lines.append(
+            f'{i}. "neutral" : Normal, datar, informatif biasa, atau tidak ada emosi yang menonjol.'
+        )
         emotion_str = "\n".join(emotion_lines)
 
         visual_str = ""
         if visual_emotions:
             compact_vis = [f"{em['time']}s:{em['emotion']}" for em in visual_emotions]
             visual_str = "\nVisual Emotion Timeline:\n" + ", ".join(compact_vis) + "\n"
+
+        audio_str = ""
+        if audio_emotions:
+            compact_aud = [f"{em['time']}s:{em['event']}" for em in audio_emotions]
+            audio_str = "\nAudio Event Timeline:\n" + ", ".join(compact_aud) + "\n"
+
+        try:
+            from core.video_effects import video_effect_manager
+
+            effect_lines = []
+            for eff in video_effect_manager.all_effects:
+                eff_name = eff.get("name", "unknown")
+                eff_emotions = eff.get("emotions", [])
+                effect_lines.append(
+                    f'- "{eff_name}" (cocok untuk emosi: {", ".join(eff_emotions)})'
+                )
+            effects_str = "\n".join(effect_lines)
+        except Exception:
+            effects_str = "- (Data efek video tidak tersedia)"
 
         prompt = f"""
 Anda adalah Social Media Manager spesialis video vertikal viral.
@@ -222,7 +273,7 @@ Respons HARUS JSON Object valid dalam markdown (```json ... ```).
 
 Bahasa: {language}
 Konteks Video: {channel_name} - {youtube_title} ({youtube_url})
-{context_str}{visual_str}
+{context_str}{visual_str}{audio_str}
 
 ATURAN:
 1. `highlight` sangat singkat (maks 3-4 kata).
@@ -234,9 +285,18 @@ ATURAN:
    Tugas Anda adalah MEMPERTIMBANGKAN KETIGA VARIABEL TERSEBUT SECARA KONTEKSTUAL untuk menentukan `emotion` akhir (final) yang paling logis.
    - Jadikan `text_emotion` sebagai dasar utama, tetapi validasi dengan `voice_emotion` dan Visual Emotion.
    - Gabungkan sinyal dari ketiga sumber tersebut untuk menghasilkan 1 kesimpulan `emotion` akhir yang paling mewakili situasi sebenarnya ke dalam kolom `emotion`.
+5. PILIHAN EFEK VIDEO (VIDEO EFFECT OVERRIDE):
+   Selain emosi, pilih spesifik nama efek video yang paling menggambarkan momen/kata tersebut dari daftar di bawah.
+   Tulis nama efek tersebut ke dalam field `video_effect_override`. Jika momen tidak memerlukan efek spesifik, tulis "random" atau "none".
+6. Momen Tanpa Bicara (NON-VERBAL EVENTS):
+   Jika ada momen jeritan (Scream) atau kejadian audio penting lainnya namun tidak ada kata yang terucap di `words_data` pada detik tersebut, Anda BISA meletakkan efek video ke dalam array `"standalone_video_effects"`.
+   Isikan `"time"` (detik mulainya) dan `"video_effect_override"` dengan nama efek yang sesuai.
 
 KATEGORI EMOSI VALID:
 {emotion_str}
+
+DAFTAR EFEK VIDEO TERSEDIA:
+{effects_str}
 
 Teks Subtitle:
 {clip_text}
@@ -251,13 +311,20 @@ Format Output JSON:
     "tags": "#...",
     "highlight": "...",
     "enriched_transcript": [
-        {{"word": "kata", "start": 0.0, "end": 0.5, "emotion": "surprise", "color": "#FF0000", "voice_emotion": "angry", "score": 0.8}}
+        {{"word": "kata", "start": 0.0, "end": 0.5, "emotion": "surprise", "color": "#FF0000", "voice_emotion": "angry", "score": 0.8, "video_effect_override": "vineboom"}}
+    ],
+    "standalone_video_effects": [
+        {{"time": 48.5, "video_effect_override": "tyler1_scream"}}
     ]
 }}
 ```
 """
-        provider_name = (ai_config.get("provider") or ai_config.get("ai_provider") or "ollama").lower()
-        log.info( f"[AI] Mengirim permintaan metadata ke AI Provider: {provider_name.upper()}...")
+        provider_name = (
+            ai_config.get("provider") or ai_config.get("ai_provider") or "ollama"
+        ).lower()
+        log.info(
+            f"[AI] Mengirim permintaan metadata ke AI Provider: {provider_name.upper()}..."
+        )
         log.debug(f"[AI] Prompt: {prompt}")
 
         try:
@@ -277,7 +344,8 @@ Format Output JSON:
             return metadata
 
         except Exception as e:
-            log.error( f"[ERROR] Gagal men-generate metadata: {e}")
+            log.error(f"[ERROR] Gagal men-generate metadata: {e}")
             return {}
+
 
 ai_detector = AIHighlightDetector()

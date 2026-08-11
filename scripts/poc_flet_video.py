@@ -7,17 +7,18 @@ dengan kontrol: seek, play/pause, dan volume.
 
 Usage:
   python scripts/poc_flet_video.py [path_to_mp4]
-  
+
 Jika tidak ada argumen, akan mencari file .mp4 di folder clips/.
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
+from typing import cast
 
 import flet as ft
-from flet_video import Video, VideoMedia, MaterialVideoControls
-from typing import cast
+from flet_video import MaterialVideoControls, Video, VideoMedia
+
 
 def find_sample_video() -> str | None:
     """Cari file .mp4 pertama di direktori clips/."""
@@ -76,7 +77,7 @@ def main(page: ft.Page) -> None:
         return
 
     log(f"📹 Loading video: {video_path}")
-    log(f"   File size: {os.path.getsize(video_path) / (1024*1024):.1f} MB")
+    log(f"   File size: {os.path.getsize(video_path) / (1024 * 1024):.1f} MB")
 
     # Create video player
     video = Video(
@@ -107,31 +108,34 @@ def main(page: ft.Page) -> None:
         log(f"🔊 Volume: {int(e.control.value)}%")  # type: ignore
         page.update()
 
-    video_controls: list[ft.Control] = cast(list[ft.Control], [
-        ft.IconButton(
-            ft.Icons.PLAY_ARROW,
-            icon_size=32,
-            on_click=play_pause,
-            tooltip="Play/Pause",
-        ),
-        ft.IconButton(
-            ft.Icons.FORWARD_10,
-            icon_size=32,
-            on_click=seek_forward,
-            tooltip="Seek to 10s",
-        ),
-        ft.Text("Volume:"),
-        ft.Slider(
-            min=0,
-            max=100,
-            value=80,
-            divisions=20,
-            label="{value}%",
-            on_change=volume_change,
-            expand=True,
-        ),
-    ])
-    
+    video_controls: list[ft.Control] = cast(
+        list[ft.Control],
+        [
+            ft.IconButton(
+                ft.Icons.PLAY_ARROW,
+                icon_size=32,
+                on_click=play_pause,
+                tooltip="Play/Pause",
+            ),
+            ft.IconButton(
+                ft.Icons.FORWARD_10,
+                icon_size=32,
+                on_click=seek_forward,
+                tooltip="Seek to 10s",
+            ),
+            ft.Text("Volume:"),
+            ft.Slider(
+                min=0,
+                max=100,
+                value=80,
+                divisions=20,
+                label="{value}%",
+                on_change=volume_change,
+                expand=True,
+            ),
+        ],
+    )
+
     controls_row = ft.Row(
         controls=video_controls,
         alignment=ft.MainAxisAlignment.CENTER,

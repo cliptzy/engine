@@ -1,8 +1,9 @@
 from core.uploaders.base import BaseUploader
 from core.uploaders.dummy import DummyUploader
-from core.uploaders.youtube import YouTubeUploader
-from core.uploaders.tiktok import TikTokUploader
 from core.uploaders.instagram import InstagramUploader
+from core.uploaders.tiktok import TikTokUploader
+from core.uploaders.youtube import YouTubeUploader
+
 
 class UploaderFactory:
     @staticmethod

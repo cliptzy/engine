@@ -1,0 +1,338 @@
+[
+  {
+    "name": "cat_firing_ak47",
+    "file": "ak47cat.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["angry"]
+  },
+  {
+    "name": "cat_slamming_table",
+    "file": "slammingcat.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["angry"]
+  },
+  {
+    "name": "whip_slash",
+    "file": "shipslash.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["angry"]
+  },
+  {
+    "name": "whathellno_grandpa",
+    "file": "whathellno.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["angry"]
+  },
+  {
+    "name": "tyler1_scream",
+    "file": "aaaaaaaaaaaaaaa.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["angry", "fear"]
+  },
+  {
+    "name": "tyler2_scream",
+    "file": "aaaaaaaaaaaaaaaaaaa.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["angry", "fear"]
+  },
+  {
+    "name": "vineboom",
+    "file": "vineboom.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["angry", "fear", "shock"]
+  },
+  {
+    "name": "loading",
+    "file": "loading.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["confused"]
+  },
+  {
+    "name": "uhh_sound_effect",
+    "file": "uhh.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["confused"]
+  },
+  {
+    "name": "therock_sus_look",
+    "file": "therockummmmm.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["confused"]
+  },
+  {
+    "name": "huh_sound_effect",
+    "file": "huh.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["confused"]
+  },
+  {
+    "name": "wheredoigo_confused",
+    "file": "wheredoigo.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["confused"]
+  },
+  {
+    "name": "windowserror",
+    "file": "windowserror.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["confused"]
+  },
+  {
+    "name": "bigbraintime",
+    "file": "bigbraintime.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["confused"]
+  },
+  {
+    "name": "herewegoagain_cj_gta",
+    "file": "herewegoagain.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["fear"]
+  },
+  {
+    "name": "nononono_ksi",
+    "file": "nononono.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["fear", "sad"]
+  },
+  {
+    "name": "cat_laught",
+    "file": "catlaught.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "laughing_emoji",
+    "file": "laughingemoji.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "woooooyeahbabyyyyy_Cr1TiKaL",
+    "file": "woooooyeahbabyyyyy.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "yesyesyesyes_ksi",
+    "file": "yesyesyesyes.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "kerjabagus",
+    "file": "kerjabagus.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "niceee_",
+    "file": "niceee.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "heyy_thats_pretty_good",
+    "file": "thatsprettygood.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "missionsuccess_gta",
+    "file": "missionsuccess.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "wooooooo_tyler1",
+    "file": "wooooooo.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "hehebuoi",
+    "file": "hehebuoi.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "caster_wooooo",
+    "file": "casterwooooo.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "enub_akakakakak",
+    "file": "enubakakakakak.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "sigma",
+    "file": "sigma.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "thatshot_willsmith",
+    "file": "thatshot.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "angelsound",
+    "file": "angelsound.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "cashregister",
+    "file": "cashregister.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "rizz",
+    "file": "rizz.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["happy"]
+  },
+  {
+    "name": "cryman",
+    "file": "cryman.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["sad"]
+  },
+  {
+    "name": "spongebobdisappoint",
+    "file": "spongebobdisappoint.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["sad"]
+  },
+  {
+    "name": "minecraftfail",
+    "file": "minecraftfail.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["sad"]
+  },
+  {
+    "name": "shocked",
+    "file": "shocked.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["shock"]
+  },
+  {
+    "name": "ooohhhhhhhh",
+    "file": "ooohhhhhhhh.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["shock"]
+  },
+  {
+    "name": "oooooooo",
+    "file": "oooooooo.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["shock"]
+  },
+  {
+    "name": "dayumboiii",
+    "file": "dayumboiii.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["shock"]
+  },
+  {
+    "name": "bluwek",
+    "file": "bluwek.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["shock"]
+  },
+  {
+    "name": "ukukukukukukuk",
+    "file": "ukukukukukukuk.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["shock"]
+  }
+]

@@ -1,17 +1,18 @@
 import os
 import shutil
-from typing import Dict, Any, List, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 from core.config import config
-from core.logger import log
 from core.interfaces import ProgressReporter
+from core.logger import log
 from core.uploaders.base import BaseUploader
-from core.use_cases.scan_video import ScanVideoUseCase
 from core.use_cases.clip_video import ClipVideoUseCase
-from core.use_cases.preview_clip import PreviewClipUseCase
 from core.use_cases.detect_highlights import DetectHighlightsUseCase
-from core.use_cases.upload_clip import UploadClipUseCase
+from core.use_cases.preview_clip import PreviewClipUseCase
 from core.use_cases.render_clip import RenderClipUseCase
+from core.use_cases.scan_video import ScanVideoUseCase
+from core.use_cases.upload_clip import UploadClipUseCase
+
 
 class ClipController:
     """
@@ -40,8 +41,9 @@ class ClipController:
         return self.scan_uc.execute(url)
 
     def get_cached_ai_highlights(self, url: str) -> Optional[Dict[str, Any]]:
-        from core.youtube import extract_video_id
         from core.utils import read_json
+        from core.youtube import extract_video_id
+
         video_id = extract_video_id(url)
         if not video_id:
             return None
@@ -50,9 +52,7 @@ class ClipController:
         return read_json(ai_cache_file) if os.path.exists(ai_cache_file) else None
 
     def execute_clipping(
-        self,
-        payload: Dict[str, Any],
-        is_cancelled: Optional[Callable[[], bool]] = None
+        self, payload: Dict[str, Any], is_cancelled: Optional[Callable[[], bool]] = None
     ) -> Dict[str, Any]:
         """
         Executes the clipping pipeline based on settings payload.
@@ -60,9 +60,7 @@ class ClipController:
         return self.clip_uc.execute(payload, is_cancelled)
 
     def execute_rendering(
-        self,
-        payload: Dict[str, Any],
-        is_cancelled: Optional[Callable[[], bool]] = None
+        self, payload: Dict[str, Any], is_cancelled: Optional[Callable[[], bool]] = None
     ) -> Dict[str, Any]:
         """
         Executes the Phase 2 rendering pipeline based on settings payload.
@@ -80,12 +78,20 @@ class ClipController:
         Transcribes audio and uses AI to detect highlights.
         """
         return self.detect_uc.execute(url, ai_config)
-        
-    def upload_clip(self, uploader: BaseUploader, video_path: str, title: str, description: str, tags: List[str]) -> bool:
+
+    def upload_clip(
+        self,
+        uploader: BaseUploader,
+        video_path: str,
+        title: str,
+        description: str,
+        tags: List[str],
+    ) -> bool:
         """
         Uploads a video to a specific platform.
         """
         from pathlib import Path
+
         upload_uc = UploadClipUseCase(uploader=uploader, reporter=self.reporter)
         return upload_uc.execute(Path(video_path), title, description, tags)
 
@@ -95,8 +101,13 @@ class ClipController:
             raise FileNotFoundError("File cookies tidak ditemukan")
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
-        if "# Netscape HTTP Cookie File" not in content and ".youtube.com" not in content:
-            raise ValueError("Format file cookie tidak valid. Harus format Netscape HTTP Cookie File.")
+        if (
+            "# Netscape HTTP Cookie File" not in content
+            and ".youtube.com" not in content
+        ):
+            raise ValueError(
+                "Format file cookie tidak valid. Harus format Netscape HTTP Cookie File."
+            )
 
         dest = "cred/yt_cookies.txt"
         os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -184,6 +195,7 @@ class ClipController:
         Clears cached segment JSON files, temporary MKV/MP4 files, and generated clips in clips/ directory.
         """
         import core.use_cases.preview_clip as pc
+
         with pc._preview_lock:
             pc._preview_cache.clear()
 
@@ -211,9 +223,10 @@ class ClipController:
 
         return {
             "deleted_files": deleted_files,
-            "deleted_size_mb": round(deleted_bytes / (1024 * 1024), 2)
+            "deleted_size_mb": round(deleted_bytes / (1024 * 1024), 2),
         }
 
-# For backward compatibility during migration, provide a global controller instance, 
+
+# For backward compatibility during migration, provide a global controller instance,
 # although it won't have a ProgressReporter injected by default.
 controller = ClipController()

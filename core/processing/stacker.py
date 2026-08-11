@@ -1,17 +1,25 @@
 import os
-import subprocess
 import shutil
-from typing import Optional, Callable
-from core.logger import log
+import subprocess
+from typing import Callable, Optional
+
 from core.config import config
+from core.logger import log
 from core.processing.utils import get_video_codec_args, run_command_with_logging
 
-def generate_intro(index: int, metadata: dict, event_hook: Optional[Callable] = None) -> Optional[str]:
-    intro_to_use = config.intro_video if (config.intro_video and os.path.isfile(config.intro_video)) else None
+
+def generate_intro(
+    index: int, metadata: dict, event_hook: Optional[Callable] = None
+) -> Optional[str]:
+    intro_to_use = (
+        config.intro_video
+        if (config.intro_video and os.path.isfile(config.intro_video))
+        else None
+    )
 
     if config.ai.use_generate_intro and metadata and metadata.get("highlight"):
         try:
-            log.info( f"[intro] Generating AI Intro with TTS for clip {index}...")
+            log.info(f"[intro] Generating AI Intro with TTS for clip {index}...")
 
             highlight_text = str(metadata.get("highlight", ""))
 
@@ -20,29 +28,36 @@ def generate_intro(index: int, metadata: dict, event_hook: Optional[Callable] = 
             tts_gender = getattr(config, "tts_voice", "female")
 
             from core.utils import get_preview_data
+
             if tts_lang_config == "default":
-                tts_lang = get_preview_data().get("language") or 'id'
+                tts_lang = get_preview_data().get("language") or "id"
             else:
                 tts_lang = tts_lang_config
 
             voice_map = {
                 "id": {"female": "id-ID-GadisNeural", "male": "id-ID-ArdiNeural"},
-                "en": {"female": "en-US-JennyNeural", "male": "en-US-ChristopherNeural"},
+                "en": {
+                    "female": "en-US-JennyNeural",
+                    "male": "en-US-ChristopherNeural",
+                },
                 "es": {"female": "es-ES-ElviraNeural", "male": "es-MX-JorgeNeural"},
                 "ja": {"female": "ja-JP-NanamiNeural", "male": "ja-JP-KeitaNeural"},
                 "ko": {"female": "ko-KR-SunHiNeural", "male": "ko-KR-InJoonNeural"},
-                "ms": {"female": "ms-MY-YasminNeural", "male": "ms-MY-OsmanNeural"}
+                "ms": {"female": "ms-MY-YasminNeural", "male": "ms-MY-OsmanNeural"},
             }
 
             base_lang = tts_lang.split("-")[0].lower() if tts_lang else "id"
             if base_lang not in voice_map:
                 base_lang = "en"  # fallback
 
-            voice = voice_map[base_lang].get(tts_gender.lower(), voice_map[base_lang]["female"])
+            voice = voice_map[base_lang].get(
+                tts_gender.lower(), voice_map[base_lang]["female"]
+            )
             audio_path = os.path.join(config.job_dir, f"intro_audio_{index}.mp3")
 
             try:
                 import asyncio
+
                 import edge_tts
 
                 async def _run_tts() -> None:
@@ -56,12 +71,26 @@ def generate_intro(index: int, metadata: dict, event_hook: Optional[Callable] = 
                 log.error(f"edge-tts failed: {e}")
                 # Fallback to gTTS if edge-tts fails
                 from gtts import gTTS
+
                 tts = gTTS(text=highlight_text, lang=base_lang)
                 tts.save(audio_path)
 
             # 2. Get duration
             try:
-                res = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", audio_path], capture_output=True, text=True)
+                res = subprocess.run(
+                    [
+                        "ffprobe",
+                        "-v",
+                        "error",
+                        "-show_entries",
+                        "format=duration",
+                        "-of",
+                        "default=noprint_wrappers=1:nokey=1",
+                        audio_path,
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
                 duration_sec = float(res.stdout.strip())
             except:
                 duration_sec = 3.0
@@ -69,14 +98,25 @@ def generate_intro(index: int, metadata: dict, event_hook: Optional[Callable] = 
             # 3. Create ASS for centered highlight text
             intro_ass = os.path.join(config.job_dir, f"intro_{index}.ass")
             from core.subtitle import format_ass_time
-            end_ass = format_ass_time(duration_sec + 0.5) # add little padding
+
+            end_ass = format_ass_time(duration_sec + 0.5)  # add little padding
 
             with open(intro_ass, "w", encoding="utf-8") as f:
-                f.write("[Script Info]\nScriptType: v4.00+\nPlayResX: 720\nPlayResY: 1280\n\n[V4+ Styles]\n")
-                f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
-                f.write(f"Style: Default,{config.subtitle.font},80,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,0,5,20,20,20,1\n\n")
-                f.write("[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
-                f.write(f"Dialogue: 0,0:00:00.00,{end_ass},Default,,0,0,0,,{{\\an5\\b1\\bord5\\3c&H000000&}}{highlight_text.upper()}\n")
+                f.write(
+                    "[Script Info]\nScriptType: v4.00+\nPlayResX: 720\nPlayResY: 1280\n\n[V4+ Styles]\n"
+                )
+                f.write(
+                    "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
+                )
+                f.write(
+                    f"Style: Default,{config.subtitle.font},80,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,0,5,20,20,20,1\n\n"
+                )
+                f.write(
+                    "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+                )
+                f.write(
+                    f"Dialogue: 0,0:00:00.00,{end_ass},Default,,0,0,0,,{{\\an5\\b1\\bord5\\3c&H000000&}}{highlight_text.upper()}\n"
+                )
 
             # 4. Generate black video with ASS and Audio
             intro_video_path = os.path.join(config.job_dir, f"intro_video_{index}.mp4")
@@ -88,14 +128,31 @@ def generate_intro(index: int, metadata: dict, event_hook: Optional[Callable] = 
 
             intro_ass_fwd = intro_ass.replace("\\", "/")
             cmd_intro = [
-                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                "-f", "lavfi", "-i", f"color=c=black:s={out_w}x{out_h}:d={duration_sec + 0.5}",
-                "-i", audio_path,
-                "-vf", f"subtitles=filename='{intro_ass_fwd}'{fontsdir_arg}",
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
-                "-c:a", "aac", "-b:a", "128k",
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                f"color=c=black:s={out_w}x{out_h}:d={duration_sec + 0.5}",
+                "-i",
+                audio_path,
+                "-vf",
+                f"subtitles=filename='{intro_ass_fwd}'{fontsdir_arg}",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-crf",
+                "26",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
                 "-shortest",
-                intro_video_path
+                intro_video_path,
             ]
             subprocess.run(cmd_intro, check=True)
             intro_to_use = intro_video_path
@@ -105,13 +162,28 @@ def generate_intro(index: int, metadata: dict, event_hook: Optional[Callable] = 
 
     return intro_to_use
 
+
 def _has_audio_stream(filepath: str) -> bool:
     try:
-        res = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0", filepath], capture_output=True, text=True)
+        res = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "stream=codec_type",
+                "-of",
+                "csv=p=0",
+                filepath,
+            ],
+            capture_output=True,
+            text=True,
+        )
         return "audio" in res.stdout.lower()
     except Exception:
         return False
-
 
 
 def stack_and_concat(
@@ -119,7 +191,7 @@ def stack_and_concat(
     output_file: str,
     intro_to_use: Optional[str],
     index: int,
-    event_hook: Optional[Callable] = None
+    event_hook: Optional[Callable] = None,
 ) -> None:
     has_intro = intro_to_use and os.path.isfile(intro_to_use)
     has_outro = config.outro_video and os.path.isfile(config.outro_video)
@@ -135,9 +207,9 @@ def stack_and_concat(
 
     if has_intro or has_outro or has_watermark:
         if has_intro or has_outro:
-            log.info( f"[concat] Adding intro/outro/watermark to clip {index}...")
+            log.info(f"[concat] Adding intro/outro/watermark to clip {index}...")
         else:
-            log.info( f"[concat] Adding watermark to clip {index}...")
+            log.info(f"[concat] Adding watermark to clip {index}...")
         if callable(event_hook):
             try:
                 event_hook("stage", {"stage": "finalize", "clip_index": index})
@@ -176,25 +248,32 @@ def stack_and_concat(
         if has_watermark and config.watermark_image:
             inputs.extend(["-i", config.watermark_image])
             wm_idx = len(inputs) // 2 - 1
-            pos = getattr(config, 'watermark_position', 'center')
+            pos = getattr(config, "watermark_position", "center")
             # Safe area constraints
             y_expr = "(H-h)/2"
-            if pos == "top": y_expr = "H*0.15"
-            elif pos == "bottom": y_expr = "H*0.75"
+            if pos == "top":
+                y_expr = "H*0.15"
+            elif pos == "bottom":
+                y_expr = "H*0.75"
 
             # Scale watermark to max 50% width or original size
             filter_complex += f"; [{wm_idx}:v]scale='min(iw,{out_w}*0.5)':-1[wm_scaled]; [outv][wm_scaled]overlay=x=(W-w)/2:y={y_expr}[outv2]"
             map_v = "[outv2]"
 
-        cmd_concat = [
-            "ffmpeg", "-y", "-hide_banner", "-loglevel", "info"
-        ] + inputs + [
-            "-filter_complex", filter_complex,
-            "-map", map_v, "-map", "[outa]",
-        ] + get_video_codec_args() + [
-            "-c:a", "aac", "-b:a", "128k",
-            output_file
-        ]
+        cmd_concat = (
+            ["ffmpeg", "-y", "-hide_banner", "-loglevel", "info"]
+            + inputs
+            + [
+                "-filter_complex",
+                filter_complex,
+                "-map",
+                map_v,
+                "-map",
+                "[outa]",
+            ]
+            + get_video_codec_args()
+            + ["-c:a", "aac", "-b:a", "128k", output_file]
+        )
 
         run_command_with_logging(cmd_concat, event_hook, prefix="[ffmpeg-concat]")
     else:

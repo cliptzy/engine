@@ -1,5 +1,6 @@
 import flet as ft
 
+
 class Sidebar(ft.NavigationRail):
     def __init__(self, on_navigate):
         super().__init__()
@@ -14,23 +15,23 @@ class Sidebar(ft.NavigationRail):
             ft.NavigationRailDestination(
                 icon=ft.Icons.VIDEO_FILE_OUTLINED,  # type: ignore
                 selected_icon=ft.Icons.VIDEO_FILE,  # type: ignore
-                label="Clipper"
+                label="Clipper",
             ),
             ft.NavigationRailDestination(
                 icon=ft.Icons.EXPLORE_OUTLINED,  # type: ignore
                 selected_icon=ft.Icons.EXPLORE,  # type: ignore
-                label="Creator Hub"
+                label="Creator Hub",
             ),
             ft.NavigationRailDestination(
                 icon=ft.Icons.SETTINGS_OUTLINED,  # type: ignore
                 selected_icon=ft.Icons.SETTINGS,  # type: ignore
-                label="Settings"
+                label="Settings",
             ),
             ft.NavigationRailDestination(
                 icon=ft.Icons.BUG_REPORT_OUTLINED,  # type: ignore
                 selected_icon=ft.Icons.BUG_REPORT,  # type: ignore
-                label="Debugger"
-            )
+                label="Debugger",
+            ),
         ]
 
         self.on_change = lambda e: on_navigate(e.control.selected_index)  # type: ignore

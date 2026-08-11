@@ -1,7 +1,7 @@
 import sys
 from dataclasses import dataclass, field
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 if sys.version_info >= (3, 10):
     from typing import TypeAlias
@@ -12,6 +12,7 @@ else:
 @dataclass
 class VideoInfo:
     """Represents metadata of a fetched video."""
+
     video_id: str
     title: str
     duration: float
@@ -22,6 +23,7 @@ class VideoInfo:
 @dataclass
 class ClipSegment:
     """Represents a highlight or segment of a video to be clipped."""
+
     start_time: float
     end_time: float
     label: str
@@ -31,6 +33,7 @@ class ClipSegment:
 @dataclass
 class ClipResult:
     """Result of a video clipping process."""
+
     output_path: Path
     duration: float
     success: bool
