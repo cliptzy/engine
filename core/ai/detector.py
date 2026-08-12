@@ -266,14 +266,44 @@ class AIHighlightDetector:
         except Exception:
             effects_str = "- (Data efek video tidak tersedia)"
 
-        prompt = f"""
+        chunk_size = 150
+        if not words_data:
+            words_chunks = [None]
+        else:
+            words_chunks = [
+                words_data[i : i + chunk_size]
+                for i in range(0, len(words_data), chunk_size)
+            ]
+
+        provider_name = (
+            ai_config.get("provider") or ai_config.get("ai_provider") or "ollama"
+        ).lower()
+
+        try:
+            provider = AIProviderFactory.create(provider_name)
+        except Exception as e:
+            log.error(f"[ERROR] Gagal memuat AI Provider: {e}")
+            return {}
+
+        global_metadata = {}
+        all_enriched = []
+        all_standalone = []
+
+        for idx, chunk in enumerate(words_chunks):
+            chunk_info = (
+                f"\n(PENTING: Ini adalah bagian {idx + 1} dari {len(words_chunks)} dari total kata yang ada. Fokus berikan `enriched_transcript` HANYA untuk kata-kata di bagian ini saja!)\n"
+                if len(words_chunks) > 1
+                else ""
+            )
+
+            prompt = f"""
 Anda adalah Social Media Manager spesialis video vertikal viral.
 Tugas: Buat Title, Tags, Highlight (teks pop-up lucu maks 4 kata), dan `enriched_transcript`.
 Respons HARUS JSON Object valid dalam markdown (```json ... ```).
 
 Bahasa: {language}
 Konteks Video: {channel_name} - {youtube_title} ({youtube_url})
-{context_str}{visual_str}{audio_str}
+{context_str}{visual_str}{audio_str}{chunk_info}
 
 ATURAN:
 1. `highlight` sangat singkat (maks 3-4 kata).
@@ -301,11 +331,11 @@ KATEGORI EMOSI VALID:
 DAFTAR EFEK VIDEO TERSEDIA:
 {effects_str}
 
-Teks Subtitle:
+Teks Subtitle Keseluruhan (sebagai konteks):
 {clip_text}
 
-Input words_data:
-{json.dumps(words_data) if words_data else "Tidak ada."}
+Input words_data (BAGIAN {idx + 1}/{len(words_chunks)}):
+{json.dumps(chunk) if chunk else "Tidak ada."}
 
 Format Output JSON:
 ```json
@@ -322,33 +352,38 @@ Format Output JSON:
 }}
 ```
 """
-        provider_name = (
-            ai_config.get("provider") or ai_config.get("ai_provider") or "ollama"
-        ).lower()
-        log.info(
-            f"[AI] Mengirim permintaan metadata ke AI Provider: {provider_name.upper()}..."
-        )
-        log.debug(f"[AI] Prompt: {prompt}")
+            log.info(
+                f"[AI] Mengirim permintaan metadata (Chunk {idx + 1}/{len(words_chunks)}) ke AI Provider: {provider_name.upper()}..."
+            )
+            if event_hook:
+                event_hook(
+                    "ai_status",
+                    f"Men-generate metadata (Bagian {idx + 1}/{len(words_chunks)})...",
+                )
 
-        try:
-            provider = AIProviderFactory.create(provider_name)
-            raw_response = provider.generate(prompt, ai_config, event_hook)
+            try:
+                raw_response = provider.generate(prompt, ai_config, event_hook)
+                match_obj = re.search(r'\{\s*".*"\s*:.*\s*\}', raw_response, re.DOTALL)
+                if match_obj:
+                    metadata = json.loads(match_obj.group(0))
+                else:
+                    metadata = json.loads(raw_response.strip())
 
-            # Find JSON
-            match_obj = re.search(r'\{\s*".*"\s*:.*\s*\}', raw_response, re.DOTALL)
-            if match_obj:
-                metadata = json.loads(match_obj.group(0))
-            else:
-                metadata = json.loads(raw_response.strip())
+                if idx == 0:
+                    global_metadata["title"] = metadata.get("title", "")
+                    global_metadata["tags"] = metadata.get("tags", "")
+                    global_metadata["highlight"] = metadata.get("highlight", "")
 
-            # Kembalikan seluruh emosi mentah tanpa penghapusan cooldown agar tidak semua kata menjadi neutral
-            enriched = metadata.get("enriched_transcript", [])
-            metadata["enriched_transcript"] = enriched
-            return metadata
+                all_enriched.extend(metadata.get("enriched_transcript", []))
+                all_standalone.extend(metadata.get("standalone_video_effects", []))
+            except Exception as e:
+                log.error(f"[ERROR] Gagal memproses metadata chunk {idx + 1}: {e}")
+                continue
 
-        except Exception as e:
-            log.error(f"[ERROR] Gagal men-generate metadata: {e}")
-            return {}
+        # Kembalikan seluruh emosi mentah tanpa penghapusan cooldown
+        global_metadata["enriched_transcript"] = all_enriched
+        global_metadata["standalone_video_effects"] = all_standalone
+        return global_metadata
 
 
 ai_detector = AIHighlightDetector()
