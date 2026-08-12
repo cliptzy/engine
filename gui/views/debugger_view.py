@@ -67,7 +67,7 @@ class DebuggerView(ft.Column):
         )
         if files and len(files) > 0:
             self.input_file = files[0].path
-            self.input_text.value = self.input_file
+            self.input_text.value = self.input_file or ""
             self.btn_test.disabled = False
             self.btn_debug_analyzers.disabled = False
             self.update()
@@ -117,7 +117,7 @@ class DebuggerView(ft.Column):
 
         try:
             success = await asyncio.to_thread(
-                generate_ve_showcase, self.input_file, output_file
+                generate_ve_showcase, str(self.input_file), output_file
             )
 
             if success:
@@ -144,7 +144,7 @@ class DebuggerView(ft.Column):
 
         try:
             success = await asyncio.to_thread(
-                generate_analyzer_debug, self.input_file, output_file
+                generate_analyzer_debug, str(self.input_file), output_file
             )
 
             if success:

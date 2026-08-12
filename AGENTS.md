@@ -38,8 +38,7 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
   - **Gunakan Python API langsung** dari pustaka (mis. `edge_tts.Communicate(...)` + `asyncio.run()`) alih-alih subprocess `-m`.
   - Untuk operasi yang memang membutuhkan subprocess (FFmpeg, yt-dlp, ffprobe), panggil **binary eksternal** (FFmpeg/ffprobe) — **bukan** `sys.executable`.
   - Jika benar-benar membutuhkan `pip` saat runtime, **guard dengan `getattr(sys, 'frozen', False)`** dan **jangan** jalankan saat frozen (lihat `core/utils.py`). Lebih baik lagi: **hindari pemasangan paket saat runtime** — semua dependensi wajib sudah ada di bundle.
-- **Catatan pengecualian (HANYA di luar runtime production):**
-  - `scripts/manage_reqs.py` dan `build_executable.py` adalah **alat pengembangan/build-time** yang berjalan di environment Python developer — di sana `sys.executable` sah. Aturan ini berlaku untuk **kode yang berjalan di dalam aplikasi production** (`core/` dan `gui/`).
+  - Script pengembangan lama (`scripts/manage_reqs.py`) dan `build_executable.py` adalah **alat pengembangan/build-time** yang berjalan di environment Python developer — di sana `sys.executable` sah. Aturan ini berlaku untuk **kode yang berjalan di dalam aplikasi production** (`core/` dan `gui/`).
 
 ### 1.5 DILARANG MEMATIKAN DUKUNGAN SUBTITLE / FFMPEG DENGAN FIX DUMMY
 
@@ -53,7 +52,7 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
 ### 1.7 DILARANG MENAMBAHKAN DEPENDENSI BARU TANPA PROSES RESMI
 
 - Dilarang mengedit `requirements.txt` secara manual atau menggunakan `pip freeze > requirements.txt`.
-- Dilarang menambah pustaka ke kode tanpa mendaftarkannya di `requirements.in` dan mengompilasi lewat `scripts/manage_reqs.py`.
+- Dilarang menambah pustaka ke kode tanpa mendaftarkannya melalui manajer paket modern, yakni perintah `uv add <nama-paket>`.
 
 ---
 
@@ -96,13 +95,13 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
    - Pengunduhan model Faster-Whisper harus didukung secara terisolasi. Jika model belum ada di cache, tampilkan indikator unduhan di GUI sebelum proses clipping dimulai.
 3. **Struktur Pembatalan Paket Web**:
    - Modul Flask (`webapp.py`, `templates/`, `static/`) yang sudah tidak dipakai harus diisolasi atau dihapus secara aman setelah GUI Desktop murni berbasis Flet selesai diimplementasikan.
-4. **Manajemen Pustaka (Dependency Management) yang Ketat**:
-   - DILARANG mengedit `requirements.txt` secara manual atau menggunakan perintah `pip freeze > requirements.txt` biasa karena akan mengotori daftar dependensi dengan _sub-dependencies_.
-   - Pustaka inti (Top-Level) HANYA boleh didaftarkan di dalam berkas `requirements.in`.
-   - AI Model dan Pengembang WAJIB menggunakan script `scripts/manage_reqs.py` (berbasis `pip-tools`) untuk segala aktivitas manajemen dependensi:
-     - **Penambahan**: Gunakan perintah `python scripts/manage_reqs.py add "nama-paket"` untuk menginstal pustaka baru (otomatis mengompilasi ulang dan melakukan sinkronisasi).
-     - **Kompilasi**: Gunakan `python scripts/manage_reqs.py compile` untuk merapikan dan mengunci versi paket (lock) ke dalam `requirements.txt`.
-     - **Sinkronisasi**: Gunakan `python scripts/manage_reqs.py sync` untuk memastikan _virtual environment_ bebas dari pustaka yatim (_orphans_) dan paket sisa yang tak terpakai.
+4. **Manajemen Pustaka (Dependency Management) yang Ketat dengan `uv`**:
+   - DILARANG mengedit `requirements.txt` secara manual atau menggunakan alat lama seperti `scripts/manage_reqs.py` / `pip-tools`.
+   - AI Model dan Pengembang WAJIB menggunakan **`uv`** (Astral) untuk segala aktivitas manajemen dependensi karena proyek ini sudah bermigrasi ke `uv`.
+     - **Penambahan Paket**: Gunakan perintah `uv add "nama-paket"` untuk menambah dependensi.
+     - **Penghapusan Paket**: Gunakan perintah `uv remove "nama-paket"`.
+     - **Sinkronisasi**: Gunakan perintah `uv sync` untuk menyelaraskan _virtual environment_ dengan `uv.lock` (memastikan dependensi yatim terhapus).
+     - **Ekspor (Opsional)**: Jika membutuhkan `requirements.txt` untuk kompatibilitas build lama, gunakan `uv export --format requirements-txt > requirements.txt`.
 
 ---
 
@@ -136,12 +135,7 @@ Dokumen ini berisi **peraturan ketat dan pedoman arsitektur** yang **WAJIB** dip
 
 Setiap pekerjaan refactoring atau penambahan fitur dianggap **SELESAI** hanya apabila AI Model telah memenuhi kriteria berikut:
 
-- [ ] **WAJIB** menjalankan `pyright` (static type check) dengan **0 errors** sebelum menyatakan selesai. Perintah yang digunakan:
-  ```bash
-  npx --yes pyright --pythonpath .venv/bin/python <file_yang_diubah>  # atau seluruh modul core/ dan gui/
-  ```
-  - Gunakan `--pythonpath .venv/bin/python` agar import (`flet`, dll.) ter-resolve dari virtualenv proyek — tanpanya, pyright akan melaporkan `reportMissingImports` palsu.
-  - Jika `pyright` tidak tersedia sebagai biner global, gunakan `npx --yes pyright` (Node.js). Pastikan hasil akhirnya `0 errors, 0 warnings, 0 informations`.
+- [ ] **WAJIB** menjalankan `make typecheck` (static type check) dengan **0 errors** sebelum menyatakan selesai. Pastikan hasil akhirnya `0 errors`.
 - [ ] Kode terkompilasi / berjalan tanpa syntax error atau missing import error (`python -m py_compile`).
 - [ ] Fitur GUI dapat diluncurkan dan diuji secara empiris (menjalankan tes atau script verifikasi).
 - [ ] Operasi pemrosesan klip menghasilkan file output `.mp4` yang valid di direktori tujuan.
@@ -149,7 +143,7 @@ Setiap pekerjaan refactoring atau penambahan fitur dianggap **SELESAI** hanya ap
 - [ ] Tidak ada penggunaan `sys.executable` untuk subprocess Python/pip di kode production (`core/` dan `gui/`).
 - [ ] Tidak ada path absolut lokal yang di-hardcode.
 - [ ] Dokumentasi (`ARCHITECTURE.md`, `README*.md`, `CHANGELOG.md`) sinkron dengan perubahan kode.
-- [ ] Tidak ada dependensi baru yang ditambahkan tanpa melalui `scripts/manage_reqs.py`.
+- [ ] Tidak ada dependensi baru yang ditambahkan tanpa melalui mekanisme `uv add`.
 
 ---
 
@@ -159,7 +153,7 @@ Daftar ini adalah _lesson learned_ dari riwayat proyek. AI Model **WAJIB** memba
 
 1. **`sys.executable -m edge_tts` di `core/processing/stacker.py`** → menyebabkan _frozen executable_ memanggil dirinya sendiri dan _crash_. Solusi: gunakan `edge_tts.Communicate` (Python API) langsung. ✅ Sudah diperbaiki di v3.0.1 — **jangan regresi**.
 2. **`pip install` via `sys.executable` di `core/utils.py`** → gagal saat frozen. Solusi: guard dengan `getattr(sys, 'frozen', False)` dan lewati saat frozen. ✅ Sudah diperbaiki — **jangan regresi**.
-3. **Subprocess `sys.executable -m piptools` / `pip` di `scripts/manage_reqs.py`** → **SAH** karena ini alat build-time developer, **bukan** kode production. Jangan menyalin pola ini ke `core/` atau `gui/`.
+3. **Subprocess `sys.executable -m piptools` / `pip` di script build lama (`scripts/manage_reqs.py`)** → **SAH** karena ini dulunya alat build-time developer, **bukan** kode production. Jangan menyalin pola ini ke `core/` atau `gui/`.
 4. **Dokumentasi tidak sinkron** (ARCHITECTURE.md / README masih menyebut PyQt6 & QThread saat kode sudah Flet) → menyesatkan AI model berikutnya. **Wajib** perbarui dokumentasi setiap kali arsitektur berubah.
 
 ---
@@ -178,8 +172,8 @@ Sistem efek suara (SFX), efek visual (VFX), dan overlay yang lama telah **dihapu
 3. **Kesesuaian Filter FFmpeg (Timeline Support)**:
    - Hindari filter tambahan yang menyebabkan _crash_. Jika menambahkan efek visual dinamis, pastikan opsi filter FFmpeg mendukung evaluasi timeline/waktu (`enable='between(...)'`).
 4. **Skema Pengujian (Testing Scheme)**:
-   - **Verifikasi Substring Emosi**: Ujicoba logika `map_emotion` menggunakan script Python singkat untuk memastikan string respon AI (meski kotor/bercampur kata lain) dapat dipetakan dengan tepat ke *key* di manager.
-   - **Verifikasi Keutuhan Render FFmpeg (Kritis)**: Lakukan uji coba rendering untuk melihat apakah command string FFmpeg gagal terbentuk atau ditolak oleh *binary* FFmpeg (contoh: error sintaks filter, argumen tidak dikenali, atau *timeline not supported*). Pastikan log tidak memunculkan "FFmpeg subtitle/video effect filter failed".
+   - **Verifikasi Substring Emosi**: Ujicoba logika `map_emotion` menggunakan script Python singkat untuk memastikan string respon AI (meski kotor/bercampur kata lain) dapat dipetakan dengan tepat ke _key_ di manager.
+   - **Verifikasi Keutuhan Render FFmpeg (Kritis)**: Lakukan uji coba rendering untuk melihat apakah command string FFmpeg gagal terbentuk atau ditolak oleh _binary_ FFmpeg (contoh: error sintaks filter, argumen tidak dikenali, atau _timeline not supported_). Pastikan log tidak memunculkan "FFmpeg subtitle/video effect filter failed".
 
 ---
 
@@ -190,7 +184,7 @@ Sistem efek suara (SFX), efek visual (VFX), dan overlay yang lama telah **dihapu
 2. **Penggunaan Ikon (Icons)**:
    - Dilarang keras menggunakan string referensi lama seperti `ft.icons.MOVIE_EDIT`. Gunakan enum resmi **`ft.Icons.<IKON>`** (misal: `ft.Icons.MOVIE`, `ft.Icons.TUNE`, `ft.Icons.PUBLISH`).
 3. **Struktur Komponen Tabs**:
-   - Komponen `ft.Tabs` tidak lagi menerima list dari `ft.Tab` secara langsung sebagai parameter `tabs`. 
+   - Komponen `ft.Tabs` tidak lagi menerima list dari `ft.Tab` secara langsung sebagai parameter `tabs`.
    - Anda **WAJIB** menggunakan struktur `Tabs(length=..., content=ft.Column([ft.TabBar(tabs=[...]), ft.TabBarView(controls=[...])]))`.
    - Parameter judul untuk `ft.Tab` sekarang menggunakan argumen `label=`, bukan `text=`.
 

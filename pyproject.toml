@@ -81,3 +81,16 @@ namespaces = false
 
 [tool.flet.macos]
 target_arch = ["x86_64"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+exclude = [
+    ".venv",
+    ".flet",
+    "__pycache__",
+    "build",
+    "dist",
+    "clips",
+    "temp"
+]

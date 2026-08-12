@@ -588,7 +588,7 @@ class SettingsView(ft.Container):
                 self._page.update()
                 await asyncio.sleep(1.5)
                 try:
-                    self._page.window.destroy()
+                    await self._page.window.destroy()
                 except Exception:
                     pass
                 from core.utils import restart_app

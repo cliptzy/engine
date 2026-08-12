@@ -52,9 +52,10 @@ def main():
         try:
             model = WhisperModel("base", device="cpu", compute_type="int8")
             segments, info = model.transcribe(audio_path, word_timestamps=True)
+            segments = segments  # type: ignore
 
-            for segment in segments:
-                for word in segment.words:
+            for segment in segments:  # type: ignore
+                for word in (segment.words or []):
                     df_data.append(
                         {
                             "file_path": audio_path,

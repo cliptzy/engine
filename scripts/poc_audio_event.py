@@ -26,7 +26,7 @@ def detect_audio_events_with_timestamps(
 
     feature_extractor = ASTFeatureExtractor.from_pretrained(model_id)
     model = ASTForAudioClassification.from_pretrained(model_id)
-    model.to(device)
+    model.to(device)  # type: ignore
 
     # Load seluruh audio
     sr = 16000  # AST model dilatih dengan 16kHz
@@ -75,7 +75,7 @@ def detect_audio_events_with_timestamps(
         chunk_results = []
         for i, prob in enumerate(predicted_probabilities):
             if prob.item() > threshold:
-                chunk_results.append((id2label[i], prob.item()))
+                chunk_results.append((id2label[i], prob.item()))  # type: ignore
 
         # Urutkan berdasarkan probabilitas tertinggi
         chunk_results.sort(key=lambda x: x[1], reverse=True)

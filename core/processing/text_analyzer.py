@@ -7,7 +7,7 @@ from core.logger import log
 _text_emotion_pipeline = None
 
 
-def get_text_emotion_pipeline(language: str):
+def get_text_emotion_pipeline(language: str) -> Any:
     global _text_emotion_pipeline
     if _text_emotion_pipeline is None:
         try:

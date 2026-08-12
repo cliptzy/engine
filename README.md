@@ -22,7 +22,7 @@ Aplikasi Desktop Standalone native (berbasis Python & Flet) untuk mengambil mome
 
 ### Cara 1: Menggunakan Executable / Launcher (Paling Gampang)
 
-Cukup double-click file **`start.bat`**.
+Cukup double-click file **`run.bat`**.
 
 Script ini akan otomatis:
 1. Menyiapkan environment Python secara aman.
@@ -36,16 +36,16 @@ Script ini akan otomatis:
 Pastikan Python 3.10+ dan FFmpeg terinstal di sistem Anda:
 
 ```bash
-# Install dependensi
-pip install -r requirements.txt
+# Install dependensi menggunakan uv
+uv sync
 
 # Menjalankan Aplikasi Desktop GUI
-python run.py
+uv run python main.py
 ```
 
 *Jika ingin menjalankan dalam mode CLI interaktif (terminal saja):*
 ```bash
-python run.py --cli --url "https://youtu.be/VIDEO_ID"
+python main.py --cli --url "https://youtu.be/VIDEO_ID"
 ```
 
 ---
@@ -80,7 +80,7 @@ Hasil kompilasi biner executable akan tersimpan di dalam folder **`dist/cliptzy/
   - 📸 **Instagram Reels** (Graph API)
 
 ### 3. Integrated Video Player & Output Gallery
-- Pemutar video native built-in (`QMediaPlayer` + `QVideoWidget`) dengan slider *Play/Pause/Seek* dan tombol *Open Output Folder*.
+- Pemutar video native built-in (Flet Video control) dengan slider *Play/Pause/Seek* dan tombol *Open Output Folder*.
 
 ---
 

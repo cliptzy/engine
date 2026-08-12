@@ -51,7 +51,7 @@ def test_text_emotion(text: str):
         print(json.dumps(scores, indent=2))
 
         if scores:
-            top_result = scores[0]
+            top_result = scores[0]  # type: ignore
             print(
                 f"\nEmosi Dominan: {top_result['label']} (Akurasi: {top_result['score'] * 100:.2f}%)"
             )

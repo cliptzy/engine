@@ -131,7 +131,7 @@ class SupabaseSyncManager:
             if auth_code[0]:
                 log.info("Menerima auth code, menukar dengan session...")
                 session_res = self.client.auth.exchange_code_for_session(
-                    {"auth_code": auth_code[0]}
+                    cast(Any, {"auth_code": auth_code[0]})
                 )  # type: ignore
                 if session_res and session_res.user:
                     self.user = session_res.user

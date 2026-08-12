@@ -10,7 +10,7 @@ _audio_event_model = None
 _audio_event_extractor = None
 
 
-def get_audio_event_pipeline():
+def get_audio_event_pipeline() -> Any:
     global _audio_event_model, _audio_event_extractor
     if _audio_event_model is None:
         try:
@@ -21,9 +21,8 @@ def get_audio_event_pipeline():
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
             _audio_event_extractor = ASTFeatureExtractor.from_pretrained(model_id)
-            _audio_event_model = ASTForAudioClassification.from_pretrained(model_id).to(
-                device
-            )
+            _audio_event_model = ASTForAudioClassification.from_pretrained(model_id)
+            _audio_event_model.to(device)  # type: ignore
             _audio_event_model.eval()
         except Exception as e:
             log.error(f"Gagal memuat model Audio Event: {e}")

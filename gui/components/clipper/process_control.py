@@ -38,15 +38,15 @@ class TaskRow(ft.Container):
         self.stage_ui.value = new_stage
         if is_error:
             self.spinner.visible = False
-            self.icon.name = ft.Icons.ERROR
+            self.icon.name = ft.Icons.ERROR  # type: ignore
             self.icon.color = ft.Colors.ERROR
         elif is_done:
             self.spinner.visible = False
-            self.icon.name = ft.Icons.CHECK_CIRCLE
+            self.icon.name = ft.Icons.CHECK_CIRCLE  # type: ignore
             self.icon.color = ft.Colors.GREEN_400
         else:
             self.spinner.visible = True
-            self.icon.name = ft.Icons.MOVIE
+            self.icon.name = ft.Icons.MOVIE  # type: ignore
             self.icon.color = ft.Colors.INDIGO
         try:
             self.update()
@@ -207,7 +207,7 @@ class ProcessControl(ft.Container):
                 1
                 for t in self.active_tasks_map.values()
                 if not t.spinner.visible
-                and t.icon.name == ft.Icons.CHECK_CIRCLE
+                and t.icon.name == ft.Icons.CHECK_CIRCLE  # type: ignore
                 and t.clip_index > 0
             )
 

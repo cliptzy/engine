@@ -22,7 +22,7 @@ Native Standalone Desktop Application (Python & Flet) for extracting YouTube hig
 
 ### Option 1: Executable / Launcher (Easiest)
 
-Simply double-click **`start.bat`**.
+Simply double-click **`run.bat`**.
 
 The launcher will automatically:
 1. Prepare a secure Python virtual environment.
@@ -36,16 +36,16 @@ The launcher will automatically:
 Ensure Python 3.10+ and FFmpeg are installed on your system:
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies using uv
+uv sync
 
 # Run Desktop GUI App
-python run.py
+uv run python main.py
 ```
 
 *To run in interactive CLI mode (terminal only):*
 ```bash
-python run.py --cli --url "https://youtu.be/VIDEO_ID"
+python main.py --cli --url "https://youtu.be/VIDEO_ID"
 ```
 
 ---
@@ -80,7 +80,7 @@ The compiled standalone executable directory will be saved to **`dist/cliptzy/`*
   - 📸 **Instagram Reels** (Graph API)
 
 ### 3. Integrated Video Player & Output Gallery
-- Built-in multimedia player (`QMediaPlayer` + `QVideoWidget`) with *Play/Pause/Seek* slider and *Open Output Folder* button.
+- Built-in multimedia player (native Flet Video control) with *Play/Pause/Seek* slider and *Open Output Folder* button.
 
 ---
 

@@ -34,7 +34,7 @@ Bertindak sebagai penghubung antara UI Layer dan Engine Layer.
 
 Lapisan murni yang tidak memiliki ketergantungan pada UI (Flet). Berisi inti pemrosesan data, pengolahan file, dan operasi jaringan.
 
-- **`ai_detector.py`**: Logika deteksi _highlight_ menggunakan LLM (Ollama, Gemini API, OpenAI API).
+- **`core/ai/detector.py`**: Logika deteksi _highlight_ menggunakan LLM (Ollama, Gemini API, OpenAI API).
 - **`channel_manager.py`**: Logika manajemen dan kurasi channel YouTube kreator.
 - **`config.py`**: Pengelolaan konfigurasi aplikasi (membaca dan menyimpan ke `config.json`).
 - **`ffmpeg.py`**: Wrapper untuk pemanggilan perintah komando FFmpeg.

@@ -116,12 +116,12 @@ def test_deepface_video(
                 elif isinstance(extracted, dict):
                     face_data = extracted
 
-                confidence = face_data.get("confidence", 0) if face_data else 0
+                confidence = face_data.get("confidence", 0) if face_data else 0  # type: ignore
                 region = {}
                 dominant_emotion = None
 
                 if face_data and confidence > 0.5:
-                    region = face_data.get("facial_area", {})
+                    region = face_data.get("facial_area", {})  # type: ignore
 
                     classifier = get_emotion_pipeline()
                     if classifier:
@@ -140,7 +140,7 @@ def test_deepface_video(
                             face_img_rgb = cv2.cvtColor(face_img_arr, cv2.COLOR_BGR2RGB)
                             pil_img = Image.fromarray(face_img_rgb)
 
-                            preds = classifier(pil_img)
+                            preds = classifier(pil_img)  # type: ignore
                             if preds:
                                 best_pred = preds[0]
                                 dominant_emotion = map_hf_emotion(best_pred["label"])

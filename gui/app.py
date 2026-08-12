@@ -203,7 +203,7 @@ def main(page: ft.Page) -> None:
                     page.update()
                     await asyncio.sleep(1.5)
                     try:
-                        page.window.destroy()
+                        await page.window.destroy()
                     except Exception:
                         pass
                     from core.utils import restart_app

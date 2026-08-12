@@ -102,7 +102,7 @@ def process_single_clip(
         "merge_output_format": "mkv",
         "format": "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b",
         "outtmpl": temp_file,
-        "download_ranges": download_range_func(cast(Any, None), [(start, end)]),
+        "download_ranges": download_range_func(cast(Any, None), cast(Any, [(start, end)])),
         "force_keyframes_at_cuts": True,
         "logger": create_yt_dlp_logger("[yt-dlp]"),
         "progress_hooks": [create_yt_dlp_progress_hook(event_hook, "[yt-dlp]")],
@@ -115,7 +115,7 @@ def process_single_clip(
         "merge_output_format": "mkv",
         "format": "bv*+ba/b",
         "outtmpl": temp_file,
-        "download_ranges": download_range_func(cast(Any, None), [(start, end)]),
+        "download_ranges": download_range_func(cast(Any, None), cast(Any, [(start, end)])),
         "force_keyframes_at_cuts": True,
         "logger": create_yt_dlp_logger("[yt-dlp-fallback]"),
         "progress_hooks": [

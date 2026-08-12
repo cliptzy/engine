@@ -8,7 +8,7 @@ from core.logger import log
 _emotion_pipeline = None
 
 
-def get_emotion_pipeline():
+def get_emotion_pipeline() -> Any:
     global _emotion_pipeline
     if _emotion_pipeline is None:
         try:
@@ -109,7 +109,7 @@ def analyze_video_emotions(
                     align=True,
                 )
 
-                face_data = None
+                face_data: Any = None
                 if isinstance(extracted, list) and len(extracted) > 0:
                     face_data = extracted[0]
                 elif isinstance(extracted, dict):

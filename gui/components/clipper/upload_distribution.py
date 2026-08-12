@@ -881,7 +881,7 @@ class UploadDistribution(ft.Container):
             if getattr(self, "schedule_date", None):
                 s_date = self.schedule_date
                 s_time = getattr(self, "schedule_time", None) or datetime.time(0, 0)
-                dt_naive = datetime.datetime.combine(s_date, s_time)
+                dt_naive = datetime.datetime.combine(s_date, s_time)  # type: ignore
                 base_time = dt_naive.replace(tzinfo=utc7_time)
             else:
                 base_time = datetime.datetime.now(utc7_time) + datetime.timedelta(

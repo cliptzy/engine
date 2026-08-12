@@ -4,7 +4,7 @@ import shutil
 
 # Bypassing Windows symlink errors (penting untuk HuggingFace model cache di Windows)
 pathlib.Path.symlink_to = lambda self, target, *args, **kwargs: shutil.copy(
-    target, self
+    str(target), str(self)
 )  # type: ignore
 from typing import Any, Dict, List
 
