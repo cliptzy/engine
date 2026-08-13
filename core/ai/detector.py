@@ -124,7 +124,14 @@ class AIHighlightDetector:
                     f"[AI] Mengirim transkrip ke AI Provider: {provider_name.upper()}..."
                 )
 
-            raw_response = provider.generate(prompt, ai_config, event_hook)
+            log.info(f"=== PROMPT KE AI ({provider_name.upper()}) ===\n{prompt}\n==========================================")
+            try:
+                raw_response = provider.generate(prompt, ai_config, event_hook)
+                log.info(f"=== RESPONSE DARI AI ({provider_name.upper()}) ===\n{raw_response}\n============================================")
+            except Exception as ex:
+                log.error(f"=== ERROR DARI AI ({provider_name.upper()}) ===\n{ex}\n============================================")
+                raise ex
+
             highlights = self._parse_json_highlights(raw_response)
             all_highlights.extend(highlights)
 
@@ -362,7 +369,9 @@ Format Output JSON:
                 )
 
             try:
+                log.info(f"=== PROMPT KE AI ({provider_name.upper()}) ===\n{prompt}\n==========================================")
                 raw_response = provider.generate(prompt, ai_config, event_hook)
+                log.info(f"=== RESPONSE DARI AI ({provider_name.upper()}) ===\n{raw_response}\n============================================")
                 match_obj = re.search(r'\{\s*".*"\s*:.*\s*\}', raw_response, re.DOTALL)
                 if match_obj:
                     metadata = json.loads(match_obj.group(0))

@@ -18,9 +18,12 @@ class OllamaProvider:
         payload = {
             "model": model,
             "prompt": prompt,
-            "format": "json",
             "stream": True,
-            "options": {"temperature": 0.3},
+            "options": {
+                "temperature": 0.3,
+                "num_predict": 8192,
+                "num_ctx": 16384
+            },
         }
 
         log.info(f"Connecting to Local Ollama at {url} (model: {model})...")
@@ -36,8 +39,6 @@ class OllamaProvider:
                     data = json.loads(line)
                     chunk = data.get("response", "")
                     full_response += chunk
-                    if callable(event_hook) and chunk:
-                        event_hook("log_inline", chunk)
 
             log.info("")
             return full_response
