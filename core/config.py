@@ -33,6 +33,8 @@ class AIConfig:
     use_generate_intro: bool = False
     use_emotion_detection: bool = True
     use_voice_analysis: bool = True
+    use_audio_analysis: bool = True
+    use_text_analysis: bool = True
 
 
 @dataclass
@@ -147,6 +149,8 @@ class AppConfig:
             "use_generate_intro": self.ai.use_generate_intro,
             "use_emotion_detection": self.ai.use_emotion_detection,
             "use_voice_analysis": self.ai.use_voice_analysis,
+            "use_audio_analysis": self.ai.use_audio_analysis,
+            "use_text_analysis": self.ai.use_text_analysis,
             "whisper_model": self.subtitle.whisper_model,
             "subtitle_font": self.subtitle.font,
             "subtitle_fonts_dir": self.subtitle.fonts_dir,
@@ -225,6 +229,10 @@ class AppConfig:
             self.ai.use_emotion_detection = bool(data["use_emotion_detection"])
         if "use_voice_analysis" in data:
             self.ai.use_voice_analysis = bool(data["use_voice_analysis"])
+        if "use_audio_analysis" in data:
+            self.ai.use_audio_analysis = bool(data["use_audio_analysis"])
+        if "use_text_analysis" in data:
+            self.ai.use_text_analysis = bool(data["use_text_analysis"])
 
         if "whisper_model" in data and data["whisper_model"]:
             self.subtitle.whisper_model = data["whisper_model"]

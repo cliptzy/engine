@@ -68,8 +68,10 @@ class VideoEffectManager:
         return random.choice(valid_effects)
 
     def get_effect_by_name(self, name: str) -> Optional[Dict]:
+        normalized = name.replace("_", " ").lower()
         for effect in self.all_effects:
-            if effect.get("name") == name:
+            en = effect.get("name", "")
+            if en.replace("_", " ").lower() == normalized:
                 return effect
         return None
 

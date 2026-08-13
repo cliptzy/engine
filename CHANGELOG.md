@@ -2,6 +2,24 @@
 
 Semua catatan pembaruan dari proyek Cliptzy akan didokumentasikan di dalam file ini.
 
+## [v3.0.13] - 2026-08-13
+
+### Fixed
+
+- **FFmpeg AST Node Limit (Invalid Argument / Failed to configure input pad):** Memperbaiki masalah FFmpeg crash saat merender *crop* dinamis. FFmpeg `eval.c` memiliki batas rekursi parser sekitar 95 *node*. Kini aplikasi mengimplementasikan reduksi *keyframe* secara iteratif berdasarkan toleransi (menyisakan maks 85 titik klip) untuk memastikan string ekspresi *filter* tetap dapat dimuat dengan aman oleh FFmpeg, sekaligus menghasilkan transisi yang lebih halus (_smooth gliding_).
+
+## [v3.0.12] - 2026-08-10
+
+### Added
+
+- **Pengaturan Minimum Durasi & Override Padding**: Menambahkan pengaturan "Min Durasi (Detik)" untuk menggantikan batasan maksimal durasi. Jika durasi segmen klip (setelah ditambah padding standard) berada di bawah batas minimum ini, sistem secara otomatis akan mengesampingkan (override) durasi padding untuk memperpanjang jangkauan klip secara simetris dan aman (menghormati batas durasi asli video) hingga batas durasi minimum yang dikonfigurasi terpenuhi.
+
+## [v3.0.11] - 2026-08-10
+
+### Fixed
+
+- **Penyebaran Waktu Upload di Jam Malam**: Memperbaiki logika penjadwalan klip video yang mengalami penundaan karena masuk jam sepi (jam malam/subuh). Klip-klip yang tertumpuk pada jam 6 pagi kini akan disebar secara dinamis berdasarkan interval waktu upload yang dikonfigurasi (misalnya selisih 2 jam), sehingga mencegah beberapa video ter-upload di waktu yang persis sama.
+
 ## [v3.0.10] - 2026-08-05
 
 ### Added

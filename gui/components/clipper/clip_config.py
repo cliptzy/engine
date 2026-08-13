@@ -85,6 +85,8 @@ class ClipConfig(ft.Container):
         self.highlight_check = ft.Checkbox(label="Highlight Text")
         self.emotion_check = ft.Checkbox(label="Deteksi Emosi Wajah Visual")
         self.voice_analysis_check = ft.Checkbox(label="Deteksi Emosi Suara (SER)")
+        self.audio_analysis_check = ft.Checkbox(label="Deteksi Event Suara (Audio Analyzer)")
+        self.text_analysis_check = ft.Checkbox(label="Deteksi Emosi Teks (NLP)")
         self.generate_intro_check = ft.Checkbox(
             label="Generate Intro", on_change=self.on_generate_intro_toggled
         )
@@ -255,24 +257,44 @@ class ClipConfig(ft.Container):
         )  # type: ignore
         self.btn_lock_all.data = False
 
+        self.ai_features_section = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(
+                        "AI Analyzer",
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.PRIMARY,
+                    ),
+                    ft.Row(
+                        cast(
+                            list[ft.Control],
+                            [
+                                self.highlight_check,
+                                self.emotion_check,
+                                self.voice_analysis_check,
+                                self.audio_analysis_check,
+                                self.text_analysis_check,
+                                self.generate_intro_check,
+                            ],
+                        ),
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        wrap=True,
+                    ),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            padding=10,
+            border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
+            border_radius=8,
+            margin=ft.Margin(left=0, top=5, right=0, bottom=5),
+        )
+
         grid_controls = cast(
             list[ft.Control],
             [
                 ft.Row(cast(list[ft.Control], [self.crop_combo, self.ratio_combo])),
                 self.libass_warning,
-                ft.Row(
-                    cast(
-                        list[ft.Control],
-                        [
-                            self.highlight_check,
-                            self.emotion_check,
-                            self.voice_analysis_check,
-                            self.generate_intro_check,
-                            self.merge_clips_check,
-                        ],
-                    ),
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
+                self.ai_features_section,
                 ft.Row(cast(list[ft.Control], [self.whisper_combo, self.font_combo])),
                 ft.Row(
                     cast(
@@ -300,7 +322,11 @@ class ClipConfig(ft.Container):
                 ft.Row(
                     cast(
                         list[ft.Control],
-                        [self.watermark_pos_combo, self.debug_mode_check],
+                        [
+                            self.watermark_pos_combo,
+                            self.merge_clips_check,
+                            self.debug_mode_check,
+                        ],
                     ),
                     alignment=ft.MainAxisAlignment.CENTER,
                 ),
@@ -333,6 +359,8 @@ class ClipConfig(ft.Container):
         self.highlight_check.value = config.ai.use_highlight
         self.emotion_check.value = config.ai.use_emotion_detection
         self.voice_analysis_check.value = config.ai.use_voice_analysis
+        self.audio_analysis_check.value = config.ai.use_audio_analysis
+        self.text_analysis_check.value = config.ai.use_text_analysis
         self.generate_intro_check.value = config.ai.use_generate_intro
         self.merge_clips_check.value = config.merge_clips
         self.on_generate_intro_toggled(None)
@@ -639,6 +667,8 @@ class ClipConfig(ft.Container):
             "use_highlight": bool(self.highlight_check.value),
             "use_emotion_detection": bool(self.emotion_check.value),
             "use_voice_analysis": bool(self.voice_analysis_check.value),
+            "use_audio_analysis": bool(self.audio_analysis_check.value),
+            "use_text_analysis": bool(self.text_analysis_check.value),
             "use_generate_intro": bool(self.generate_intro_check.value),
             "merge_clips": bool(self.merge_clips_check.value),
             "whisper_model": self.whisper_combo.value,
@@ -679,6 +709,8 @@ class ClipConfig(ft.Container):
         self.highlight_check.disabled = locked
         self.emotion_check.disabled = locked
         self.voice_analysis_check.disabled = locked
+        self.audio_analysis_check.disabled = locked
+        self.text_analysis_check.disabled = locked
         self.generate_intro_check.disabled = locked
         self.merge_clips_check.disabled = locked
         self.padding_spin.disabled = locked

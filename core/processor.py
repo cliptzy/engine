@@ -200,7 +200,7 @@ def process_single_clip(
             out_w, out_h = config.out_width, config.out_height
 
             cx_norm, cy_norm = 0.5, 0.5
-            face_keyframes: list[tuple[float, float, float]] = []
+            face_keyframes: list[tuple[float, float, float, str]] = []
 
             if crop_mode == "center_face":
                 # Dynamic face tracking: deteksi wajah per interval waktu
@@ -210,7 +210,7 @@ def process_single_clip(
                 try:
                     from core.face_tracker import get_face_keyframes
 
-                    face_keyframes = get_face_keyframes(temp_file, interval_sec=1.0)
+                    face_keyframes = get_face_keyframes(temp_file, interval_sec=0.1)
                     if not face_keyframes:
                         log.info(
                             f"Clip {index}: Tidak ada keyframe wajah terdeteksi, fallback ke default."
@@ -270,7 +270,7 @@ def process_single_clip(
             # sesuai dengan hasil deteksi face_tracker (cx_norm, cy_norm) di memori Python.
             # Bounding box akan dipetakan ke koordinat output akhir di dalam emotion_analyzer.py.
             visual_emotions = []
-            if config.ai.use_emotion_detection:
+            if config.ai.use_emotion_detection and config.subtitle.style != "plain":
                 from core.processing.emotion_analyzer import analyze_video_emotions
 
                 visual_emotions = analyze_video_emotions(
@@ -292,7 +292,7 @@ def process_single_clip(
 
             # --- Audio Event Analysis ---
             audio_emotions = []
-            if getattr(config.ai, "use_emotion_detection", True):
+            if getattr(config.ai, "use_audio_analysis", True) and config.subtitle.style != "plain":
                 try:
                     from core.processing.audio_analyzer import analyze_audio_emotions
 
@@ -311,8 +311,6 @@ def process_single_clip(
             except Exception as e:
                 pass
 
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
         else:
             log.info(f"Found existing cached nosub clip for {index}")
 
@@ -392,9 +390,9 @@ def process_single_clip(
                 user_context=custom_prompt,
                 event_hook=event_hook,
                 language=preview_data.get("language", "Indonesia"),
-                words_data=words_data,
-                visual_emotions=visual_emotions,
-                audio_emotions=audio_emotions,
+                words_data=words_data if config.subtitle.style != "plain" else None,
+                visual_emotions=visual_emotions if config.subtitle.style != "plain" else None,
+                audio_emotions=audio_emotions if config.subtitle.style != "plain" else None,
             )
 
             if metadata:
@@ -455,11 +453,9 @@ def process_single_clip(
         return True
 
     except subprocess.CalledProcessError as e:
-        cleanup_temp_files([temp_file])
         log.error(f"Failed to generate clip {index}. Subprocess error.")
         return False
     except Exception as e:
-        cleanup_temp_files([temp_file])
         log.error(f"Failed to generate clip {index}.")
         log.exception(f"Exception: {str(e)}")
         return False

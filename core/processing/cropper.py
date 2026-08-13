@@ -19,7 +19,7 @@ def build_crop_command(
     cy_norm: float = 0.5,
     cx2_norm: float = 0.5,
     cy2_norm: float = 0.5,
-    face_keyframes: Optional[list[tuple[float, float, float]]] = None,
+    face_keyframes: Optional[list[tuple[float, float, float, str]]] = None,
 ) -> list:
     """Helper function to build FFmpeg crop/split command."""
     if crop_mode == "default":
@@ -82,68 +82,96 @@ def build_crop_command(
             scaled = build_cover_scale_vf(out_w, out_h)
 
             if face_keyframes and len(face_keyframes) > 1:
-                # Optimasi kemiripan koordinat (stabilisasi agar tidak gatal/micro-jitter)
-                first_cx, first_cy = face_keyframes[0][1], face_keyframes[0][2]
-                stable_keyframes = []
-                for ts, cx, cy in face_keyframes:
-                    if not stable_keyframes:
-                        stable_keyframes.append((ts, cx, cy))
+                # Sederhanakan list keyframes untuk menghemat panjang argumen CLI
+                # Kita bisa membuang keyframe di tengah jika nilainya sama dengan sebelumnya dan sesudahnya
+                simplified = []
+                for i in range(len(face_keyframes)):
+                    if i == 0 or i == len(face_keyframes) - 1:
+                        simplified.append(face_keyframes[i])
                     else:
-                        # Jika dekat dengan posisi awal, gunakan posisi awal
-                        if abs(cx - first_cx) < 0.05 and abs(cy - first_cy) < 0.05:
-                            cx, cy = first_cx, first_cy
+                        prev_kf = face_keyframes[i - 1]
+                        curr_kf = face_keyframes[i]
+                        next_kf = face_keyframes[i + 1]
+                        
+                        # Jika prev, curr, dan next memiliki cx dan cy yang SAMA PERSIS, buang curr
+                        if (curr_kf[1] == prev_kf[1] and curr_kf[2] == prev_kf[2] and
+                            curr_kf[1] == next_kf[1] and curr_kf[2] == next_kf[2]):
+                            pass
                         else:
-                            # Jika dekat dengan posisi stabil sebelumnya, gunakan posisi tersebut
-                            _, last_cx, last_cy = stable_keyframes[-1]
-                            if abs(cx - last_cx) < 0.05 and abs(cy - last_cy) < 0.05:
-                                cx, cy = last_cx, last_cy
-                        stable_keyframes.append((ts, cx, cy))
+                            simplified.append(curr_kf)
+                
+                face_keyframes = simplified
+                
+                # FFmpeg eval.c (AST parser) memiliki hard-limit untuk jumlah terms jumlahan (sekitar 95 terms).
+                # Jika lebih dari 85 keyframes, lakukan simplifikasi agresif berdasarkan jarak (tolerance).
+                MAX_KEYFRAMES = 85
+                if len(face_keyframes) > MAX_KEYFRAMES:
+                    for tol_idx in range(1, 100):
+                        tolerance = tol_idx * 0.005 # 0.005 hingga 0.5 (max 50% jarak layar)
+                        new_simplified = [face_keyframes[0]]
+                        for i in range(1, len(face_keyframes) - 1):
+                            prev_saved = new_simplified[-1]
+                            curr_kf = face_keyframes[i]
+                            
+                            # Jika perubahan pada sumbu X dan Y sangat kecil dibandingkan titik terakhir yang disimpan, abaikan.
+                            if abs(curr_kf[1] - prev_saved[1]) < tolerance and abs(curr_kf[2] - prev_saved[2]) < tolerance:
+                                continue
+                            
+                            new_simplified.append(curr_kf)
+                            
+                        new_simplified.append(face_keyframes[-1])
+                        
+                        if len(new_simplified) <= MAX_KEYFRAMES:
+                            face_keyframes = new_simplified
+                            break
 
-                # Sederhanakan list keyframes dengan membuang duplikat berurutan
-                simplified_keyframes = []
-                for ts, cx, cy in stable_keyframes:
-                    if not simplified_keyframes:
-                        simplified_keyframes.append((ts, cx, cy))
-                    else:
-                        _, last_cx, last_cy = simplified_keyframes[-1]
-                        if cx == last_cx and cy == last_cy:
-                            continue
-                        simplified_keyframes.append((ts, cx, cy))
-
-                face_keyframes = (
-                    simplified_keyframes if simplified_keyframes else stable_keyframes
-                )
 
                 # Dynamic mode: buat ekspresi crop x/y yang berubah berdasarkan waktu (t)
-                # Menggunakan nested if(lt(t, timestamp), ...) agar crop mengikuti wajah
-                # Format keyframe: (timestamp, cx_norm, cy_norm)
-                # Ekspresi: if(lt(t,t1), expr0, if(lt(t,t2), expr1, ... exprN))
-
                 def _make_offset_expr(
-                    keyframes: list[tuple[float, float, float]], axis: str
+                    keyframes: list[tuple[float, float, float, str]], axis: str
                 ) -> str:
                     """Buat nested if(lt(t,...)) expression untuk crop x atau y."""
-                    # axis: 'x' → pakai cx_norm (index 1), 'y' → pakai cy_norm (index 2)
                     idx = 1 if axis == "x" else 2
                     dim = out_w if axis == "x" else out_h
                     ivar = "iw" if axis == "x" else "ih"
 
                     def _offset(norm: float) -> str:
-                        return (
-                            f"max(0\\,min({ivar}*{norm:.4f}-({dim}/2)\\,{ivar}-{dim}))"
-                        )
+                        return f"max(0\\,min({ivar}*{norm:.4f}-({dim}/2)\\,{ivar}-{dim}))"
 
                     if len(keyframes) == 1:
-                        return _offset(keyframes[0][idx])
+                        return _offset(float(keyframes[0][idx]))
 
-                    # Build dari belakang ke depan: ekspresi terakhir tanpa kondisi
-                    expr = _offset(keyframes[-1][idx])
-                    for i in range(len(keyframes) - 2, -1, -1):
-                        ts_next = keyframes[i + 1][0]
-                        current_offset = _offset(keyframes[i][idx])
-                        expr = f"if(lt(t\\,{ts_next:.3f})\\,{current_offset}\\,{expr})"
-
-                    return expr
+                    terms = []
+                    for i in range(len(keyframes) - 1):
+                        ts_prev = float(keyframes[i][0])
+                        pos_prev = float(keyframes[i][idx])
+                        
+                        ts_curr = float(keyframes[i + 1][0])
+                        pos_curr = float(keyframes[i + 1][idx])
+                        mode = str(keyframes[i + 1][3])
+                        
+                        if mode == "glide" and ts_curr > ts_prev:
+                            delta = pos_curr - pos_prev
+                            if abs(delta) < 0.0001:
+                                curr_expr = _offset(pos_prev)
+                            else:
+                                dur = ts_curr - ts_prev
+                                rate = delta / dur
+                                norm_t = f"({pos_prev:.4f}+{rate:.4f}*(t-{ts_prev:.3f}))"
+                                curr_expr = f"max(0\\,min({ivar}*{norm_t}-({dim}/2)\\,{ivar}-{dim}))"
+                        else:
+                            curr_expr = _offset(pos_prev)
+                            
+                        if i == 0:
+                            terms.append(f"({curr_expr})*lt(t\\,{ts_curr:.3f})")
+                        else:
+                            terms.append(f"({curr_expr})*gte(t\\,{ts_prev:.3f})*lt(t\\,{ts_curr:.3f})")
+                            
+                    last_ts = float(keyframes[-1][0])
+                    last_pos = float(keyframes[-1][idx])
+                    terms.append(f"({_offset(last_pos)})*gte(t\\,{last_ts:.3f})")
+                    
+                    return "+".join(terms)
 
                 x_expr = _make_offset_expr(face_keyframes, "x")
                 y_expr = _make_offset_expr(face_keyframes, "y")
@@ -155,21 +183,24 @@ def build_crop_command(
                 y_offset = f"max(0\\,min(ih*{cy_norm}-({out_h}/2)\\,ih-{out_h}))"
                 vf = f"{scaled},crop={out_w}:{out_h}:{x_offset}:{y_offset}"
 
-            return (
-                [
-                    "ffmpeg",
-                    "-y",
-                    "-hide_banner",
-                    "-loglevel",
-                    "info",
-                    "-i",
-                    temp_file,
-                    "-vf",
-                    vf,
-                ]
-                + get_video_codec_args()
-                + ["-c:a", "aac", "-b:a", "128k", cropped_file]
-            )
+            # Selalu tulis ke file .vf untuk keperluan debugging
+            script_path = temp_file + ".vf"
+            with open(script_path, "w", encoding="utf-8") as f:
+                f.write(vf)
+
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "info",
+                "-i",
+                temp_file,
+                "-vf",
+                vf,
+            ]
+
+            return cmd + get_video_codec_args() + ["-c:a", "aac", "-b:a", "128k", cropped_file]
 
     elif crop_mode in ["split_left", "split_right", "split_face", "full_face"]:
         if config.output_ratio == "original" or not out_w or not out_h or out_h < out_w:

@@ -242,18 +242,20 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             )
 
             # Analyze text emotions per segment
-            from core.processing.text_analyzer import analyze_text_emotions
+            if getattr(config.ai, "use_text_analysis", True) and config.subtitle.style != "plain":
+                from core.processing.text_analyzer import analyze_text_emotions
 
-            analyze_text_emotions(
-                segments, words_data, language=target_lang if target_lang else "auto"
-            )
+                analyze_text_emotions(
+                    segments, words_data, language=target_lang if target_lang else "auto"
+                )
 
             # Analyze voice levels
-            from core.processing.voice_analyzer import analyze_voice_emotions
+            if getattr(config.ai, "use_voice_analysis", True) and config.subtitle.style != "plain":
+                from core.processing.voice_analyzer import analyze_voice_emotions
 
-            analyze_voice_emotions(
-                audio_wav, words_data, language=target_lang if target_lang else "auto"
-            )
+                analyze_voice_emotions(
+                    audio_wav, words_data, language=target_lang if target_lang else "auto"
+                )
 
     except Exception as e:
         log.error(f"Failed to write subtitle file: {e}")

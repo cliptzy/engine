@@ -146,6 +146,9 @@ def burn_subtitle_and_highlight(
 
             for block in blocks:
                 s = block[1]
+                ve_override = block[3]
+                if ve_override == "none":
+                    continue
                 if s - last_effect_time < 5:
                     continue
                 last_effect_time = s
@@ -205,10 +208,12 @@ def burn_subtitle_and_highlight(
                         )
 
         # --- NON-VERBAL / STANDALONE EFFECTS ---
-        standalone_effects = (
-            metadata.get("standalone_video_effects", []) if metadata else []
-        )
-        standalone_effects = sorted(standalone_effects, key=lambda x: float(x.get("time", 0.0)))
+        standalone_effects = []
+        if config.subtitle.style != "plain":
+            standalone_effects = (
+                metadata.get("standalone_video_effects", []) if metadata else []
+            )
+            standalone_effects = sorted(standalone_effects, key=lambda x: float(x.get("time", 0.0)))
         for se in standalone_effects:
             ve_name = se.get("video_effect_override")
             s = float(se.get("time", 0.0))

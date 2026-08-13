@@ -155,7 +155,7 @@ Daftar ini adalah _lesson learned_ dari riwayat proyek. AI Model **WAJIB** memba
 2. **`pip install` via `sys.executable` di `core/utils.py`** → gagal saat frozen. Solusi: guard dengan `getattr(sys, 'frozen', False)` dan lewati saat frozen. ✅ Sudah diperbaiki — **jangan regresi**.
 3. **Subprocess `sys.executable -m piptools` / `pip` di script build lama (`scripts/manage_reqs.py`)** → **SAH** karena ini dulunya alat build-time developer, **bukan** kode production. Jangan menyalin pola ini ke `core/` atau `gui/`.
 4. **Dokumentasi tidak sinkron** (ARCHITECTURE.md / README masih menyebut PyQt6 & QThread saat kode sudah Flet) → menyesatkan AI model berikutnya. **Wajib** perbarui dokumentasi setiap kali arsitektur berubah.
-
+5. **Error Command Line Too Long di Windows & FFmpeg AST Node Limit** → Sebagian besar FFmpeg binaries tidak mendukung flag `-filter_complex_script` secara universal. Selain itu, fungsi `eval.c` pada FFmpeg memiliki batasan kedalaman AST (Abstract Syntax Tree) maksimal sekitar 95 node (terms). Walaupun sudah menggunakan struktur jumlahan datar (*flat sum*) `(expr1)*lt(t, a) + (expr2)*gte(t, a)*lt(t, b) + ...`, jika jumlah *terms* lebih dari 95, FFmpeg akan *crash* dengan error `Invalid argument` (Failed to configure input pad). Solusi mutlaknya adalah membatasi maksimal titik dinamis (`MAX_KEYFRAMES = 85`) dan melakukan simplifikasi iteratif berdasarkan toleransi jarak pergerakan, lalu membuang titik-titik minor. File `.vf` tetap dibuat secara permanen hanya untuk tujuan debugging dan logging.
 ---
 
 ## 🎭 9. ATURAN PENGELOLAAN VIDEO EFFECTS (MENGGANTIKAN SFX & VFX)
@@ -187,7 +187,9 @@ Sistem efek suara (SFX), efek visual (VFX), dan overlay yang lama telah **dihapu
    - Komponen `ft.Tabs` tidak lagi menerima list dari `ft.Tab` secara langsung sebagai parameter `tabs`.
    - Anda **WAJIB** menggunakan struktur `Tabs(length=..., content=ft.Column([ft.TabBar(tabs=[...]), ft.TabBarView(controls=[...])]))`.
    - Parameter judul untuk `ft.Tab` sekarang menggunakan argumen `label=`, bukan `text=`.
-
+4. **Penggunaan Border dan Margin (PENTING)**:
+   - Dilarang menggunakan metode fungsi usang seperti `ft.border.all()` (huruf kecil) atau `ft.margin.symmetric()`.
+   - Gunakan selalu class/metode dengan **huruf kapital** dan konstruktor yang tepat: **`ft.Border.all(...)`** dan **`ft.Margin(...)`**.
 ---
 
 _Peraturan dalam AGENTS.md ini mengikat untuk semua aktivitas pengembangan proyek Cliptzy. Pelanggaran terhadap Larangan 1.4 (`sys.executable`) dianggap **bug kritis** dan mengharuskan perbaikan segera._

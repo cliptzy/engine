@@ -372,7 +372,7 @@ def get_two_faces_normalized_centers(
 
 def get_face_keyframes(
     video_path: str, interval_sec: float = 3.0
-) -> list[tuple[float, float, float]]:
+) -> list[tuple[float, float, float, str]]:
     """
     Deteksi posisi wajah secara berkala setiap `interval_sec` detik.
     Mengembalikan list of (timestamp_sec, cx_norm, cy_norm) untuk setiap
@@ -430,7 +430,7 @@ def get_face_keyframes(
             timestamps.append(duration - 0.5)
 
         detector = None
-        keyframes: list[tuple[float, float, float]] = []
+        raw_keyframes: list[tuple[float, float, float]] = []
         last_cx, last_cy = 0.5, 0.5  # fallback jika wajah hilang
 
         for ts in timestamps:
@@ -439,7 +439,7 @@ def get_face_keyframes(
             ret, frame = cap.read()
             if not ret or frame is None:
                 # Gunakan posisi terakhir
-                keyframes.append((ts, last_cx, last_cy))
+                raw_keyframes.append((ts, last_cx, last_cy))
                 continue
 
             h, w = frame.shape[:2]
@@ -485,12 +485,54 @@ def get_face_keyframes(
                 cy = max(0.0, min(1.0, cy))
 
                 last_cx, last_cy = cx, cy
-                keyframes.append((ts, cx, cy))
+                raw_keyframes.append((ts, cx, cy))
             else:
                 # Wajah tidak terdeteksi, gunakan posisi terakhir
-                keyframes.append((ts, last_cx, last_cy))
+                raw_keyframes.append((ts, last_cx, last_cy))
 
         cap.release()
+
+        keyframes: list[tuple[float, float, float, str]] = []
+        if raw_keyframes:
+            EXTREME_THRESHOLD = 0.15
+            JITTER_THRESHOLD = 0.03
+            
+            classified = []
+            stable_cx, stable_cy = raw_keyframes[0][1], raw_keyframes[0][2]
+            classified.append((raw_keyframes[0][0], stable_cx, stable_cy, "cut"))
+            
+            import math
+            for i in range(1, len(raw_keyframes)):
+                ts, cx, cy = raw_keyframes[i]
+                dist = math.hypot(cx - stable_cx, cy - stable_cy)
+                
+                if dist < JITTER_THRESHOLD:
+                    cx, cy = stable_cx, stable_cy
+                    mode = "glide"
+                elif dist > EXTREME_THRESHOLD:
+                    mode = "cut"
+                    stable_cx, stable_cy = cx, cy
+                else:
+                    mode = "glide"
+                    stable_cx, stable_cy = cx, cy
+                    
+                classified.append((ts, cx, cy, mode))
+
+            # Optimize: drop middle stationary keyframes
+            if len(classified) > 2:
+                keyframes.append(classified[0])
+                for i in range(1, len(classified) - 1):
+                    prev_c = keyframes[-1]
+                    curr_c = classified[i]
+                    next_c = classified[i+1]
+                    
+                    if (abs(prev_c[1] - curr_c[1]) < 0.0001 and abs(prev_c[2] - curr_c[2]) < 0.0001 and 
+                        abs(curr_c[1] - next_c[1]) < 0.0001 and abs(curr_c[2] - next_c[2]) < 0.0001):
+                        continue
+                    keyframes.append(curr_c)
+                keyframes.append(classified[-1])
+            else:
+                keyframes = classified
 
         if keyframes:
             log.info(
