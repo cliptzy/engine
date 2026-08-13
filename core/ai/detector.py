@@ -6,25 +6,25 @@ from core.ai.factory import AIProviderFactory
 from core.logger import log
 
 DEFAULT_PROMPT_TEMPLATE = """
-Anda adalah seorang Produser Konten Viral dan Editor Video Profesional ahli pencari momen (highlight detector).
-Tugas Anda adalah menganalisis transkrip video berikut dan menemukan momen-momen "Emas" yang memiliki potensi viral tinggi untuk dijadikan video pendek vertikal (YouTube Shorts, TikTok, Reels).
+You are a Viral Content Producer and Professional Video Editor who is an expert at highlight detection.
+Your task is to analyze the following video transcript and find "Golden" moments that have high viral potential to be made into vertical short videos (YouTube Shorts, TikTok, Reels).
 
-Konteks Input:
-Transkrip di bawah ini dilengkapi dengan stempel waktu (timestamp) dalam hitungan detik dengan format [start_s - end_s]: teks percakapan.
+Input Context:
+The transcript below is equipped with timestamps in seconds with the format [start_s - end_s]: conversation text.
 
-Kriteria Pemilihan Momen (Wajib Dipenuhi):
-1. Mengandung Emosi/Intrik: Cari momen paling lucu, heboh, emosional, klimaks cerita, perdebatan panas, atau reaksi ekstrem (misal: gamer berteriak saat clutch/epic moment).
-2. Memiliki Hook & Payoff: Klip harus diawali dengan pernyataan/kejadian menarik (hook) dan diakhiri dengan konklusi/punchline yang jelas (payoff).
-3. Kelengkapan Konteks: Jangan pernah memotong percakapan di tengah kalimat atau menyisakan informasi yang menggantung.
-4. Durasi Klip: Total durasi setiap klip HARUS di antara 15 hingga 60 detik.
-5. Tidak boleh opening dan closing video (menit awal dan akhir video)
-6. Jarak antar momen harus cukup jauh (minimal 5 menit)
+Moment Selection Criteria (Mandatory):
+1. Contains Emotion/Intrigue: Look for the funniest, most chaotic, emotional, story climax, heated debates, or extreme reactions (e.g., gamer screaming during a clutch/epic moment).
+2. Has a Hook & Payoff: The clip must begin with an interesting statement/event (hook) and end with a clear conclusion/punchline (payoff).
+3. Context Completeness: Never cut a conversation mid-sentence or leave hanging information.
+4. Clip Duration: The total duration of each clip MUST be between 15 to 60 seconds.
+5. Must not be the video opening and closing (first and last minutes of the video).
+6. The distance between moments must be far enough (minimum 5 minutes).
 
-Aturan Output:
-Karena output Anda akan dibaca oleh sistem, Anda HANYA boleh merespons dengan JSON Object yang valid di dalam blok kode Markdown (```json ... ```). Jangan menambahkan teks pengantar atau penutup di luar blok JSON tersebut.
-Gunakan bahasa sesuai dengan output yang diminta
+Output Rules:
+Since your output will be read by a system, you MUST ONLY respond with a valid JSON Object inside a Markdown code block (```json ... ```). Do not add introductory or closing text outside the JSON block.
+Use the language according to the requested output language.
 
-Struktur JSON yang wajib digunakan:
+JSON Structure that must be used:
 ```json
 {
   "segments": [
@@ -32,18 +32,18 @@ Struktur JSON yang wajib digunakan:
       "start": 12.5,
       "end": 45.0,
       "duration": 32.5,
-      "title": "Judul clickbait dan menarik untuk klip ini (Maks 6 kata)",
-      "reason": "Alasan detail mengapa momen ini menarik, emosi yang ditonjolkan, dan mengapa cocok untuk audiens TikTok/Shorts",
+      "title": "A catchy and clickbait title for this clip (Max 6 words)",
+      "reason": "Detailed reason why this moment is interesting, the emotion highlighted, and why it is suitable for a TikTok/Shorts audience",
       "score": 0.95
     }
   ]
 }
 ```
 
-Output Bahasa: {language}
+Output Language: {language}
 {custom_context}
 
-Transkrip Video:
+Video Transcript:
 {transcript_text}
 """
 
@@ -106,7 +106,7 @@ class AIHighlightDetector:
 
         custom_prompt = ai_config.get("custom_prompt", "")
         custom_context_str = (
-            f"\nKonteks Tambahan Pengguna:\n{custom_prompt}\n" if custom_prompt else ""
+            f"\nAdditional User Context:\n{custom_prompt}\n" if custom_prompt else ""
         )
 
         for i, chunk_text in enumerate(chunks):
@@ -229,7 +229,7 @@ class AIHighlightDetector:
             clip_text = clip_text[:10000] + "..."
 
         context_str = (
-            f"- Konteks Tambahan dari Pengguna: {user_context}\n"
+            f"- Additional Context from User: {user_context}\n"
             if user_context
             else ""
         )
@@ -245,7 +245,7 @@ class AIHighlightDetector:
             i += 1
 
         emotion_lines.append(
-            f'{i}. "neutral" : Normal, datar, informatif biasa, atau tidak ada emosi yang menonjol.'
+            f'{i}. "neutral" : Normal, flat, informative, or no prominent emotion.'
         )
         emotion_str = "\n".join(emotion_lines)
 
@@ -267,11 +267,11 @@ class AIHighlightDetector:
                 eff_name = eff.get("name", "unknown")
                 eff_emotions = eff.get("emotions", [])
                 effect_lines.append(
-                    f'- "{eff_name}" (cocok untuk emosi: {", ".join(eff_emotions)})'
+                    f'- "{eff_name}" (suitable for emotions: {", ".join(eff_emotions)})'
                 )
             effects_str = "\n".join(effect_lines)
         except Exception:
-            effects_str = "- (Data efek video tidak tersedia)"
+            effects_str = "- (Video effect data not available)"
 
         chunk_size = 150
         if not words_data:
@@ -298,60 +298,60 @@ class AIHighlightDetector:
 
         for idx, chunk in enumerate(words_chunks):
             chunk_info = (
-                f"\n(PENTING: Ini adalah bagian {idx + 1} dari {len(words_chunks)} dari total kata yang ada. Fokus berikan `enriched_transcript` HANYA untuk kata-kata di bagian ini saja!)\n"
+                f"\n(IMPORTANT: This is part {idx + 1} of {len(words_chunks)} of the total words. Focus on providing `enriched_transcript` ONLY for the words in this part!)\n"
                 if len(words_chunks) > 1
                 else ""
             )
 
             prompt = f"""
-Anda adalah Social Media Manager spesialis video vertikal viral.
-Tugas: Buat Title, Tags, Highlight (teks pop-up lucu maks 4 kata), dan `enriched_transcript`.
-Respons HARUS JSON Object valid dalam markdown (```json ... ```).
+You are a Social Media Manager specializing in viral vertical videos.
+Task: Create Title, Tags, Highlight (short funny pop-up text max 4 words), and `enriched_transcript`.
+The response MUST be a valid JSON Object in markdown (```json ... ```).
 
-Bahasa: {language}
-Konteks Video: {channel_name} - {youtube_title} ({youtube_url})
+Language: {language}
+Video Context: {channel_name} - {youtube_title} ({youtube_url})
 {context_str}{visual_str}{audio_str}{chunk_info}
 
-ATURAN:
-1. `highlight` sangat singkat (maks 3-4 kata).
-2. Jika `words_data` ada, tulis ulang ke `enriched_transcript` dengan menambah field `emotion` dan `color` (Hex: #FFFF00 untuk netral, warna mencolok untuk emosi kuat).
-3. Tambahkan field `score` ke `enriched_transcript` untuk setiap kata, dengan nilai antara 0.0 hingga 1.0.
-4. SINTESIS EMOSI HOLISTIK (PENTING UNTUK STREAMER/GAMER):
-   Anda memiliki 3 sumber prediksi AI mentah: Wajah (Visual Emotion), Suara (voice_emotion/audio_event), dan Teks (text_emotion).
-   - STREAMER ROLEPLAY AWARENESS: Streamer sering mengucapkan kata ekstrem ("mati kau", "I'm dead") sambil bercanda. JANGAN PERCAYA TEKS 100%!
-   - Jika teks bermakna kuat (angry/fear/shock) NAMUN Wajah (Visual) atau Suara menunjukkan 'neutral' / 'happy', maka itu hanya roleplay/kasual. Anda WAJIB menjadikannya 'neutral' atau 'happy'.
-   - Emosi kuat (angry/fear/shock) HANYA BOLEH DIPILIH jika benar-benar didukung oleh bukti Wajah (panik/marah) ATAU Suara (teriakan/ledakan/gebrak meja).
-   - Tujuan Anda: Mencegah spam deteksi emosi pada obrolan kasual.
-5. PILIHAN EFEK VIDEO (VIDEO EFFECT OVERRIDE):
-   Selain emosi, pilih spesifik nama efek video yang paling menggambarkan momen/kata tersebut dari daftar di bawah.
-   Tulis nama efek tersebut ke dalam field `video_effect_override`.
-   - Jika momen adalah obrolan biasa atau tidak butuh penekanan, Anda WAJIB mengisi dengan "none".
-   - Jika momen adalah klimaks tapi Anda bingung pilih efek, isi "random".
-   - JANGAN LAKUKAN SPAM! Gunakan efek video (khususnya meme) hanya pada momen yang benar-benar lucu atau mengagetkan.
-6. Momen Tanpa Bicara (NON-VERBAL EVENTS):
-   Jika ada momen jeritan (Scream) atau kejadian audio penting lainnya namun tidak ada kata yang terucap di `words_data` pada detik tersebut, Anda BISA meletakkan efek video ke dalam array `"standalone_video_effects"`.
-   Isikan `"time"` (detik mulainya) dan `"video_effect_override"` dengan nama efek yang sesuai.
+RULES:
+1. `highlight` must be very short (max 3-4 words).
+2. If `words_data` exists, rewrite it into `enriched_transcript` by adding `emotion` and `color` fields (Hex: #FFFF00 for neutral, striking colors for strong emotions).
+3. Add a `score` field to `enriched_transcript` for each word, with a value between 0.0 to 1.0.
+4. HOLISTIC EMOTION SYNTHESIS (IMPORTANT FOR STREAMERS/GAMERS):
+   You have 3 sources of raw AI predictions: Face (Visual Emotion), Voice (voice_emotion/audio_event), and Text (text_emotion).
+   - STREAMER ROLEPLAY AWARENESS: Streamers often say extreme words ("mati kau", "I'm dead") while joking. DO NOT TRUST TEXT 100%!
+   - If the text has a strong meaning (angry/fear/shock) BUT Face (Visual) or Voice shows 'neutral' / 'happy', then it is only roleplay/casual. You MUST make it 'neutral' or 'happy'.
+   - Strong emotions (angry/fear/shock) MUST ONLY BE CHOSEN if truly supported by Face evidence (panicking/angry) OR Voice (screaming/explosions/slamming table).
+   - Your goal: Prevent emotion detection spam on casual chats.
+5. VIDEO EFFECT OVERRIDE:
+   Besides emotion, choose the specific video effect name that best describes the moment/word from the list below.
+   Write that effect name into the `video_effect_override` field.
+   - If the moment is a casual chat or does not need emphasis, you MUST fill it with "none".
+   - If the moment is a climax but you are confused about choosing an effect, fill "random".
+   - DO NOT SPAM! Use video effects (especially memes) only on moments that are truly funny or surprising.
+6. NON-VERBAL EVENTS:
+   If there is a screaming moment (Scream) or other important audio events but no words are spoken in `words_data` at that second, you CAN put a video effect into the `"standalone_video_effects"` array.
+   Fill `"time"` (start second) and `"video_effect_override"` with the appropriate effect name.
 
-KATEGORI EMOSI VALID:
+VALID EMOTION CATEGORIES:
 {emotion_str}
 
-DAFTAR EFEK VIDEO TERSEDIA:
+AVAILABLE VIDEO EFFECTS LIST:
 {effects_str}
 
-Teks Subtitle Keseluruhan (sebagai konteks):
+Overall Subtitle Text (as context):
 {clip_text}
 
-Input words_data (BAGIAN {idx + 1}/{len(words_chunks)}):
-{json.dumps(chunk) if chunk else "Tidak ada."}
+Input words_data (PART {idx + 1}/{len(words_chunks)}):
+{json.dumps(chunk) if chunk else "None."}
 
-Format Output JSON:
+JSON Output Format:
 ```json
 {{
     "title": "...",
     "tags": "#...",
     "highlight": "...",
     "enriched_transcript": [
-        {{"word": "kata", "start": 0.0, "end": 0.5, "emotion": "surprise", "color": "#FF0000", "voice_emotion": "angry", "score": 0.8, "video_effect_override": "vineboom"}}
+        {{"word": "word", "start": 0.0, "end": 0.5, "emotion": "surprise", "color": "#FF0000", "voice_emotion": "angry", "score": 0.8, "video_effect_override": "vineboom"}}
     ],
     "standalone_video_effects": [
         {{"time": 48.5, "video_effect_override": "tyler1_scream"}}

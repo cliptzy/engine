@@ -92,5 +92,6 @@ exclude = [
     "build",
     "dist",
     "clips",
-    "temp"
+    "temp",
+    "bin"
 ]
