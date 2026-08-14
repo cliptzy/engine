@@ -47,6 +47,10 @@ class Router:
                 from gui.views.debugger_view import DebuggerView
 
                 self._view_cache[route] = DebuggerView(self.page)
+            elif route == "about":
+                from gui.views.about_view import AboutView
+
+                self._view_cache[route] = AboutView(self.page)
             elif route == "logs":
                 self._view_cache[route] = ft.Text(
                     "Logs View (To Be Implemented)", size=24

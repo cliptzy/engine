@@ -190,6 +190,12 @@ Sistem efek suara (SFX), efek visual (VFX), dan overlay yang lama telah **dihapu
 4. **Penggunaan Border dan Margin (PENTING)**:
    - Dilarang menggunakan metode fungsi usang seperti `ft.border.all()` (huruf kecil) atau `ft.margin.symmetric()`.
    - Gunakan selalu class/metode dengan **huruf kapital** dan konstruktor yang tepat: **`ft.Border.all(...)`** dan **`ft.Margin(...)`**.
+5. **Penghapusan Variabel Warna Usang (Error `__getattr__`)**:
+   - Beberapa properti warna (seperti `ft.Colors.SURFACE_VARIANT`) telah dihapus/direstrukturisasi pada Enum `ft.Colors` di versi Flet terbaru.
+   - Jika terjadi `AttributeError: 'super' object has no attribute '__getattr__'` saat menggunakan warna tertentu, segera ganti dengan palet yang lebih aman/didukung (contoh: `ft.Colors.BLUE_GREY_900` atau `ft.Colors.SURFACE`).
+6. **Konsistensi Gaya Container (Styling)**:
+   - Komponen `ft.Container` di dalam UI diutamakan menggunakan garis tepi (_border_) alih-alih warna latar belakang (`bgcolor`) untuk menjaga konsistensi desain yang bersih (clean design).
+   - Gunakan atribut: `border_radius=8` dan `border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT)`. Jangan menetapkan `bgcolor` kecuali diperlukan secara khusus untuk menyorot (_highlight_) bagian tertentu.
 ---
 
 _Peraturan dalam AGENTS.md ini mengikat untuk semua aktivitas pengembangan proyek Cliptzy. Pelanggaran terhadap Larangan 1.4 (`sys.executable`) dianggap **bug kritis** dan mengharuskan perbaikan segera._

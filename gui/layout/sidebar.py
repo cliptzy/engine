@@ -32,6 +32,11 @@ class Sidebar(ft.NavigationRail):
                 selected_icon=ft.Icons.BUG_REPORT,  # type: ignore
                 label="Debugger",
             ),
+            ft.NavigationRailDestination(
+                icon=ft.Icons.INFO_OUTLINE,  # type: ignore
+                selected_icon=ft.Icons.INFO,  # type: ignore
+                label="About",
+            ),
         ]
 
         self.on_change = lambda e: on_navigate(e.control.selected_index)  # type: ignore
