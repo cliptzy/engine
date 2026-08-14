@@ -278,7 +278,7 @@ def main(page: ft.Page) -> None:
     # Fallback to auto-generated _build_env if env vars not set (e.g., in standalone build)
     if not supabase_url or not supabase_key:
         try:
-            from core import _build_env
+            from core import _build_env  # type: ignore
             from core.security import deobfuscate
 
             if hasattr(_build_env, "SUPABASE_URL_OBFUSCATED"):

@@ -49,6 +49,40 @@ Video Transcript:
 
 
 class AIHighlightDetector:
+    def _is_local_provider(self, ai_config: Dict[str, Any]) -> bool:
+        """
+        Menentukan apakah provider AI berjenis Local (misal: Ollama, local OpenAI-compatible endpoint)
+        atau Cloud External (misal: Google Gemini, official OpenAI, Groq, OpenRouter).
+        """
+        is_local = False
+        provider = (
+            ai_config.get("provider") or ai_config.get("ai_provider") or "ollama"
+        ).lower()
+        if provider == "ollama":
+            is_local = True
+        if provider == "openai":
+            base_url = (ai_config.get("openai_base_url") or "").lower().strip()
+            if base_url:
+                local_indicators = [
+                    "localhost",
+                    "127.0.0.1",
+                    "0.0.0.0",
+                    "192.168.",
+                    "10.",
+                    "172.16.",
+                    "lmstudio",
+                    "vllm",
+                    "local",
+                ]
+                if any(ind in base_url for ind in local_indicators):
+                    is_local = True
+
+        if is_local:
+            log.info(f"[AI] Provider {provider} terdeteksi sebagai AI LOKAL. ")
+        else:
+            log.info(f"[AI] Provider {provider} terdeteksi sebagai AI CLOUD/EXTERNAL. ")
+        return is_local
+
     def detect_highlights(
         self,
         transcript_segments: List[Dict[str, Any]],
@@ -72,13 +106,27 @@ class AIHighlightDetector:
             if text:
                 formatted_lines.append(f"[{start_s:.1f}s - {end_s:.1f}s]: {text}")
 
-        # Memecah transkrip jika terlalu panjang (maksimal ~25000 karakter per bagian)
+        provider_name = (
+            ai_config.get("provider") or ai_config.get("ai_provider") or "ollama"
+        ).lower()
+        is_local = self._is_local_provider(ai_config)
+
+        # Batas ukuran chunk (kondisional):
+        # - AI Lokal (Ollama / local LLM 3B-9B): ~12.000 karakter (~2.500-3.000 token transkrip)
+        #   Alasan: Model lokal 3-9B (Ornith-9B, Qwen3.5 7B, Llama 3 8B) memiliki batasan performa & konteks.
+        #   Konteks ~3.000 token per chunk menjaga perhatian model tetap tajam, mecegah hallucination,
+        #   serta memastikan output JSON selalu valid tanpa kehabisan memori VRAM/RAM.
+        # - AI Cloud (Gemini, OpenAI, Groq, dll.): ~250.000 karakter (1 single chunk untuk transkrip normal)
+        #   Alasan: Cloud LLM memiliki window konteks sangat besar (128k - 1M+ token).
+        #   Tanpa pemecahan chunk, kita menghemat tagihan API token dari pengulangan prompt template & header overhead.
+        max_chunk_chars = 12000 if is_local else 250000
+
         chunks = []
         current_chunk = []
         current_len = 0
         for line in formatted_lines:
             line_len = len(line) + 1  # +1 untuk newline
-            if current_len + line_len > 25000 and current_chunk:
+            if current_len + line_len > max_chunk_chars and current_chunk:
                 chunks.append("\n".join(current_chunk))
                 current_chunk = [line]
                 current_len = line_len
@@ -124,12 +172,18 @@ class AIHighlightDetector:
                     f"[AI] Mengirim transkrip ke AI Provider: {provider_name.upper()}..."
                 )
 
-            log.info(f"=== PROMPT KE AI ({provider_name.upper()}) ===\n{prompt}\n==========================================")
+            log.info(
+                f"=== PROMPT KE AI ({provider_name.upper()}) ===\n{prompt}\n=========================================="
+            )
             try:
                 raw_response = provider.generate(prompt, ai_config, event_hook)
-                log.info(f"=== RESPONSE DARI AI ({provider_name.upper()}) ===\n{raw_response}\n============================================")
+                log.info(
+                    f"=== RESPONSE DARI AI ({provider_name.upper()}) ===\n{raw_response}\n============================================"
+                )
             except Exception as ex:
-                log.error(f"=== ERROR DARI AI ({provider_name.upper()}) ===\n{ex}\n============================================")
+                log.error(
+                    f"=== ERROR DARI AI ({provider_name.upper()}) ===\n{ex}\n============================================"
+                )
                 raise ex
 
             highlights = self._parse_json_highlights(raw_response)
@@ -229,9 +283,7 @@ class AIHighlightDetector:
             clip_text = clip_text[:10000] + "..."
 
         context_str = (
-            f"- Additional Context from User: {user_context}\n"
-            if user_context
-            else ""
+            f"- Additional Context from User: {user_context}\n" if user_context else ""
         )
         from core.constant import EMOTION_DESCRIPTIONS, VALID_EMOTIONS
 
@@ -273,7 +325,10 @@ class AIHighlightDetector:
         except Exception:
             effects_str = "- (Video effect data not available)"
 
-        chunk_size = 150
+        is_local = self._is_local_provider(ai_config)
+        # Untuk AI Cloud, gunakan chunk_size 1000 kata agar tidak memecah kata klip pendek secara berlebihan
+        # Untuk AI Lokal, 150 kata menjaga reliabilitas JSON output pada model 3B-9B
+        chunk_size = 150 if is_local else 1000
         if not words_data:
             words_chunks = [None]
         else:
@@ -369,9 +424,13 @@ JSON Output Format:
                 )
 
             try:
-                log.info(f"=== PROMPT KE AI ({provider_name.upper()}) ===\n{prompt}\n==========================================")
+                log.info(
+                    f"=== PROMPT KE AI ({provider_name.upper()}) ===\n{prompt}\n=========================================="
+                )
                 raw_response = provider.generate(prompt, ai_config, event_hook)
-                log.info(f"=== RESPONSE DARI AI ({provider_name.upper()}) ===\n{raw_response}\n============================================")
+                log.info(
+                    f"=== RESPONSE DARI AI ({provider_name.upper()}) ===\n{raw_response}\n============================================"
+                )
                 match_obj = re.search(r'\{\s*".*"\s*:.*\s*\}', raw_response, re.DOTALL)
                 if match_obj:
                     metadata = json.loads(match_obj.group(0))
