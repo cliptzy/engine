@@ -73,7 +73,7 @@ def is_ffmpeg_libass_supported() -> bool:
         import re
 
         res = subprocess.run(
-            ["ffmpeg", "-filters"], capture_output=True, text=True, timeout=3
+            ["ffmpeg", "-filters"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3
         )
         return bool(re.search(r"\bsubtitles\b", res.stdout))
     except Exception:

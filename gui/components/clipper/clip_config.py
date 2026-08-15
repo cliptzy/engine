@@ -427,6 +427,8 @@ class ClipConfig(ft.Container):
                         ],
                         capture_output=True,
                         text=True,
+                        encoding="utf-8",
+                        errors="replace",
                         timeout=2,
                         creationflags=subprocess.CREATE_NO_WINDOW
                         if os.name == "nt"

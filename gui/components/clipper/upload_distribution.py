@@ -110,9 +110,6 @@ class UploadDistribution(ft.Container):
         self.upload_interval_input = ft.TextField(
             label="Interval (Jam)", value=str(config.upload_interval), width=100
         )
-        self.max_effects_input = ft.TextField(
-            label="Max Efek/Klip", value=str(config.max_effects_per_clip), width=120
-        )
 
         import datetime
 
@@ -253,7 +250,6 @@ class UploadDistribution(ft.Container):
                         self.platform_tt,
                         self.platform_ig,
                         self.upload_interval_input,
-                        self.max_effects_input,
                     ]
                 ),
                 ft.Row(
@@ -784,11 +780,6 @@ class UploadDistribution(ft.Container):
         except ValueError:
             interval_hours = 0.0
 
-        try:
-            config.max_effects_per_clip = int(str(self.max_effects_input.value))
-        except ValueError:
-            config.max_effects_per_clip = 3
-
         # Update config
         config.youtube.auto_upload = bool(self.platform_yt.value)
         config.tiktok.auto_upload = bool(self.platform_tt.value)
@@ -1038,10 +1029,6 @@ class UploadDistribution(ft.Container):
 
         payload = {"video_id": project_name, "segments": segments, "subtitle": True}
 
-        try:
-            config.max_effects_per_clip = int(str(self.max_effects_input.value))
-        except ValueError:
-            config.max_effects_per_clip = 3
         config.save_to_file()
 
         from core.controller import controller

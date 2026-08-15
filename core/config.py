@@ -107,7 +107,6 @@ class AppConfig:
     debug_mode: bool = False
 
     max_workers: int = 2
-    max_effects_per_clip: int = 3
 
     tts_language: str = "default"
     tts_voice: str = "female"
@@ -175,7 +174,6 @@ class AppConfig:
             "ui_locked": self.ui_locked,
             "default_hashtags": self.default_hashtags,
             "max_workers": self.max_workers,
-            "max_effects_per_clip": self.max_effects_per_clip,
             "upload_youtube": self.youtube.upload,
             "upload_tiktok": self.tiktok.upload,
             "upload_instagram": self.instagram.upload,
@@ -284,8 +282,6 @@ class AppConfig:
             self.ui_locked = bool(data["ui_locked"])
         if "max_workers" in data:
             self.max_workers = int(data["max_workers"])
-        if "max_effects_per_clip" in data and data["max_effects_per_clip"] is not None:
-            self.max_effects_per_clip = int(data["max_effects_per_clip"])
         if "default_hashtags" in data:
             self.default_hashtags = data["default_hashtags"]
 

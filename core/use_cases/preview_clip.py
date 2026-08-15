@@ -42,7 +42,7 @@ class PreviewClipUseCase:
                 url_clean,
             ]
             try:
-                res = subprocess.run(cmd, capture_output=True, text=True)
+                res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
                 dur = int(float(res.stdout.strip())) if res.stdout.strip() else 0
             except Exception:
                 dur = 0

@@ -90,6 +90,8 @@ def generate_intro(
                     ],
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                 )
                 duration_sec = float(res.stdout.strip())
             except:
@@ -180,6 +182,8 @@ def _has_audio_stream(filepath: str) -> bool:
             ],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         return "audio" in res.stdout.lower()
     except Exception:

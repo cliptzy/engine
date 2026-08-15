@@ -70,7 +70,7 @@ def run_command_with_logging(
     log.info(f"Running command: {' '.join(cmd)}")
 
     process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", bufsize=1
     )
 
     if process.stdout:

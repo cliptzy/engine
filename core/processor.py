@@ -152,7 +152,7 @@ def process_single_clip(
                     "make_non_negative",
                     temp_file,
                 ]
-                res = subprocess.run(cmd_cut, capture_output=True, text=True)
+                res = subprocess.run(cmd_cut, capture_output=True, text=True, encoding="utf-8", errors="replace")
                 if res.returncode != 0:
                     log.warning(
                         f"Copy stream gagal, mencoba re-encode untuk memotong: {res.stderr}"
@@ -176,7 +176,7 @@ def process_single_clip(
                         temp_file,
                     ]
                     res_enc = subprocess.run(
-                        cmd_cut_enc, capture_output=True, text=True
+                        cmd_cut_enc, capture_output=True, text=True, encoding="utf-8", errors="replace"
                     )
                     if res_enc.returncode != 0:
                         log.error(f"Gagal memotong video lokal: {res_enc.stderr}")

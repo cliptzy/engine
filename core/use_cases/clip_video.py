@@ -328,7 +328,7 @@ class ClipVideoUseCase:
                 ]
                 import subprocess
 
-                res = subprocess.run(cmd, cwd=job_dir, capture_output=True, text=True)
+                res = subprocess.run(cmd, cwd=job_dir, capture_output=True, text=True, encoding="utf-8", errors="replace")
                 if res.returncode != 0:
                     raise RuntimeError(f"FFmpeg Error: {res.stderr}")
 

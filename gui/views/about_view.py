@@ -146,6 +146,8 @@ class AboutView(ft.Column):
                         cmd,
                         capture_output=True,
                         text=True,
+                        encoding="utf-8",
+                        errors="replace",
                         check=True,
                         startupinfo=startupinfo,
                     )

@@ -141,54 +141,47 @@ def burn_subtitle_and_highlight(
                 )
 
         if len(blocks) > 0:
-            last_effect_time = -999.0
-            filtered_blocks = []
+            filtered_blocks = [b for b in blocks if b[3] != "none"]
+            filtered_blocks_by_score = sorted(filtered_blocks, key=lambda x: x[4], reverse=True)
+            
+            temp_scheduled = []
 
-            for block in blocks:
-                s = block[1]
-                ve_override = block[3]
-                if ve_override == "none":
-                    continue
-                if s - last_effect_time < 5:
-                    continue
-                last_effect_time = s
-                filtered_blocks.append(block)
-
-            max_eff = getattr(config, "max_effects_per_clip", 3)
-            if len(filtered_blocks) > max_eff:
-                selected_blocks = sorted(
-                    filtered_blocks, key=lambda x: x[4], reverse=True
-                )[:max_eff]
-                selected_blocks.sort(key=lambda x: x[1])
-            else:
-                selected_blocks = filtered_blocks
-
-            for emo, s, e, ve_idx_str, _score in selected_blocks:
+            for emo, s, e, ve_idx_str, _score in filtered_blocks_by_score:
                 e = e + 0.3
                 effect = None
 
-                if ve_idx_str != "none":
-                    try:
-                        from core.video_effects import video_effect_manager
+                try:
+                    from core.video_effects import video_effect_manager
 
-                        if ve_idx_str != "random":
-                            effect = video_effect_manager.get_effect_by_name(ve_idx_str)
-                            if not effect:
-                                effect = video_effect_manager.get_effect(
-                                    emo, selected_effects
-                                )
-                        else:
+                    if ve_idx_str != "random":
+                        effect = video_effect_manager.get_effect_by_name(ve_idx_str)
+                        if not effect:
                             effect = video_effect_manager.get_effect(
                                 emo, selected_effects
                             )
-                    except Exception as ex:
-                        log.warning(f"Gagal memuat video effect untuk {emo}: {ex}")
+                    else:
+                        effect = video_effect_manager.get_effect(
+                            emo, selected_effects
+                        )
+                except Exception as ex:
+                    log.warning(f"Gagal memuat video effect untuk {emo}: {ex}")
 
                 if effect and effect.get("file"):
+                    eff_name = effect.get("name")
+                    
+                    overlap = False
+                    for sch in temp_scheduled:
+                        if abs(sch["start"] - s) < 5.0:
+                            if sch.get("name") == eff_name:
+                                overlap = True
+                                break
+                    if overlap:
+                        continue
+
                     eff_file = os.path.join("assets", "video_effects", effect["file"])
                     if os.path.exists(eff_file):
-                        selected_effects.append(effect.get("name"))
-                        scheduled_video_effects.append(
+                        selected_effects.append(eff_name)
+                        temp_scheduled.append(
                             {
                                 "file": eff_file,
                                 "type": effect.get("type", "greenscreen"),
@@ -200,12 +193,16 @@ def burn_subtitle_and_highlight(
                                     "audio_filter",
                                     "volume=0.8,afade=t=out:st=1.5:d=0.5",
                                 ),
+                                "name": eff_name,
                             }
                         )
                     else:
                         log.debug(
                             f"Video effect dilewati karena file tidak ditemukan: {eff_file}"
                         )
+
+            temp_scheduled.sort(key=lambda x: x["start"])
+            scheduled_video_effects.extend(temp_scheduled)
 
         # --- NON-VERBAL / STANDALONE EFFECTS ---
         standalone_effects = []
@@ -218,15 +215,7 @@ def burn_subtitle_and_highlight(
             ve_name = se.get("video_effect_override")
             s = float(se.get("time", 0.0))
             
-            # Prevent overlap with other scheduled effects
-            overlap = False
-            for scheduled in scheduled_video_effects:
-                if abs(scheduled["start"] - s) < 5.0:
-                    overlap = True
-                    break
-            if overlap:
-                continue
-
+            effect = None
             if ve_name and ve_name not in ["none", "random"]:
                 try:
                     from core.video_effects import video_effect_manager
@@ -241,28 +230,42 @@ def burn_subtitle_and_highlight(
                             if alt_effect:
                                 effect = alt_effect
 
-                    if effect and effect.get("file"):
-                        eff_file = os.path.join(
-                            "assets", "video_effects", effect["file"]
-                        )
-                        if os.path.exists(eff_file):
-                            selected_effects.append(effect.get("name"))
-                            scheduled_video_effects.append(
-                                {
-                                    "file": eff_file,
-                                    "type": effect.get("type", "greenscreen"),
-                                    "key_color": effect.get("key_color", "0x00FF00"),
-                                    "start": s,
-                                    "end": s + 3.0,  # default 3s untuk standalone
-                                    "position": effect.get("position", "center"),
-                                    "audio_filter": effect.get(
-                                        "audio_filter",
-                                        "volume=0.8,afade=t=out:st=1.5:d=0.5",
-                                    ),
-                                }
-                            )
                 except Exception as ex:
                     log.warning(f"Gagal memuat standalone video effect {ve_name}: {ex}")
+
+            if effect and effect.get("file"):
+                eff_name = effect.get("name")
+                
+                # Prevent overlap with other scheduled effects only if same name
+                overlap = False
+                for scheduled in scheduled_video_effects:
+                    if abs(scheduled["start"] - s) < 5.0:
+                        if scheduled.get("name") == eff_name:
+                            overlap = True
+                            break
+                if overlap:
+                    continue
+
+                eff_file = os.path.join(
+                    "assets", "video_effects", effect["file"]
+                )
+                if os.path.exists(eff_file):
+                    selected_effects.append(eff_name)
+                    scheduled_video_effects.append(
+                        {
+                            "file": eff_file,
+                            "type": effect.get("type", "greenscreen"),
+                            "key_color": effect.get("key_color", "0x00FF00"),
+                            "start": s,
+                            "end": s + 3.0,  # default 3s untuk standalone
+                            "position": effect.get("position", "center"),
+                            "audio_filter": effect.get(
+                                "audio_filter",
+                                "volume=0.8,afade=t=out:st=1.5:d=0.5",
+                            ),
+                            "name": eff_name,
+                        }
+                    )
 
         if should_burn_sub and os.path.exists(subtitle_file):
             subtitle_file_fwd = subtitle_file.replace("\\", "/")
