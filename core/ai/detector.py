@@ -360,7 +360,7 @@ class AIHighlightDetector:
 
             prompt = f"""
 You are a Social Media Manager specializing in viral vertical videos.
-Task: Create Title, Tags, Highlight (short funny pop-up text max 4 words), and `enriched_transcript`.
+Task: Create Title, Tags, Highlight (a punchy 3-SECOND HOOK text, max 5 words, that instantly grabs attention and makes viewers stop scrolling — e.g. provocative statement, shocking fact, or curiosity gap), and `enriched_transcript`.
 The response MUST be a valid JSON Object in markdown (```json ... ```).
 
 Language: {language}
@@ -368,7 +368,7 @@ Video Context: {channel_name} - {youtube_title} ({youtube_url})
 {context_str}{visual_str}{audio_str}{chunk_info}
 
 RULES:
-1. `highlight` must be very short (max 3-4 words).
+1. `highlight` must be a compelling 3-SECOND HOOK (max 5 words). It will be shown as an overlay in the first 3 seconds of the video. Write something that creates urgency, curiosity, or shock to stop viewers from scrolling (e.g. "DIA NANGIS DI LIVE", "WATCH TILL THE END", "INI BENERAN TERJADI?!").
 2. If `Input words_data` is provided, rewrite it into `enriched_transcript` by adding `emotion` and `color` fields (Hex: #FFFF00 for neutral, striking colors for strong emotions). If `Input words_data` is `None.`, you MUST return an empty array `[]` for `enriched_transcript`.
 3. Add a `score` field to `enriched_transcript` for each word, with a value between 0.0 to 1.0.
 4. HOLISTIC EMOTION SYNTHESIS (IMPORTANT FOR STREAMERS/GAMERS):

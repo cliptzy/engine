@@ -88,7 +88,9 @@ class ClipConfig(ft.Container):
         self.highlight_check = ft.Checkbox(label="Highlight Text")
         self.emotion_check = ft.Checkbox(label="Deteksi Emosi Wajah Visual")
         self.voice_analysis_check = ft.Checkbox(label="Deteksi Emosi Suara (SER)")
-        self.audio_analysis_check = ft.Checkbox(label="Deteksi Event Suara (Audio Analyzer)")
+        self.audio_analysis_check = ft.Checkbox(
+            label="Deteksi Event Suara (Audio Analyzer)"
+        )
         self.text_analysis_check = ft.Checkbox(label="Deteksi Emosi Teks (NLP)")
         self.add_meme_check = ft.Checkbox(label="Tambahkan Meme (Video Effects)")
         self.generate_intro_check = ft.Checkbox(
@@ -275,17 +277,35 @@ class ClipConfig(ft.Container):
                         cast(
                             list[ft.Control],
                             [
-                                self.highlight_check,
-                                self.emotion_check,
-                                self.voice_analysis_check,
-                                self.audio_analysis_check,
-                                self.text_analysis_check,
-                                self.add_meme_check,
-                                self.generate_intro_check,
+                                ft.Column(
+                                    cast(
+                                        list[ft.Control],
+                                        [
+                                            self.highlight_check,
+                                            self.emotion_check,
+                                            self.voice_analysis_check,
+                                            self.audio_analysis_check,
+                                        ],
+                                    ),
+                                    spacing=4,
+                                    expand=1,
+                                ),
+                                ft.Column(
+                                    cast(
+                                        list[ft.Control],
+                                        [
+                                            self.text_analysis_check,
+                                            self.add_meme_check,
+                                            self.generate_intro_check,
+                                        ],
+                                    ),
+                                    spacing=4,
+                                    expand=1,
+                                ),
                             ],
                         ),
                         alignment=ft.MainAxisAlignment.CENTER,
-                        wrap=True,
+                        vertical_alignment=ft.CrossAxisAlignment.START,
                     ),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,

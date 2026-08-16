@@ -37,7 +37,10 @@ def burn_subtitle_and_highlight(
 
                     highlight_val = metadata.get("highlight")
                     highlight_text = highlight_val.upper() if highlight_val else None
-                    end_ass = format_ass_time(end - start)
+
+                    # Highlight hanya muncul 3 detik pertama sebagai hook
+                    highlight_duration = min(3.0, end - start)
+                    end_ass = format_ass_time(highlight_duration)
 
                     if not use_subtitle:
                         with open(subtitle_file, "r", encoding="utf-8") as f:
@@ -47,7 +50,35 @@ def burn_subtitle_and_highlight(
                                 if not line.startswith("Dialogue:"):
                                     f.write(line)
 
-                    highlight_event = f"Dialogue: 1,0:00:00.00,{end_ass},Default,,0,0,100,,{{\\an8\\fs90\\c&H00FFFF&\\b1\\3c&H000000&\\3a&H80&\\bord5}}{highlight_text}\n"
+                    # Style: Teks hitam di atas background putih, posisi kiri-tengah agak ke atas (\an4)
+                    # \an4 = middle-left alignment
+                    # \fs = font size dinamis berdasarkan panjang teks
+                    # \bord0 = tanpa border teks
+                    # \shad0 = tanpa shadow
+                    # \3c&HFFFFFF& + \4c&HFFFFFF& = warna border & background putih
+                    # \4a&H00& = background box fully opaque
+                    # \p0\fsp0 = reset path drawing & spacing
+                    # MarginL=30 = jarak dari tepi kiri
+                    # MarginV offset via \an4 = kiri-tengah, tapi dinaikkan sedikit agar tidak overlap subtitle bawah
+                    text_len = len(highlight_text) if highlight_text else 0
+                    if text_len > 20:
+                        font_size = 38
+                        # Pecah menjadi 2 baris menggunakan \N (ASS line break)
+                        words = highlight_text.split() if highlight_text else []
+                        mid = len(words) // 2
+                        line1 = " ".join(words[:mid]) if mid > 0 else ""
+                        line2 = " ".join(words[mid:])
+                        display_text = f"{line1}\\N{line2}" if line1 else line2
+                    else:
+                        font_size = 44
+                        display_text = highlight_text or ""
+
+                    highlight_event = (
+                        f"Dialogue: 1,0:00:00.00,{end_ass},Default,,0,0,0,,"
+                        f"{{\\an4\\pos(30,384)\\fs{font_size}\\c&H000000&\\b1"
+                        f"\\bord8\\3c&HFFFFFF&\\shad0"
+                        f"\\4c&HFFFFFF&\\4a&H00&}}{display_text}\n"
+                    )
                     with open(subtitle_file, "a", encoding="utf-8") as f:
                         f.write(highlight_event)
                 except Exception as e:
