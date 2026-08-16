@@ -42,42 +42,40 @@ def burn_subtitle_and_highlight(
                     highlight_duration = min(3.0, end - start)
                     end_ass = format_ass_time(highlight_duration)
 
-                    if not use_subtitle:
-                        with open(subtitle_file, "r", encoding="utf-8") as f:
-                            lines = f.readlines()
-                        with open(subtitle_file, "w", encoding="utf-8") as f:
-                            for line in lines:
-                                if not line.startswith("Dialogue:"):
-                                    f.write(line)
+                    with open(subtitle_file, "r", encoding="utf-8") as f:
+                        ass_lines = f.readlines()
 
-                    # Style: Teks hitam di atas background putih, posisi kiri-tengah agak ke atas (\an4)
-                    # \an4 = middle-left alignment
-                    # \fs = font size dinamis berdasarkan panjang teks
-                    # \bord0 = tanpa border teks
-                    # \shad0 = tanpa shadow
-                    # \3c&HFFFFFF& + \4c&HFFFFFF& = warna border & background putih
-                    # \4a&H00& = background box fully opaque
-                    # \p0\fsp0 = reset path drawing & spacing
-                    # MarginL=30 = jarak dari tepi kiri
-                    # MarginV offset via \an4 = kiri-tengah, tapi dinaikkan sedikit agar tidak overlap subtitle bawah
-                    text_len = len(highlight_text) if highlight_text else 0
-                    if text_len > 20:
-                        font_size = 38
-                        # Pecah menjadi 2 baris menggunakan \N (ASS line break)
-                        words = highlight_text.split() if highlight_text else []
-                        mid = len(words) // 2
-                        line1 = " ".join(words[:mid]) if mid > 0 else ""
-                        line2 = " ".join(words[mid:])
-                        display_text = f"{line1}\\N{line2}" if line1 else line2
-                    else:
-                        font_size = 44
-                        display_text = highlight_text or ""
+                    has_highlight_style = any("Style: HighlightStyle" in line for line in ass_lines)
+                    new_ass_lines = []
+                    in_styles_section = False
 
+                    for line in ass_lines:
+                        if not use_subtitle and line.startswith("Dialogue:"):
+                            continue
+                        
+                        new_ass_lines.append(line)
+
+                        if line.strip() in ["[V4+ Styles]", "[V4 Styles]"]:
+                            in_styles_section = True
+                        elif line.startswith("[") and line.strip() not in ["[V4+ Styles]", "[V4 Styles]"]:
+                            in_styles_section = False
+
+                        if in_styles_section and line.startswith("Format:") and not has_highlight_style:
+                            new_ass_lines.append("Style: HighlightStyle,Arial,65,&H00000000,&H00000000,&H00FFFFFF,&H00FFFFFF,-1,0,0,0,100,100,0,0,3,15,0,4,10,10,10,1\n")
+
+                    with open(subtitle_file, "w", encoding="utf-8") as f:
+                        f.writelines(new_ass_lines)
+
+                    words = highlight_text.split() if highlight_text else []
+                    lines_split = []
+                    for i in range(0, len(words), 2):
+                        lines_split.append(" ".join(words[i:i+2]))
+                    display_text = "\\N".join(lines_split)
+
+                    font_size = 65
                     highlight_event = (
-                        f"Dialogue: 1,0:00:00.00,{end_ass},Default,,0,0,0,,"
-                        f"{{\\an4\\pos(30,384)\\fs{font_size}\\c&H000000&\\b1"
-                        f"\\bord8\\3c&HFFFFFF&\\shad0"
-                        f"\\4c&HFFFFFF&\\4a&H00&}}{display_text}\n"
+                        f"Dialogue: 1,0:00:00.00,{end_ass},HighlightStyle,,0,0,0,,"
+                        f"{{\\an4\\pos(30,400)\\fs{font_size}\\c&H000000&\\b1\\bord15}}{display_text}\n"
                     )
                     with open(subtitle_file, "a", encoding="utf-8") as f:
                         f.write(highlight_event)

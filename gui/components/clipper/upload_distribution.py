@@ -864,7 +864,8 @@ class UploadDistribution(ft.Container):
                 dt: datetime.datetime,
             ) -> tuple[datetime.datetime, bool]:
                 # Jam sepi: 00:00 s/d 05:59 (WIB / UTC+7)
-                if dt.hour < 6:
+                # Jam sepi: 22:00 s/d 23:59 (WIB / UTC+7)
+                if dt.hour < 6 or dt.hour >= 22:
                     adjusted_dt = dt.replace(hour=6, minute=0, second=0, microsecond=0)
                     return adjusted_dt, True
                 return dt, False
