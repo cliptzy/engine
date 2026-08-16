@@ -77,7 +77,7 @@ class Preview(ft.Container):
             options=[
                 ft.dropdown.Option(key="ai", text="AI Highlights (Cerdas)"),
                 ft.dropdown.Option(
-                    key="sequential", text="Bagi Per Part (Maks 3 Menit)"
+                    key="sequential", text="Bagi Per Part (Maks 2.5 Menit)"
                 ),
             ],
             value="ai",

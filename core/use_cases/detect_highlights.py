@@ -47,37 +47,42 @@ class DetectHighlightsUseCase:
 
         if clip_method == "sequential":
             if self.reporter:
-                self.reporter.on_log("[Sequential] Metode Bagi Per Part dipilih. Melewati transkripsi AI...")
-            
+                self.reporter.on_log(
+                    "[Sequential] Metode Bagi Per Part dipilih. Melewati transkripsi AI..."
+                )
+
             if is_local:
                 from core.use_cases.preview_clip import PreviewClipUseCase
+
                 total_duration = PreviewClipUseCase().execute(url).get("duration", 0)
             else:
                 total_duration = get_video_duration(video_id)
-                
+
             if total_duration <= 0:
                 total_duration = 1800.0  # Fallback 30 menit jika gagal baca durasi
-                
+
             highlights = []
             part = 1
-            max_duration = 180.0  # 3 menit per part
+            max_duration = 150.0  # 2.5 menit per part
             current_start = 0.0
-            
+
             while current_start < total_duration:
                 current_end = min(current_start + max_duration, total_duration)
                 if current_end - current_start < 10 and part > 1:
                     break  # Abaikan sisa durasi kurang dari 10 detik di akhir
-                
-                highlights.append({
-                    "start": current_start,
-                    "duration": current_end - current_start,
-                    "title": f"Part {part}",
-                    "reason": f"Potongan klip berurutan part {part} (durasi: {int(current_end - current_start)}s)",
-                    "score": 1.0
-                })
+
+                highlights.append(
+                    {
+                        "start": current_start,
+                        "duration": current_end - current_start,
+                        "title": f"Part {part}",
+                        "reason": f"Potongan klip berurutan part {part} (durasi: {int(current_end - current_start)}s)",
+                        "score": 1.0,
+                    }
+                )
                 current_start = current_end
                 part += 1
-                
+
             result = {
                 "video_id": video_id,
                 "duration": total_duration,
