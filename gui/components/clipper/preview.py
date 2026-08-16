@@ -107,8 +107,21 @@ class Preview(ft.Container):
         )
 
         # AI Page
+        self.clip_method_dropdown = ft.Dropdown(
+            label="Metode Deteksi Klip",
+            options=[
+                ft.dropdown.Option(key="ai", text="AI Highlights (Cerdas)"),
+                ft.dropdown.Option(key="sequential", text="Bagi Per Part (Maks 3 Menit)"),
+            ],
+            value="ai",
+            width=250,
+            text_size=13,
+            height=40,
+            content_padding=10,
+        )
+
         self.btn_run_ai_scan = ft.Button(
-            content=ft.Text("🤖 Scan Highlights dengan AI"),  # type: ignore
+            content=ft.Text("🤖 Jalankan Proses Deteksi"),  # type: ignore
             on_click=self.on_run_ai_scan,
             style=ft.ButtonStyle(bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE),
             height=40,
@@ -127,12 +140,12 @@ class Preview(ft.Container):
         )
 
         self.ai_segment_count_label = ft.Text(
-            "Segmen AI Highlight (Transkripsi Whisper + LLM):", color=ft.Colors.WHITE_54
+            "Segmen Klip (Berdasarkan Hasil Deteksi):", color=ft.Colors.WHITE_54
         )
         self.ai_segment_list = ft.ListView(height=140, spacing=4)
         self.ai_view = ft.Column(
             [
-                ft.Row([self.btn_run_ai_scan, self.force_rescan_checkbox]),
+                ft.Row([self.clip_method_dropdown, self.btn_run_ai_scan, self.force_rescan_checkbox]),
                 ft.Row([self.custom_prompt_input]),
                 self.ai_segment_count_label,
                 self.ai_segment_list,
@@ -193,6 +206,7 @@ class Preview(ft.Container):
 
     def on_run_ai_scan(self, e: Any) -> None:
         ai_config = {
+            "clip_method": self.clip_method_dropdown.value,
             "provider": getattr(config.ai, "provider", "ollama"),
             "ollama_host": getattr(config.ai, "ollama_host", "http://localhost:11434"),
             "ollama_model": getattr(config.ai, "ollama_model", "llama3"),

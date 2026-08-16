@@ -196,10 +196,13 @@ def stack_and_concat(
     intro_to_use: Optional[str],
     index: int,
     event_hook: Optional[Callable] = None,
+    is_sequential: bool = False,
+    is_last_in_queue: bool = False,
 ) -> None:
     has_intro = intro_to_use and os.path.isfile(intro_to_use)
     has_outro = config.outro_video and os.path.isfile(config.outro_video)
     has_watermark = config.watermark_image and os.path.isfile(config.watermark_image)
+    has_seq_outro = is_sequential and not is_last_in_queue
 
     if has_intro and not _has_audio_stream(str(intro_to_use)):
         log.warning("Intro video lacks audio stream. Ignoring intro.")
@@ -209,8 +212,8 @@ def stack_and_concat(
         log.warning("Outro video lacks audio stream. Ignoring outro.")
         has_outro = False
 
-    if has_intro or has_outro or has_watermark:
-        if has_intro or has_outro:
+    if has_intro or has_outro or has_watermark or has_seq_outro:
+        if has_intro or has_outro or has_seq_outro:
             log.info(f"[concat] Adding intro/outro/watermark to clip {index}...")
         else:
             log.info(f"[concat] Adding watermark to clip {index}...")
@@ -228,16 +231,49 @@ def stack_and_concat(
         out_w, out_h = config.out_width or 720, config.out_height or 1280
         scale_filter = f"scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2,setsar=1"
 
-        def add_input(file_path: str):
+        def add_input(file_path: str, is_main: bool = False):
             nonlocal input_idx, filter_complex
             inputs.extend(["-i", file_path])
-            filter_complex += f"[{input_idx}:v:0]{scale_filter}[v{input_idx}]; [{input_idx}:a:0]aresample=async=1[a{input_idx}]; "
+            
+            if is_main and has_seq_outro:
+                try:
+                    res = subprocess.run(
+                        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", file_path],
+                        capture_output=True, text=True
+                    )
+                    dur = float(res.stdout.strip())
+                    start_eff = max(0, dur - 5.0)
+                    
+                    from core.utils import get_app_root
+                    font_path = os.path.join(get_app_root(), "assets", "fonts", "Montserrat-Bold.ttf").replace("\\", "/")
+                    if not os.path.exists(font_path):
+                        font_clause = ""
+                    else:
+                        font_clause = f"fontfile='{font_path}':"
+                        
+                    alpha_expr = f"if(lt(t,{start_eff}),0,min(1,(t-{start_eff})/2.0))"
+                    
+                    vid_filter = (
+                        f"[{input_idx}:v:0]{scale_filter}[v_main{input_idx}]; "
+                        f"[v_main{input_idx}]split=2[orig{input_idx}][to_blur{input_idx}]; "
+                        f"[to_blur{input_idx}]boxblur=20:20,format=rgba,fade=t=in:st={start_eff}:d=2:alpha=1[blurred{input_idx}]; "
+                        f"[orig{input_idx}][blurred{input_idx}]overlay=0:0:enable='gte(t,{start_eff})',"
+                        f"drawtext={font_clause}text='Lanjut Part':fontcolor=white:fontsize=h/28:x=(w-text_w)/2:y=(h-text_h)/2-h/40:alpha='{alpha_expr}',"
+                        f"drawtext={font_clause}text='Berikutnya':fontcolor=white:fontsize=h/28:x=(w-text_w)/2:y=(h-text_h)/2+h/40:alpha='{alpha_expr}'"
+                    )
+                except Exception as e:
+                    log.warning(f"Failed to add sequential outro effect: {e}")
+                    vid_filter = f"[{input_idx}:v:0]{scale_filter}"
+            else:
+                vid_filter = f"[{input_idx}:v:0]{scale_filter}"
+
+            filter_complex += f"{vid_filter}[v{input_idx}]; [{input_idx}:a:0]aresample=async=1[a{input_idx}]; "
             input_idx += 1
 
         if has_intro and intro_to_use:
             add_input(intro_to_use)
 
-        add_input(current_clip)
+        add_input(current_clip, is_main=True)
 
         if has_outro and config.outro_video:
             add_input(config.outro_video)

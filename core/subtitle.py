@@ -103,32 +103,46 @@ def generate_subtitle(
 
     audio_wav = video_file + ".wav"
 
+    # WAV extraction hanya diperlukan jika voice analysis (Librosa) aktif.
+    # Faster-Whisper bisa membaca video/audio langsung via PyAV internal.
+    needs_wav_extraction = (
+        getattr(config.ai, "use_voice_analysis", True)
+        and config.subtitle.style != "plain"
+    )
+
     def load_and_transcribe():
-        log.info("[ffmpeg] Mengekstrak audio PCM (.wav)...")
+        if needs_wav_extraction:
+            log.info("[ffmpeg] Mengekstrak audio PCM (.wav) untuk Whisper + Voice Analysis...")
 
-        cmd_extract = [
-            "ffmpeg",
-            "-y",
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-i",
-            video_file,
-            "-vn",
-            "-acodec",
-            "pcm_s16le",
-            "-ar",
-            "16000",
-            "-ac",
-            "1",
-            audio_wav,
-        ]
+            cmd_extract = [
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                video_file,
+                "-vn",
+                "-acodec",
+                "pcm_s16le",
+                "-ar",
+                "16000",
+                "-ac",
+                "1",
+                audio_wav,
+            ]
 
-        try:
-            subprocess.run(cmd_extract, check=True)
-            current_audio = audio_wav
-        except Exception as e:
-            log.warning(f"Gagal mengekstrak .wav, fallback ke original video: {e}")
+            try:
+                subprocess.run(cmd_extract, check=True)
+                current_audio = audio_wav
+            except Exception as e:
+                log.warning(f"Gagal mengekstrak .wav, fallback ke original video: {e}")
+                current_audio = video_file
+        else:
+            log.info(
+                "Melewati ekstraksi WAV (voice analysis tidak aktif). "
+                "Whisper membaca video langsung."
+            )
             current_audio = video_file
 
         model = get_whisper_model(whisper_model, event_hook)

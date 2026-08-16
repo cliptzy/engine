@@ -141,6 +141,7 @@ class ClipperView(ft.Column):
             {
                 "url": url,
                 "mode": mode,
+                "clip_method": self.preview.clip_method_dropdown.value,
                 "crop": self.clip_config.crop_combo.value,
                 "ratio": self.clip_config.ratio_combo.value,
                 "subtitle": True,  # Subtitle is always enabled (mandatory)

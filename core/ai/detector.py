@@ -369,7 +369,7 @@ Video Context: {channel_name} - {youtube_title} ({youtube_url})
 
 RULES:
 1. `highlight` must be very short (max 3-4 words).
-2. If `words_data` exists, rewrite it into `enriched_transcript` by adding `emotion` and `color` fields (Hex: #FFFF00 for neutral, striking colors for strong emotions).
+2. If `Input words_data` is provided, rewrite it into `enriched_transcript` by adding `emotion` and `color` fields (Hex: #FFFF00 for neutral, striking colors for strong emotions). If `Input words_data` is `None.`, you MUST return an empty array `[]` for `enriched_transcript`.
 3. Add a `score` field to `enriched_transcript` for each word, with a value between 0.0 to 1.0.
 4. HOLISTIC EMOTION SYNTHESIS (IMPORTANT FOR STREAMERS/GAMERS):
    You have 3 sources of raw AI predictions: Face (Visual Emotion), Voice (voice_emotion/audio_event), and Text (text_emotion).

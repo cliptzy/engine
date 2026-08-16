@@ -444,6 +444,8 @@ def build_crop_command(
         else:
             import os
             import random
+            import subprocess
+            from core.logger import log
             from core.utils import get_app_root
             
             broll_dir = os.path.join(get_app_root(), "assets", "broll")
@@ -454,7 +456,6 @@ def build_crop_command(
                     broll_file = random.choice(brolls)
             
             if not broll_file:
-                from core.logger import log
                 log.warning("[cropper] B-Roll file not found in assets/broll/. Falling back to split_face.")
                 return build_crop_command(
                     temp_file,
@@ -477,9 +478,23 @@ def build_crop_command(
             
             scaled = build_cover_scale_vf(out_w, out_h)
             
-            # Start b-roll at a random time between 0 to 600 seconds (10 minutes)
-            # Assuming the b-roll is a long gameplay/satisfying video
-            random_start = random.randint(0, 600)
+            # Baca durasi b-roll secara dinamis via ffprobe agar tidak hardcode
+            # Gunakan binary ffprobe eksternal (BUKAN sys.executable — lihat AGENTS.md §1.4)
+            random_start = 0
+            try:
+                probe_result = subprocess.run(
+                    ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                     "-of", "default=noprint_wrappers=1:nokey=1", broll_file],
+                    capture_output=True, text=True
+                )
+                broll_duration = float(probe_result.stdout.strip())
+                # Pastikan tidak mulai di detik terakhir agar transisi loop mulus
+                max_start = max(0, int(broll_duration) - 1)
+                if max_start > 0:
+                    random_start = random.randint(0, max_start)
+                log.info(f"[cropper] B-Roll duration: {broll_duration:.1f}s, random start: {random_start}s")
+            except (ValueError, OSError) as e:
+                log.warning(f"[cropper] Failed to probe b-roll duration, starting at 0s: {e}")
 
             # Top: Full Original Video (scaled to fit, with blurred background padding)
             # Bottom: B-Roll (scaled and cropped to fit the bottom half)
@@ -493,7 +508,10 @@ def build_crop_command(
                 # B-roll dipotong (crop) agar memenuhi kotak bottom_h
                 f"[1:v]scale={out_w}:{bottom_h}:force_original_aspect_ratio=increase,crop={out_w}:{bottom_h}[bottom];"
                 # Tumpuk atas dan bawah
-                f"[top][bottom]vstack[out]"
+                f"[top][bottom]vstack[outv];"
+                # Tambahkan suara broll sebesar 0.2 dan campur dengan suara video utama
+                f"[1:a]volume=0.2[a_broll];"
+                f"[0:a][a_broll]amix=inputs=2:duration=first[outa]"
             )
 
             return (
@@ -512,9 +530,9 @@ def build_crop_command(
                     "-filter_complex",
                     vf,
                     "-map",
-                    "[out]",
+                    "[outv]",
                     "-map",
-                    "0:a?",
+                    "[outa]",
                 ]
                 + get_video_codec_args()
                 + ["-c:a", "aac", "-b:a", "128k", "-shortest", cropped_file]

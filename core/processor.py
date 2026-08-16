@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 from typing import Any, Callable, Dict, Optional, cast
@@ -23,6 +24,8 @@ def process_single_clip(
     source_url: Optional[str] = None,
     custom_prompt: str = "",
     phase1_only: bool = False,
+    is_sequential: bool = False,
+    is_last_in_queue: bool = False,
 ) -> bool:
     original_hook = event_hook
 
@@ -131,7 +134,13 @@ def process_single_clip(
     apply_fast_download_opts(ydl_opts_fallback)
 
     try:
-        if not os.path.exists(cropped_file):
+        # Inisialisasi variabel emosi — akan diisi dari analisis (cache miss)
+        # atau dibaca dari JSON cache (cache hit untuk Phase 2)
+        visual_emotions: list = []
+        audio_emotions: list = []
+        _emotions_from_cache = os.path.exists(cropped_file)
+
+        if not _emotions_from_cache:
             if source_url and os.path.isfile(source_url):
                 log.info(f"[ffmpeg] Memotong video lokal: {start}s - {end}s\n")
                 cmd_cut = [
@@ -281,8 +290,6 @@ def process_single_clip(
                     "Deteksi emosi visual dinonaktifkan di pengaturan. Melewati DeepFace."
                 )
 
-            import json
-
             emotion_file = os.path.join(config.job_dir, f"emotion_{index}.json")
             try:
                 with open(emotion_file, "w", encoding="utf-8") as f:
@@ -354,29 +361,26 @@ def process_single_clip(
             )
 
             # --- DeepFace & Audio Emotion Analysis ---
-            visual_emotions = []
-            emotion_file = os.path.join(config.job_dir, f"emotion_{index}.json")
-            if os.path.exists(emotion_file):
-                try:
-                    import json
+            # Hanya baca dari cache disk jika video sudah di-crop sebelumnya (cache hit).
+            # Jika baru diproses, gunakan data yang sudah ada di memori Python.
+            if _emotions_from_cache:
+                emotion_file = os.path.join(config.job_dir, f"emotion_{index}.json")
+                if os.path.exists(emotion_file):
+                    try:
+                        with open(emotion_file, "r", encoding="utf-8") as f:
+                            visual_emotions = json.load(f)
+                    except Exception:
+                        pass
 
-                    with open(emotion_file, "r", encoding="utf-8") as f:
-                        visual_emotions = json.load(f)
-                except Exception:
-                    pass
-
-            audio_emotions = []
-            audio_emotion_file = os.path.join(
-                config.job_dir, f"audio_emotion_{index}.json"
-            )
-            if os.path.exists(audio_emotion_file):
-                try:
-                    import json
-
-                    with open(audio_emotion_file, "r", encoding="utf-8") as f:
-                        audio_emotions = json.load(f)
-                except Exception:
-                    pass
+                audio_emotion_file = os.path.join(
+                    config.job_dir, f"audio_emotion_{index}.json"
+                )
+                if os.path.exists(audio_emotion_file):
+                    try:
+                        with open(audio_emotion_file, "r", encoding="utf-8") as f:
+                            audio_emotions = json.load(f)
+                    except Exception:
+                        pass
 
             ai_config = config.to_dict()
             from core.ai.detector import ai_detector
@@ -447,7 +451,15 @@ def process_single_clip(
         # Process Intro / Outro Concatenation
         intro_to_use = generate_intro(index, metadata, event_hook)
 
-        stack_and_concat(current_clip, output_file, intro_to_use, index, event_hook)
+        stack_and_concat(
+            current_clip, 
+            output_file, 
+            intro_to_use, 
+            index, 
+            event_hook,
+            is_sequential=is_sequential,
+            is_last_in_queue=is_last_in_queue,
+        )
 
         log.info(f"Clip {index} successfully generated.")
         if callable(event_hook):

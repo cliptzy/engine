@@ -230,6 +230,9 @@ class ClipVideoUseCase:
                 {"stage": "start_clip", "clip_index": clip_idx, "total": len(targets)},
             )
 
+            is_sequential = payload.get("clip_method") == "sequential"
+            is_last_in_queue = (idx == len(targets))
+
             ok_clip = process_single_clip(
                 video_id=video_id,
                 item=item,
@@ -241,6 +244,8 @@ class ClipVideoUseCase:
                 source_url=url if is_local else None,
                 custom_prompt=payload.get("custom_prompt", ""),
                 phase1_only=phase1_only,
+                is_sequential=is_sequential,
+                is_last_in_queue=is_last_in_queue,
             )
 
             clip_output = None
