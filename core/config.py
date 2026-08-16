@@ -35,6 +35,7 @@ class AIConfig:
     use_voice_analysis: bool = True
     use_audio_analysis: bool = True
     use_text_analysis: bool = True
+    use_add_meme: bool = True
 
 
 @dataclass
@@ -150,6 +151,7 @@ class AppConfig:
             "use_voice_analysis": self.ai.use_voice_analysis,
             "use_audio_analysis": self.ai.use_audio_analysis,
             "use_text_analysis": self.ai.use_text_analysis,
+            "use_add_meme": self.ai.use_add_meme,
             "whisper_model": self.subtitle.whisper_model,
             "subtitle_font": self.subtitle.font,
             "subtitle_fonts_dir": self.subtitle.fonts_dir,
@@ -231,6 +233,8 @@ class AppConfig:
             self.ai.use_audio_analysis = bool(data["use_audio_analysis"])
         if "use_text_analysis" in data:
             self.ai.use_text_analysis = bool(data["use_text_analysis"])
+        if "use_add_meme" in data:
+            self.ai.use_add_meme = bool(data["use_add_meme"])
 
         if "whisper_model" in data and data["whisper_model"]:
             self.subtitle.whisper_model = data["whisper_model"]

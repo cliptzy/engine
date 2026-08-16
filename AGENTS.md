@@ -199,3 +199,5 @@ Sistem efek suara (SFX), efek visual (VFX), dan overlay yang lama telah **dihapu
 ---
 
 _Peraturan dalam AGENTS.md ini mengikat untuk semua aktivitas pengembangan proyek Cliptzy. Pelanggaran terhadap Larangan 1.4 (`sys.executable`) dianggap **bug kritis** dan mengharuskan perbaikan segera._
+
+7. **Perubahan Parameter Dropdown**: Dilarang keras menggunakan keyword on_change pada komponen ft.Dropdown. Flet terbaru menggunakan keyword on_select sebagai parameter event.

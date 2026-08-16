@@ -94,100 +94,171 @@ def burn_subtitle_and_highlight(
                     return key
             return "neutral"
 
-        if (
-            isinstance(enriched, list)
-            and len(enriched) > 0
-            and config.subtitle.style != "plain"
-        ):
-            current_emotion = None
-            current_ve = "random"
-            current_score = 0.0
-            start_t = 0.0
-            end_t = 0.0
+        if getattr(config.ai, "use_add_meme", True):
+            if (
+                isinstance(enriched, list)
+                and len(enriched) > 0
+                and config.subtitle.style != "plain"
+            ):
+                current_emotion = None
+                current_ve = "random"
+                current_score = 0.0
+                start_t = 0.0
+                end_t = 0.0
 
-            for w in enriched:
-                mapped = map_emotion(str(w.get("emotion", "")))
-                w_ve = str(w.get("video_effect_override", "random"))
+                for w in enriched:
+                    mapped = map_emotion(str(w.get("emotion", "")))
+                    w_ve = str(w.get("video_effect_override", "random"))
 
-                w_s = float(w.get("start", 0.0))
-                w_e = float(w.get("end", 0.0))
+                    w_s = float(w.get("start", 0.0))
+                    w_e = float(w.get("end", 0.0))
 
-                try:
-                    w_score = float(w.get("score", 0.0))
-                except Exception:
-                    w_score = 0.0
+                    try:
+                        w_score = float(w.get("score", 0.0))
+                    except Exception:
+                        w_score = 0.0
 
-                if (
-                    mapped == current_emotion
-                    and w_ve == current_ve
-                    and (w_s - end_t) <= 1.0
-                ):
-                    end_t = w_e
-                    current_score = max(current_score, w_score)
-                else:
-                    if current_emotion and current_emotion != "neutral":
-                        blocks.append(
-                            (current_emotion, start_t, end_t, current_ve, current_score)
-                        )
-                    current_emotion = mapped
-                    current_ve = w_ve
-                    current_score = w_score
-                    start_t = w_s
-                    end_t = w_e
+                    if (
+                        mapped == current_emotion
+                        and w_ve == current_ve
+                        and (w_s - end_t) <= 1.0
+                    ):
+                        end_t = w_e
+                        current_score = max(current_score, w_score)
+                    else:
+                        if current_emotion and current_emotion != "neutral":
+                            blocks.append(
+                                (current_emotion, start_t, end_t, current_ve, current_score)
+                            )
+                        current_emotion = mapped
+                        current_ve = w_ve
+                        current_score = w_score
+                        start_t = w_s
+                        end_t = w_e
 
-            if current_emotion and current_emotion != "neutral":
-                blocks.append(
-                    (current_emotion, start_t, end_t, current_ve, current_score)
-                )
+                if current_emotion and current_emotion != "neutral":
+                    blocks.append(
+                        (current_emotion, start_t, end_t, current_ve, current_score)
+                    )
 
-        if len(blocks) > 0:
-            filtered_blocks = [b for b in blocks if b[3] != "none"]
-            filtered_blocks_by_score = sorted(filtered_blocks, key=lambda x: x[4], reverse=True)
-            
-            temp_scheduled = []
+            if len(blocks) > 0:
+                filtered_blocks = [b for b in blocks if b[3] != "none"]
+                filtered_blocks_by_score = sorted(filtered_blocks, key=lambda x: x[4], reverse=True)
+                
+                temp_scheduled = []
 
-            for emo, s, e, ve_idx_str, _score in filtered_blocks_by_score:
-                e = e + 0.3
-                effect = None
+                for emo, s, e, ve_idx_str, _score in filtered_blocks_by_score:
+                    e = e + 0.3
+                    effect = None
 
-                try:
-                    from core.video_effects import video_effect_manager
+                    try:
+                        from core.video_effects import video_effect_manager
 
-                    if ve_idx_str != "random":
-                        effect = video_effect_manager.get_effect_by_name(ve_idx_str)
-                        if not effect:
+                        if ve_idx_str != "random":
+                            effect = video_effect_manager.get_effect_by_name(ve_idx_str)
+                            if not effect:
+                                effect = video_effect_manager.get_effect(
+                                    emo, selected_effects
+                                )
+                        else:
                             effect = video_effect_manager.get_effect(
                                 emo, selected_effects
                             )
-                    else:
-                        effect = video_effect_manager.get_effect(
-                            emo, selected_effects
-                        )
-                except Exception as ex:
-                    log.warning(f"Gagal memuat video effect untuk {emo}: {ex}")
+                    except Exception as ex:
+                        log.warning(f"Gagal memuat video effect untuk {emo}: {ex}")
+
+                    if effect and effect.get("file"):
+                        eff_name = effect.get("name")
+                        
+                        overlap = False
+                        for sch in temp_scheduled:
+                            if abs(sch["start"] - s) < 5.0:
+                                if sch.get("name") == eff_name:
+                                    overlap = True
+                                    break
+                        if overlap:
+                            continue
+
+                        eff_file = os.path.join("assets", "video_effects", effect["file"])
+                        if os.path.exists(eff_file):
+                            selected_effects.append(eff_name)
+                            temp_scheduled.append(
+                                {
+                                    "file": eff_file,
+                                    "type": effect.get("type", "greenscreen"),
+                                    "key_color": effect.get("key_color", "0x00FF00"),
+                                    "start": s,
+                                    "end": e,
+                                    "position": effect.get("position", "center"),
+                                    "audio_filter": effect.get(
+                                        "audio_filter",
+                                        "volume=0.8,afade=t=out:st=1.5:d=0.5",
+                                    ),
+                                    "name": eff_name,
+                                }
+                            )
+                        else:
+                            log.debug(
+                                f"Video effect dilewati karena file tidak ditemukan: {eff_file}"
+                            )
+
+                temp_scheduled.sort(key=lambda x: x["start"])
+                scheduled_video_effects.extend(temp_scheduled)
+
+            # --- NON-VERBAL / STANDALONE EFFECTS ---
+            standalone_effects = []
+            if config.subtitle.style != "plain":
+                standalone_effects = (
+                    metadata.get("standalone_video_effects", []) if metadata else []
+                )
+                standalone_effects = sorted(standalone_effects, key=lambda x: float(x.get("time", 0.0)))
+            for se in standalone_effects:
+                ve_name = se.get("video_effect_override")
+                s = float(se.get("time", 0.0))
+                
+                effect = None
+                if ve_name and ve_name not in ["none", "random"]:
+                    try:
+                        from core.video_effects import video_effect_manager
+
+                        effect = video_effect_manager.get_effect_by_name(ve_name)
+                        
+                        # Anti-spam: If effect was already used, try to pick an alternative with the same emotion
+                        if effect and effect.get("name") in selected_effects:
+                            emos = effect.get("emotions", [])
+                            if emos:
+                                alt_effect = video_effect_manager.get_effect(emos[0], exclude=selected_effects)
+                                if alt_effect:
+                                    effect = alt_effect
+
+                    except Exception as ex:
+                        log.warning(f"Gagal memuat standalone video effect {ve_name}: {ex}")
 
                 if effect and effect.get("file"):
                     eff_name = effect.get("name")
                     
+                    # Prevent overlap with other scheduled effects only if same name
                     overlap = False
-                    for sch in temp_scheduled:
-                        if abs(sch["start"] - s) < 5.0:
-                            if sch.get("name") == eff_name:
+                    for scheduled in scheduled_video_effects:
+                        if abs(scheduled["start"] - s) < 5.0:
+                            if scheduled.get("name") == eff_name:
                                 overlap = True
                                 break
                     if overlap:
                         continue
 
-                    eff_file = os.path.join("assets", "video_effects", effect["file"])
+                    eff_file = os.path.join(
+                        "assets", "video_effects", effect["file"]
+                    )
                     if os.path.exists(eff_file):
                         selected_effects.append(eff_name)
-                        temp_scheduled.append(
+                        scheduled_video_effects.append(
                             {
                                 "file": eff_file,
                                 "type": effect.get("type", "greenscreen"),
                                 "key_color": effect.get("key_color", "0x00FF00"),
                                 "start": s,
-                                "end": e,
+                                "end": s + 3.0,  # default 3s untuk standalone
                                 "position": effect.get("position", "center"),
                                 "audio_filter": effect.get(
                                     "audio_filter",
@@ -196,76 +267,6 @@ def burn_subtitle_and_highlight(
                                 "name": eff_name,
                             }
                         )
-                    else:
-                        log.debug(
-                            f"Video effect dilewati karena file tidak ditemukan: {eff_file}"
-                        )
-
-            temp_scheduled.sort(key=lambda x: x["start"])
-            scheduled_video_effects.extend(temp_scheduled)
-
-        # --- NON-VERBAL / STANDALONE EFFECTS ---
-        standalone_effects = []
-        if config.subtitle.style != "plain":
-            standalone_effects = (
-                metadata.get("standalone_video_effects", []) if metadata else []
-            )
-            standalone_effects = sorted(standalone_effects, key=lambda x: float(x.get("time", 0.0)))
-        for se in standalone_effects:
-            ve_name = se.get("video_effect_override")
-            s = float(se.get("time", 0.0))
-            
-            effect = None
-            if ve_name and ve_name not in ["none", "random"]:
-                try:
-                    from core.video_effects import video_effect_manager
-
-                    effect = video_effect_manager.get_effect_by_name(ve_name)
-                    
-                    # Anti-spam: If effect was already used, try to pick an alternative with the same emotion
-                    if effect and effect.get("name") in selected_effects:
-                        emos = effect.get("emotions", [])
-                        if emos:
-                            alt_effect = video_effect_manager.get_effect(emos[0], exclude=selected_effects)
-                            if alt_effect:
-                                effect = alt_effect
-
-                except Exception as ex:
-                    log.warning(f"Gagal memuat standalone video effect {ve_name}: {ex}")
-
-            if effect and effect.get("file"):
-                eff_name = effect.get("name")
-                
-                # Prevent overlap with other scheduled effects only if same name
-                overlap = False
-                for scheduled in scheduled_video_effects:
-                    if abs(scheduled["start"] - s) < 5.0:
-                        if scheduled.get("name") == eff_name:
-                            overlap = True
-                            break
-                if overlap:
-                    continue
-
-                eff_file = os.path.join(
-                    "assets", "video_effects", effect["file"]
-                )
-                if os.path.exists(eff_file):
-                    selected_effects.append(eff_name)
-                    scheduled_video_effects.append(
-                        {
-                            "file": eff_file,
-                            "type": effect.get("type", "greenscreen"),
-                            "key_color": effect.get("key_color", "0x00FF00"),
-                            "start": s,
-                            "end": s + 3.0,  # default 3s untuk standalone
-                            "position": effect.get("position", "center"),
-                            "audio_filter": effect.get(
-                                "audio_filter",
-                                "volume=0.8,afade=t=out:st=1.5:d=0.5",
-                            ),
-                            "name": eff_name,
-                        }
-                    )
 
         if should_burn_sub and os.path.exists(subtitle_file):
             subtitle_file_fwd = subtitle_file.replace("\\", "/")

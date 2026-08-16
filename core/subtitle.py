@@ -230,7 +230,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
                     log.info(f"[whisper] {start_time} --> {end_time} : {text}")
 
-                    if config.subtitle.animation == "scale":
+                    if config.subtitle.animation in ["scale", "hormozi"]:
                         ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{{\\fscx50\\fscy50\\t(0,150,\\fscx100\\fscy100)}}{text}\n"
                     else:
                         ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{text}\n"
@@ -364,26 +364,33 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         if not word_str:
                             continue
 
-                        if is_plain:
+                        is_hormozi = config.subtitle.animation == "hormozi"
+                        is_plain = config.subtitle.style == "plain"
+
+                        if is_plain and not is_hormozi:
                             # Plain style: no emotion color, no uppercase, no animation
                             line_text += f"{word_str} "
                             continue
 
-                        # Full Color style: emotion-aware rendering
+                        # Full Color / Hormozi style: emotion-aware rendering
                         is_angry = str(w.get("emotion", "")).lower() == "angry"
-                        if is_angry:
+                        if is_angry or is_hormozi:
                             word_str = word_str.upper()
 
                         if idx == active_idx:
                             # Highlighted word
                             color_hex = w.get("color", "")
                             ass_c = hex_to_ass_color(color_hex)
-
+                            
+                            if is_hormozi:
+                                # Hormozi removes emotion color, always uses yellow
+                                ass_c = "&H0000FFFF"
+                                
                             anim = ""
                             reset_anim = "\\fscx100\\fscy100"
-                            target_scale = 130 if is_angry else 100
+                            target_scale = 130 if is_angry else (115 if is_hormozi else 100)
 
-                            if config.subtitle.animation == "scale":
+                            if config.subtitle.animation == "scale" or is_hormozi:
                                 anim = f"\\fscx50\\fscy50\\t(0,150,\\fscx{target_scale}\\fscy{target_scale})"
                             elif is_angry:
                                 anim = f"\\fscx{target_scale}\\fscy{target_scale}"

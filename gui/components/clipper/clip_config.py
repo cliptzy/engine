@@ -51,6 +51,9 @@ class ClipConfig(ft.Container):
                 ft.dropdown.Option(
                     "split_face", "Split Face Track (Top: Center, Bottom: Dynamic Face)"
                 ),
+                ft.dropdown.Option(
+                    "split_broll", "Split B-Roll (Top: Facecam, Bottom: Random B-Roll)"
+                ),
                 ft.dropdown.Option("full", "Full (Fit Screen & Blurred BG)"),
                 ft.dropdown.Option("full_face", "Full + Face Track (Dynamic Face)"),
                 ft.dropdown.Option(
@@ -87,6 +90,7 @@ class ClipConfig(ft.Container):
         self.voice_analysis_check = ft.Checkbox(label="Deteksi Emosi Suara (SER)")
         self.audio_analysis_check = ft.Checkbox(label="Deteksi Event Suara (Audio Analyzer)")
         self.text_analysis_check = ft.Checkbox(label="Deteksi Emosi Teks (NLP)")
+        self.add_meme_check = ft.Checkbox(label="Tambahkan Meme (Video Effects)")
         self.generate_intro_check = ft.Checkbox(
             label="Generate Intro", on_change=self.on_generate_intro_toggled
         )
@@ -171,6 +175,7 @@ class ClipConfig(ft.Container):
             options=[
                 ft.dropdown.Option("none", "Tanpa Animasi"),
                 ft.dropdown.Option("scale", "Timbul (Scale Up) Per Kata"),
+                ft.dropdown.Option("hormozi", "Hormozi (Pop-in + Kapital)"),
             ],
             expand=1,
         )
@@ -182,6 +187,7 @@ class ClipConfig(ft.Container):
                 ft.dropdown.Option("full_color", "Full Color (Warna Emosi + Efek)"),
             ],
             expand=1,
+            on_select=self.on_style_changed,
         )
 
         self.max_words_spin = SpinBox(
@@ -274,6 +280,7 @@ class ClipConfig(ft.Container):
                                 self.voice_analysis_check,
                                 self.audio_analysis_check,
                                 self.text_analysis_check,
+                                self.add_meme_check,
                                 self.generate_intro_check,
                             ],
                         ),
@@ -361,6 +368,7 @@ class ClipConfig(ft.Container):
         self.voice_analysis_check.value = config.ai.use_voice_analysis
         self.audio_analysis_check.value = config.ai.use_audio_analysis
         self.text_analysis_check.value = config.ai.use_text_analysis
+        self.add_meme_check.value = config.ai.use_add_meme
         self.generate_intro_check.value = config.ai.use_generate_intro
         self.merge_clips_check.value = config.merge_clips
         self.on_generate_intro_toggled(None)
@@ -657,6 +665,17 @@ class ClipConfig(ft.Container):
     def on_debug_mode_toggled(self, e) -> None:
         config.debug_mode = bool(self.debug_mode_check.value)
 
+    def on_style_changed(self, e) -> None:
+        if self.style_combo.value != "plain":
+            self.emotion_check.value = True
+        try:
+            if self.page_ref:
+                self.page_ref.update()
+            else:
+                self.update()
+        except Exception:
+            pass
+
     def on_lock_all_toggled(self, e) -> None:
         locked = not self.btn_lock_all.data
         self.btn_lock_all.data = locked
@@ -671,6 +690,7 @@ class ClipConfig(ft.Container):
             "use_voice_analysis": bool(self.voice_analysis_check.value),
             "use_audio_analysis": bool(self.audio_analysis_check.value),
             "use_text_analysis": bool(self.text_analysis_check.value),
+            "use_add_meme": bool(self.add_meme_check.value),
             "use_generate_intro": bool(self.generate_intro_check.value),
             "merge_clips": bool(self.merge_clips_check.value),
             "whisper_model": self.whisper_combo.value,
@@ -713,6 +733,7 @@ class ClipConfig(ft.Container):
         self.voice_analysis_check.disabled = locked
         self.audio_analysis_check.disabled = locked
         self.text_analysis_check.disabled = locked
+        self.add_meme_check.disabled = locked
         self.generate_intro_check.disabled = locked
         self.merge_clips_check.disabled = locked
         self.padding_spin.disabled = locked

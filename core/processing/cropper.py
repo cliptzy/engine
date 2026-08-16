@@ -420,4 +420,104 @@ def build_crop_command(
                 + ["-c:a", "aac", "-b:a", "128k", cropped_file]
             )
 
+    elif crop_mode == "split_broll":
+        if config.output_ratio == "original" or not out_w or not out_h or out_h < out_w:
+            vf = (
+                build_cover_scale_crop_vf(out_w or 720, out_h or 1280)
+                if config.output_ratio != "original"
+                else None
+            )
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "info",
+                "-i",
+                temp_file,
+            ]
+            if vf:
+                cmd.extend(["-vf", vf])
+            cmd.extend(get_video_codec_args())
+            cmd.extend(["-c:a", "aac", "-b:a", "128k", cropped_file])
+            return cmd
+        else:
+            import os
+            import random
+            from core.utils import get_app_root
+            
+            broll_dir = os.path.join(get_app_root(), "assets", "broll")
+            broll_file = None
+            if os.path.exists(broll_dir):
+                brolls = [os.path.join(broll_dir, f) for f in os.listdir(broll_dir) if f.endswith((".mp4", ".mkv"))]
+                if brolls:
+                    broll_file = random.choice(brolls)
+            
+            if not broll_file:
+                from core.logger import log
+                log.warning("[cropper] B-Roll file not found in assets/broll/. Falling back to split_face.")
+                return build_crop_command(
+                    temp_file,
+                    cropped_file,
+                    "split_face",
+                    out_w,
+                    out_h,
+                    cx_norm,
+                    cy_norm,
+                    cx2_norm,
+                    cy2_norm,
+                    face_keyframes
+                )
+
+            # Komposisi 40:60 (40% video utama, 60% b-roll)
+            top_h = int(out_h * 0.40)
+            if top_h % 2 != 0:
+                top_h -= 1
+            bottom_h = out_h - top_h
+            
+            scaled = build_cover_scale_vf(out_w, out_h)
+            
+            # Start b-roll at a random time between 0 to 600 seconds (10 minutes)
+            # Assuming the b-roll is a long gameplay/satisfying video
+            random_start = random.randint(0, 600)
+
+            # Top: Full Original Video (scaled to fit, with blurred background padding)
+            # Bottom: B-Roll (scaled and cropped to fit the bottom half)
+            vf = (
+                # Buat background blur untuk video utama (top)
+                f"[0:v]scale={out_w}:{top_h}:force_original_aspect_ratio=increase,crop={out_w}:{top_h},boxblur=20:20[bg_top];"
+                # Scale video utama agar pas di dalam kotak top_h tanpa memotong (fit)
+                f"[0:v]scale={out_w}:{top_h}:force_original_aspect_ratio=decrease[fg_top];"
+                # Gabungkan video utama dengan background blurnya
+                f"[bg_top][fg_top]overlay=(W-w)/2:(H-h)/2[top];"
+                # B-roll dipotong (crop) agar memenuhi kotak bottom_h
+                f"[1:v]scale={out_w}:{bottom_h}:force_original_aspect_ratio=increase,crop={out_w}:{bottom_h}[bottom];"
+                # Tumpuk atas dan bawah
+                f"[top][bottom]vstack[out]"
+            )
+
+            return (
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "info",
+                    "-i",
+                    temp_file,
+                    "-stream_loop", "-1",
+                    "-ss", str(random_start),
+                    "-i",
+                    broll_file,
+                    "-filter_complex",
+                    vf,
+                    "-map",
+                    "[out]",
+                    "-map",
+                    "0:a?",
+                ]
+                + get_video_codec_args()
+                + ["-c:a", "aac", "-b:a", "128k", "-shortest", cropped_file]
+            )
+
     raise ValueError(f"Unknown crop mode: {crop_mode}")
