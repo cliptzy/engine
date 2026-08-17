@@ -277,7 +277,10 @@ class UploadView(ft.Column):
 
         self.controls = [
             ft.Text("Upload & Distribusi", size=24, weight=ft.FontWeight.BOLD),
-            ft.Text("Upload hasil klip atau video brainrot ke platform sosial media", color=ft.Colors.WHITE_70),
+            ft.Text(
+                "Upload hasil klip atau video brainrot ke platform sosial media",
+                color=ft.Colors.WHITE_70,
+            ),
             ft.Row(
                 [
                     self.project_dropdown,
@@ -442,7 +445,9 @@ class UploadView(ft.Column):
             for item in os.listdir(config.output_dir):
                 item_path = os.path.join(config.output_dir, item)
                 if os.path.isdir(item_path):
-                    if os.path.exists(os.path.join(item_path, "preview.json")) or os.path.exists(os.path.join(item_path, "final_brainrot.mp4")):
+                    if os.path.exists(
+                        os.path.join(item_path, "preview.json")
+                    ) or os.path.exists(os.path.join(item_path, "final_brainrot.mp4")):
                         projects.append(item)
             projects.sort(
                 key=lambda x: os.path.getmtime(os.path.join(config.output_dir, x)),
@@ -511,7 +516,9 @@ class UploadView(ft.Column):
                 status = "✅ Rendered"
             elif idx == "brainrot":
                 display_name = "final_brainrot.mp4"
-                video_path = os.path.join(self.current_project_dir, "final_brainrot.mp4")
+                video_path = os.path.join(
+                    self.current_project_dir, "final_brainrot.mp4"
+                )
                 status = "✅ Rendered"
             else:
                 display_name = f"clip_{idx}.mp4"
@@ -873,7 +880,7 @@ class UploadView(ft.Column):
             ) -> tuple[datetime.datetime, bool]:
                 # Jam sepi: 00:00 s/d 05:59 (WIB / UTC+7)
                 # Jam sepi: 22:00 s/d 23:59 (WIB / UTC+7)
-                if dt.hour < 6 or dt.hour >= 22:
+                if dt.hour < 6:
                     adjusted_dt = dt.replace(hour=6, minute=0, second=0, microsecond=0)
                     return adjusted_dt, True
                 return dt, False

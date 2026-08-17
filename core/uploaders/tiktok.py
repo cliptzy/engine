@@ -70,7 +70,7 @@ class TikTokUploader:
                 try:
                     # Instansiasi uploader di dalam raw thread terisolasi agar Playwright tidak crash
                     # mendeteksi asyncio loop melalui contextvars
-                    uploader = TTUploader(cookies=cookie_path, headless=True)
+                    uploader = TTUploader(cookies=cookie_path, headless=False)
 
                     import datetime
 
