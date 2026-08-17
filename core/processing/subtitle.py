@@ -93,7 +93,7 @@ def burn_subtitle_and_highlight(
         )
         fontsdir_arg = ""
         if config.subtitle.fonts_dir and os.path.isdir(config.subtitle.fonts_dir):
-            fontsdir_fwd = config.subtitle.fonts_dir.replace("\\", "/")
+            fontsdir_fwd = config.subtitle.fonts_dir.replace("\\", "/").replace(":", "\\:")
             fontsdir_arg = f":fontsdir='{fontsdir_fwd}'"
 
         vf_chain = []
@@ -298,7 +298,7 @@ def burn_subtitle_and_highlight(
                         )
 
         if should_burn_sub and os.path.exists(subtitle_file):
-            subtitle_file_fwd = subtitle_file.replace("\\", "/")
+            subtitle_file_fwd = subtitle_file.replace("\\", "/").replace(":", "\\:")
             vf_chain.append(f"subtitles=filename='{subtitle_file_fwd}'{fontsdir_arg}")
 
         if getattr(config, "debug_mode", False):
@@ -306,7 +306,7 @@ def burn_subtitle_and_highlight(
 
             debug_file = subtitle_file.replace(".ass", "_debug.ass")
             if write_debug_ass_file(metadata, debug_file):
-                debug_file_fwd = debug_file.replace("\\", "/")
+                debug_file_fwd = debug_file.replace("\\", "/").replace(":", "\\:")
                 vf_chain.append(f"subtitles=filename='{debug_file_fwd}'")
 
             if isinstance(visual_emotions, list) and len(visual_emotions) > 0:

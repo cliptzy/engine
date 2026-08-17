@@ -36,7 +36,11 @@ async def process_brainrot(
     total_duration = 0.0
 
     for idx, line in enumerate(script_data):
-        text = line.get("text", "")
+        import re
+        raw_text = line.get("text", "")
+        # Hapus tag aksi/emosi dalam kurung dari teks TTS
+        text = re.sub(r'\[.*?\]', '', raw_text).strip()
+        
         voice = line.get("voice", "id-ID-ArdiNeural")
         image = line.get("image")
         speaker = line.get("speaker", f"Speaker_{idx}")
@@ -92,15 +96,59 @@ async def process_brainrot(
         f.write("Style: BRStyle,Arial,65,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,0,5,20,20,20,1\n\n")
         f.write("[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
         
+        # Initialize Text Analyzer for emotions
+        from core.processing.text_analyzer import get_text_emotion_pipeline, map_text_emotion
+        # Try to load classifier (using id as default for brainrot if mostly indonesian)
+        classifier = get_text_emotion_pipeline("id")
+        
+        EMOTION_COLORS = {
+            "happy": "&H0000FFFF",  # Kuning
+            "angry": "&H000000FF",  # Merah
+            "sad": "&H00FF0000",    # Biru
+            "fear": "&H00800080",   # Ungu
+            "shock": "&H0000A5FF",  # Oranye
+            "neutral": "&H00FFFFFF",# Putih
+        }
+
         for seg in audio_segments:
-            s_ass = format_ass_time(seg["start"])
-            e_ass = format_ass_time(seg["end"])
-            # Format teks, uppercase
-            text_upper = seg["text"].upper()
+            # 1. Bersihkan teks dari tag emosi (sudah dibersihkan di atas, tapi pastikan lagi)
+            clean_text = seg["text"].strip()
+            if not clean_text:
+                continue
+                
+            # 2. Deteksi emosi baris ini menggunakan modul text_analyzer
+            dominant_emotion = "neutral"
+            if classifier:
+                try:
+                    results = classifier(clean_text, top_k=None)
+                    scores = results[0] if isinstance(results, list) and isinstance(results[0], list) else (results if isinstance(results, list) else [])
+                    if scores and scores[0]["score"] > 0.4:
+                        dominant_emotion = map_text_emotion(scores[0]["label"])
+                except Exception as e:
+                    log.warning(f"[Brainrot] Text analyzer error: {e}")
             
-            # Kita buat tiap kata muncul (simple line by line for now)
-            # Idealnya word-level, tapi butuh whisper. Untuk simplicity, kita munculkan per line.
-            f.write(f"Dialogue: 0,{s_ass},{e_ass},BRStyle,,0,0,0,,{{\\an5\\b1\\bord5\\3c&H000000&}}{text_upper}\n")
+            ass_color = EMOTION_COLORS.get(dominant_emotion, "&H00FFFFFF")
+            
+            # 3. Pisahkan menjadi maksimal 3 kata per baris
+            words = clean_text.split()
+            chunks = []
+            for i in range(0, len(words), 3):
+                chunks.append(" ".join(words[i:i+3]))
+                
+            seg_dur = seg["end"] - seg["start"]
+            chunk_duration = seg_dur / len(chunks) if chunks else 0
+            
+            for idx, chunk_text in enumerate(chunks):
+                chunk_start = seg["start"] + (idx * chunk_duration)
+                chunk_end = chunk_start + chunk_duration
+                
+                s_ass = format_ass_time(chunk_start)
+                e_ass = format_ass_time(chunk_end)
+                
+                text_upper = chunk_text.upper()
+                # Animasi scale pop-in sederhana untuk tiap chunk agar lebih dinamis
+                anim = "\\fscx50\\fscy50\\t(0,150,\\fscx100\\fscy100)"
+                f.write(f"Dialogue: 0,{s_ass},{e_ass},BRStyle,,0,0,0,,{{\\an5\\b1\\bord5\\3c&H000000&\\c{ass_color}{anim}}}{text_upper}\n")
 
     # 4. Assemble Final Video with FFmpeg
     log.info("[Brainrot] Assembling final video with FFmpeg...")
@@ -150,9 +198,9 @@ async def process_brainrot(
         overlay_idx += 1
         
     # Burn subtitle
-    ass_path_fwd = ass_path.replace("\\", "/")
+    ass_path_escaped = ass_path.replace("\\", "/").replace(":", "\\:")
     final_v = "[v_final]"
-    filter_complex.append(f"{last_v}subtitles=filename='{ass_path_fwd}'{final_v}")
+    filter_complex.append(f"{last_v}subtitles=filename='{ass_path_escaped}'{final_v}")
     
     filter_string = "".join(filter_complex)
 

@@ -52,7 +52,7 @@ class BrainrotView(ft.Column):
         async def pick_broll_result(e):
             files = await self.broll_picker.pick_files(allow_multiple=False)
             if files and len(files) > 0:
-                self.broll_input.value = files[0].path
+                self.broll_input.value = files[0].path or ""
                 self.update()
 
         self.btn_pick_broll = ft.IconButton(
@@ -159,12 +159,12 @@ class BrainrotView(ft.Column):
                 import dataclasses
                 script = await asyncio.to_thread(
                     brainrot_script_generator.generate_script,
-                    topic,
-                    self.char1_name.value,
-                    self.char2_name.value,
+                    topic or "",
+                    self.char1_name.value or "",
+                    self.char2_name.value or "",
                     dataclasses.asdict(config.ai),
                     hook,
-                    lang
+                    lang or "id"
                 )
                 
                 if not script:
@@ -174,11 +174,11 @@ class BrainrotView(ft.Column):
                 # Assign voice & images
                 for line in script:
                     if line.get("speaker") == self.char1_name.value:
-                        line["voice"] = self.char1_voice.value
-                        line["image"] = self.char1_img.value
+                        line["voice"] = self.char1_voice.value or ""
+                        line["image"] = self.char1_img.value or ""
                     else:
-                        line["voice"] = self.char2_voice.value
-                        line["image"] = self.char2_img.value
+                        line["voice"] = self.char2_voice.value or ""
+                        line["image"] = self.char2_img.value or ""
 
                 # 2. Process Video
                 job_id = str(uuid.uuid4())[:8]

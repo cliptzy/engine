@@ -76,10 +76,10 @@ def generate_intro(
             out_w, out_h = config.out_width or 720, config.out_height or 1280
             fontsdir_arg = ""
             if config.subtitle.fonts_dir and os.path.isdir(config.subtitle.fonts_dir):
-                fontsdir_fwd = config.subtitle.fonts_dir.replace("\\", "/")
+                fontsdir_fwd = config.subtitle.fonts_dir.replace("\\", "/").replace(":", "\\:")
                 fontsdir_arg = f":fontsdir='{fontsdir_fwd}'"
 
-            intro_ass_fwd = intro_ass.replace("\\", "/")
+            intro_ass_fwd = intro_ass.replace("\\", "/").replace(":", "\\:")
             cmd_intro = [
                 "ffmpeg",
                 "-y",
