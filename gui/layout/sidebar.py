@@ -28,6 +28,11 @@ class Sidebar(ft.NavigationRail):
                 label="Settings",
             ),
             ft.NavigationRailDestination(
+                icon=ft.Icons.PSYCHOLOGY_OUTLINED,  # type: ignore
+                selected_icon=ft.Icons.PSYCHOLOGY,  # type: ignore
+                label="Brainrot",
+            ),
+            ft.NavigationRailDestination(
                 icon=ft.Icons.BUG_REPORT_OUTLINED,  # type: ignore
                 selected_icon=ft.Icons.BUG_REPORT,  # type: ignore
                 label="Debugger",

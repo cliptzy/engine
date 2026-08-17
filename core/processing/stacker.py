@@ -34,68 +34,19 @@ def generate_intro(
             else:
                 tts_lang = tts_lang_config
 
-            voice_map = {
-                "id": {"female": "id-ID-GadisNeural", "male": "id-ID-ArdiNeural"},
-                "en": {
-                    "female": "en-US-JennyNeural",
-                    "male": "en-US-ChristopherNeural",
-                },
-                "es": {"female": "es-ES-ElviraNeural", "male": "es-MX-JorgeNeural"},
-                "ja": {"female": "ja-JP-NanamiNeural", "male": "ja-JP-KeitaNeural"},
-                "ko": {"female": "ko-KR-SunHiNeural", "male": "ko-KR-InJoonNeural"},
-                "ms": {"female": "ms-MY-YasminNeural", "male": "ms-MY-OsmanNeural"},
-            }
+            from core.processing.tts_engine import generate_tts, VOICE_MAP
 
             base_lang = tts_lang.split("-")[0].lower() if tts_lang else "id"
-            if base_lang not in voice_map:
+            if base_lang not in VOICE_MAP:
                 base_lang = "en"  # fallback
 
-            voice = voice_map[base_lang].get(
-                tts_gender.lower(), voice_map[base_lang]["female"]
+            voice = VOICE_MAP[base_lang].get(
+                tts_gender.lower(), VOICE_MAP[base_lang]["female"]
             )
             audio_path = os.path.join(config.job_dir, f"intro_audio_{index}.mp3")
 
-            try:
-                import asyncio
-
-                import edge_tts
-
-                async def _run_tts() -> None:
-                    communicate = edge_tts.Communicate(
-                        highlight_text, voice, rate="-25%"
-                    )
-                    await communicate.save(audio_path)
-
-                asyncio.run(_run_tts())
-            except Exception as e:
-                log.error(f"edge-tts failed: {e}")
-                # Fallback to gTTS if edge-tts fails
-                from gtts import gTTS
-
-                tts = gTTS(text=highlight_text, lang=base_lang)
-                tts.save(audio_path)
-
-            # 2. Get duration
-            try:
-                res = subprocess.run(
-                    [
-                        "ffprobe",
-                        "-v",
-                        "error",
-                        "-show_entries",
-                        "format=duration",
-                        "-of",
-                        "default=noprint_wrappers=1:nokey=1",
-                        audio_path,
-                    ],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                )
-                duration_sec = float(res.stdout.strip())
-            except:
-                duration_sec = 3.0
+            import asyncio
+            duration_sec = asyncio.run(generate_tts(highlight_text, voice, audio_path, rate="-25%"))
 
             # 3. Create ASS for centered highlight text
             intro_ass = os.path.join(config.job_dir, f"intro_{index}.ass")
