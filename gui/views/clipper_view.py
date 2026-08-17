@@ -6,7 +6,6 @@ from gui.components.clipper import (
     ClipConfig,
     Preview,
     ProcessControl,
-    UploadDistribution,
     VideoInput,
 )
 from gui.event_bus import event_bus
@@ -25,61 +24,13 @@ class ClipperView(ft.Column):
         self.preview = Preview(on_ai_scan_requested=self.on_ai_scan_requested)
         self.clip_config = ClipConfig(self.page_ref)
         self.process_control = ProcessControl(self.page_ref)
-        self.upload_distribution = UploadDistribution(self.page_ref)
-
-        # Tab Clipper Layout
-        self.clipper_tab_content = ft.Column(
-            [
-                self.video_input,
-                self.preview,
-                self.clip_config,
-                self.process_control,
-            ],
-            spacing=20,
-            scroll=ft.ScrollMode.AUTO,
-        )
-
-        # Tab Publisher Layout
-        self.publisher_tab_content = ft.Column(
-            [
-                ft.Text("Publisher & Render Phase", size=20, weight=ft.FontWeight.BOLD),
-                ft.Text(
-                    "Render final video dan bagikan karya ke berbagai platform.",
-                    color=ft.Colors.WHITE_70,
-                ),
-                self.upload_distribution,
-            ],
-            spacing=20,
-            scroll=ft.ScrollMode.AUTO,
-        )
-
-        self.tabs = ft.Tabs(
-            length=2,
-            selected_index=0,
-            content=ft.Column(
-                controls=[
-                    ft.TabBar(
-                        tabs=[
-                            ft.Tab(label="Clipper", icon=ft.Icons.MOVIE),
-                            ft.Tab(label="Publisher", icon=ft.Icons.PUBLISH),
-                        ]
-                    ),
-                    ft.TabBarView(
-                        controls=[
-                            ft.Container(content=self.clipper_tab_content, padding=20),
-                            ft.Container(
-                                content=self.publisher_tab_content, padding=20
-                            ),
-                        ],
-                        expand=1,
-                    ),
-                ],
-                expand=1,
-            ),
-            expand=1,
-        )
-
-        self.controls = [self.tabs]
+        self.controls = [
+            self.video_input,
+            self.preview,
+            self.clip_config,
+            self.process_control,
+        ]
+        self.scroll = ft.ScrollMode.AUTO
         self.expand = True
 
         self.clip_config.load_from_config()
@@ -215,7 +166,8 @@ class ClipperView(ft.Column):
                     app_state.append_log(f"Selesai: {success} klip diproses.")
 
                     if success > 0:
-                        self.upload_distribution.load_projects(None)
+                        # Tell user to go to Upload page manually
+                        app_state.append_log("Klip selesai di-render. Buka tab Upload untuk mempublikasikan.")
             except Exception as e:
                 import traceback
 

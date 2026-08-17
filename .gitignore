@@ -72,5 +72,7 @@ test*
 core/_build_env.py
 
 # Exceptions
-!assets/**
+assets/**
+!assets/fonts/**
+!assets/video_effects/**
 !core/constant/**.json

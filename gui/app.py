@@ -46,7 +46,7 @@ def main(page: ft.Page) -> None:
     app_bar = Header()
 
     def on_navigate(index: int) -> None:
-        routes = ["clipper", "creator_hub", "settings", "brainrot", "debugger", "about"]
+        routes = ["clipper", "brainrot", "upload", "settings", "creator_hub", "debugger", "about"]
         if 0 <= index < len(routes):
             app_state.set_page(routes[index])
 

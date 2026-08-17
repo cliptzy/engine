@@ -47,6 +47,10 @@ class Router:
                 from gui.views.debugger_view import DebuggerView
 
                 self._view_cache[route] = DebuggerView(self.page)
+            elif route == "upload":
+                from gui.views.upload_view import UploadView
+
+                self._view_cache[route] = UploadView(self.page)
             elif route == "brainrot":
                 from gui.views.brainrot_view import BrainrotView
 

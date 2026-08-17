@@ -14,13 +14,13 @@ from gui.event_bus import event_bus
 from gui.ui_utils import show_snackbar
 
 
-class UploadDistribution(ft.Container):
+class UploadView(ft.Column):
     def __init__(self, page: ft.Page):
         super().__init__()
         self._page = page
-        self.padding = 16
-        self.border_radius = 8
-        self.border = ft.Border.all(1, ft.Colors.OUTLINE_VARIANT)
+        self.expand = True
+        self.scroll = ft.ScrollMode.AUTO
+        self.spacing = 20
 
         self.current_project_dir = ""
         self.current_clip_path = ""
@@ -275,22 +275,22 @@ class UploadDistribution(ft.Container):
             ]
         )
 
-        self.content = ft.Column(
-            [
-                ft.Row(
-                    [
-                        self.project_dropdown,
-                        self.refresh_projects_btn,
-                        self.open_project_dir_btn,
-                    ]
-                ),
-                top_split,
-                ft.Divider(),
-                meta_panel,
-                ft.Divider(),
-                upload_panel,
-            ]
-        )
+        self.controls = [
+            ft.Text("Upload & Distribusi", size=24, weight=ft.FontWeight.BOLD),
+            ft.Text("Upload hasil klip atau video brainrot ke platform sosial media", color=ft.Colors.WHITE_70),
+            ft.Row(
+                [
+                    self.project_dropdown,
+                    self.refresh_projects_btn,
+                    self.open_project_dir_btn,
+                ]
+            ),
+            top_split,
+            ft.Divider(),
+            meta_panel,
+            ft.Divider(),
+            upload_panel,
+        ]
 
         self.load_projects(None)
 
@@ -442,7 +442,7 @@ class UploadDistribution(ft.Container):
             for item in os.listdir(config.output_dir):
                 item_path = os.path.join(config.output_dir, item)
                 if os.path.isdir(item_path):
-                    if os.path.exists(os.path.join(item_path, "preview.json")):
+                    if os.path.exists(os.path.join(item_path, "preview.json")) or os.path.exists(os.path.join(item_path, "final_brainrot.mp4")):
                         projects.append(item)
             projects.sort(
                 key=lambda x: os.path.getmtime(os.path.join(config.output_dir, x)),
@@ -486,6 +486,8 @@ class UploadDistribution(ft.Container):
         for mf in mp4_files:
             if os.path.basename(mf) == "merged.mp4":
                 clip_indices.append("merge")
+            elif os.path.basename(mf) == "final_brainrot.mp4":
+                clip_indices.append("brainrot")
 
         clip_indices = list(set(clip_indices))
 
@@ -506,6 +508,10 @@ class UploadDistribution(ft.Container):
             if idx == "merge":
                 display_name = "merged.mp4"
                 video_path = os.path.join(self.current_project_dir, "merged.mp4")
+                status = "✅ Rendered"
+            elif idx == "brainrot":
+                display_name = "final_brainrot.mp4"
+                video_path = os.path.join(self.current_project_dir, "final_brainrot.mp4")
                 status = "✅ Rendered"
             else:
                 display_name = f"clip_{idx}.mp4"
@@ -598,6 +604,8 @@ class UploadDistribution(ft.Container):
             self.current_clip_index = m.group(1)
         elif bname == "merged.mp4":
             self.current_clip_index = "merge"
+        elif bname == "final_brainrot.mp4":
+            self.current_clip_index = "brainrot"
         else:
             self.current_clip_index = ""
 
