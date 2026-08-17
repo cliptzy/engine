@@ -68,10 +68,11 @@ class BrainrotView(ft.Column):
         )
         
         self.broll_picker = ft.FilePicker()
+        self.clone_picker = ft.FilePicker()
         if hasattr(self.page_ref, "services"):
-            self.page_ref.services.append(self.broll_picker)
+            self.page_ref.services.extend([self.broll_picker, self.clone_picker])
         else:
-            self.page_ref.overlay.append(self.broll_picker)
+            self.page_ref.overlay.extend([self.broll_picker, self.clone_picker])
 
         async def pick_broll_result(e):
             files = await self.broll_picker.pick_files(allow_multiple=False)
@@ -96,8 +97,21 @@ class BrainrotView(ft.Column):
             expand=1
         )
         self.narrator_img = ft.TextField(label="Path Gambar (Opsional)", expand=1)
-        
         narrator_row = ft.Row([self.narrator_name, self.narrator_voice, self.narrator_img])
+        
+        self.clone_input = ft.TextField(label="Path Audio Voice Clone (Opsional)", expand=True)
+        async def pick_clone_result(e):
+            files = await self.clone_picker.pick_files(allow_multiple=False)
+            if files and len(files) > 0:
+                self.clone_input.value = files[0].path or ""
+                self.update()
+        
+        self.btn_pick_clone = ft.IconButton(
+            icon=ft.Icons.AUDIO_FILE,
+            on_click=pick_clone_result,
+            tooltip="Pilih File Audio untuk Voice Cloning",
+        )
+        clone_row = ft.Row([self.clone_input, self.btn_pick_clone])
 
         self.generate_btn = ft.Button(
             "Generate Brainrot Video",
@@ -118,6 +132,7 @@ class BrainrotView(ft.Column):
             broll_row,
             ft.Text("Pengaturan Narator", size=18, weight=ft.FontWeight.BOLD),
             narrator_row,
+            clone_row,
             ft.Container(height=20),
             self.generate_btn,
         ]
@@ -133,6 +148,7 @@ class BrainrotView(ft.Column):
         self.generate_btn.disabled = is_loading
         self.topic_input.disabled = is_loading
         self.broll_input.disabled = is_loading
+        self.clone_input.disabled = is_loading
         self.update()
 
     def on_generate_click(self, e):
@@ -168,7 +184,7 @@ class BrainrotView(ft.Column):
                 # 1. Generate Script
                 log.info("Generating Brainrot script...")
                 import dataclasses
-                script = await asyncio.to_thread(
+                result_data = await asyncio.to_thread(
                     brainrot_script_generator.generate_script,
                     topic or "",
                     self.narrator_name.value or "",
@@ -177,14 +193,21 @@ class BrainrotView(ft.Column):
                     lang or "id"
                 )
                 
-                if not script:
+                if not result_data or not isinstance(result_data, dict) or "script" not in result_data:
                     app_state.append_log("Error: Gagal membuat script dari AI.")
                     return
+                
+                script = result_data["script"]
+                metadata = {
+                    "title": result_data.get("title", f"Cerita {topic}"),
+                    "tags": result_data.get("tags", ["brainrot", "story"])
+                }
 
                 # Assign voice & images
                 for line in script:
                     line["voice"] = self.narrator_voice.value or ""
                     line["image"] = self.narrator_img.value or ""
+                    line["voice_clone"] = self.clone_input.value or ""
 
                 # 2. Process Video
                 job_id = str(uuid.uuid4())[:8]
@@ -201,6 +224,11 @@ class BrainrotView(ft.Column):
                     output_path=out_path,
                     event_hook=hook
                 )
+                
+                meta_path = os.path.join(job_dir, "metadata_brainrot.json")
+                import json
+                with open(meta_path, "w", encoding="utf-8") as f:
+                    json.dump(metadata, f, indent=2)
                 
                 app_state.append_log(f"Brainrot Selesai! Tersimpan di: {out_path}")
             except Exception as ex:

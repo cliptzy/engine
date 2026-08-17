@@ -43,11 +43,12 @@ async def process_brainrot(
         text = re.sub(r"\[.*?\]", "", raw_text).strip()
 
         voice = line.get("voice", "id-ID-ArdiNeural")
+        voice_clone = line.get("voice_clone", "")
         image = line.get("image")
         speaker = line.get("speaker", f"Speaker_{idx}")
 
         audio_path = os.path.join(job_dir, f"br_audio_{idx}.mp3")
-        dur = await generate_tts(text, voice, audio_path, rate="+0%")
+        dur = await generate_tts(text, voice, audio_path, rate="+0%", voice_clone_path=voice_clone)
 
         start_time = total_duration
         end_time = total_duration + dur

@@ -17,6 +17,8 @@ VOICE_MAP = {
 }
 
 _KOKORO_PIPELINES = {}
+_KANADE_MODEL = None
+_VOCODER = None
 
 def _get_pipeline(lang_code: str):
     import torch
@@ -25,6 +27,16 @@ def _get_pipeline(lang_code: str):
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         _KOKORO_PIPELINES[lang_code] = KPipeline(lang_code=lang_code, device=device)
     return _KOKORO_PIPELINES[lang_code]
+
+def _get_kanade_model():
+    global _KANADE_MODEL, _VOCODER
+    import torch
+    from kanade_tokenizer import KanadeModel, load_vocoder  # type: ignore
+    if _KANADE_MODEL is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        _KANADE_MODEL = KanadeModel.from_pretrained("frothywater/kanade-12.5hz").to(device).eval()
+        _VOCODER = load_vocoder(_KANADE_MODEL.config.vocoder_name).to(device)
+    return _KANADE_MODEL, _VOCODER
 
 def _run_kokoro_tts(text: str, voice: str, output_path: str, speed: float = 1.0):
     import soundfile as sf
@@ -48,8 +60,7 @@ def _run_kokoro_tts(text: str, voice: str, output_path: str, speed: float = 1.0)
     final_audio = np.concatenate(audio_chunks)
     sf.write(output_path, final_audio, 24000)
 
-
-async def generate_tts(text: str, voice: str, output_path: str, rate: str = "+0%") -> float:
+async def generate_tts(text: str, voice: str, output_path: str, rate: str = "+0%", voice_clone_path: str = "") -> float:
     """
     Generate audio from text using Kokoro-TTS and return the duration of the generated audio.
     
@@ -57,6 +68,7 @@ async def generate_tts(text: str, voice: str, output_path: str, rate: str = "+0%
     :param voice: Voice ID (e.g., 'af_heart').
     :param output_path: Path to save the audio file.
     :param rate: Speed rate (e.g., '+0%', '-25%').
+    :param voice_clone_path: Path to the reference audio for voice cloning.
     :return: Duration of the audio in seconds.
     """
     try:
@@ -81,6 +93,37 @@ async def generate_tts(text: str, voice: str, output_path: str, rate: str = "+0%
             tts.save(output_path)
             
         await asyncio.to_thread(_run_gtts)
+        
+    if voice_clone_path and os.path.exists(voice_clone_path):
+        try:
+            import torch
+            import soundfile as sf
+            from kanade_tokenizer import load_audio  # type: ignore
+            from core.processing.chunked_convert import chunked_voice_conversion
+            
+            def _run_voice_clone():
+                kanade, vocoder = _get_kanade_model()
+                device = next(kanade.parameters()).device
+                sample_rate = kanade.config.sample_rate
+                
+                source_wav = load_audio(output_path, sample_rate=sample_rate).to(device)  # type: ignore
+                ref_wav = load_audio(voice_clone_path, sample_rate=sample_rate).to(device)  # type: ignore
+                
+                with torch.inference_mode():
+                    converted_wav = chunked_voice_conversion(
+                        kanade=kanade,
+                        vocoder_model=vocoder,
+                        source_wav=source_wav,
+                        ref_wav=ref_wav,
+                        sample_rate=sample_rate
+                    )
+                
+                sf.write(output_path, converted_wav.numpy(), sample_rate)
+            
+            log.info(f"Applying voice clone from {voice_clone_path}...")
+            await asyncio.to_thread(_run_voice_clone)
+        except Exception as e:
+            log.error(f"Voice cloning failed: {e}")
 
     # Get duration using ffprobe
     try:

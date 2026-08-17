@@ -16,14 +16,18 @@ class BrainrotScriptGenerator:
         ai_config: Dict[str, Any],
         event_hook: Optional[Any] = None,
         language: str = "Indonesian",
-    ) -> List[Dict[str, str]]:
+    ) -> Dict[str, Any]:
         """
         Men-generate script menggunakan LLM.
-        Kembaliannya adalah list of dict dengan format:
-        [
-            {"speaker": "narrator", "text": "story text..."},
-            ...
-        ]
+        Kembaliannya adalah dict dengan format:
+        {
+            "title": "...",
+            "tags": ["...", "..."],
+            "script": [
+                {"speaker": "narrator", "text": "story text..."},
+                ...
+            ]
+        }
         """
         provider_name = (
             ai_config.get("provider") or ai_config.get("ai_provider") or "ollama"
@@ -33,7 +37,7 @@ class BrainrotScriptGenerator:
             provider = AIProviderFactory.create(provider_name)
         except Exception as e:
             log.error(f"[ERROR] Gagal memuat AI Provider untuk script generator: {e}")
-            return []
+            return {}
 
         prompt = f"""
 You are an expert storyteller specializing in viral TikTok/YouTube Shorts content (like Reddit stories).
@@ -47,12 +51,14 @@ Rules:
 2. The total story should take about 30-60 seconds when spoken. Split it into multiple short sentences/segments (around 6-12 lines).
 3. Stay in character! Exaggerate the narrator's personality if needed.
 4. DO NOT add any emotion or action tags (like [scared], [sigh], [angry]). Only output the spoken text.
-5. Output MUST be a valid JSON object containing a "script" array.
+5. Output MUST be a valid JSON object containing a "script" array, "title" (string), and "tags" (array of strings).
 6. Use {language} Language.
 
 JSON Structure:
 ```json
 {{
+  "title": "Judul Menarik",
+  "tags": ["tag1", "tag2"],
   "script": [
     {{"speaker": "{narrator}", "text": "Kalimat pertama dari cerita..."}},
     {{"speaker": "{narrator}", "text": "Kalimat kedua yang lebih seru..."}}
@@ -70,59 +76,46 @@ JSON Structure:
             raw_response = provider.generate(prompt, ai_config, event_hook)
             log.info(f"[Brainrot] AI Script Response:\n{raw_response}")
 
-            # Extract JSON array
-            def extract_array(text: str) -> list:
-                # Attempt to find ```json ... ``` block
+            def extract_dict(text: str) -> dict:
                 match_md = re.search(
-                    r"```json\s*(\[\s*\{.*?\}\s*\])\s*```",
+                    r"```json\s*(\{.*?\})\s*```",
                     text,
                     re.DOTALL | re.IGNORECASE,
                 )
                 if match_md:
                     return json.loads(match_md.group(1))
 
-                # Attempt to find bare array
-                match_arr = re.search(r"\[\s*\{.*?\}\s*\]", text, re.DOTALL)
+                match_arr = re.search(r"\{.*\}", text, re.DOTALL)
                 if match_arr:
-                    return json.loads(match_arr.group(0))
+                    try:
+                        return json.loads(match_arr.group(0))
+                    except:
+                        pass
 
-                # Try parsing raw string
-                parsed = json.loads(text)
-                if isinstance(parsed, list):
-                    return parsed
-                return []
+                try:
+                    parsed = json.loads(text)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except:
+                    pass
+                return {}
 
             try:
-                # Check if the raw response is a JSON object (forced by response_format="json_object")
                 parsed_raw = json.loads(raw_response.strip())
-                if isinstance(parsed_raw, list):
+                if isinstance(parsed_raw, dict) and "script" in parsed_raw:
                     return parsed_raw
-                if isinstance(parsed_raw, dict):
-                    if "script" in parsed_raw and isinstance(
-                        parsed_raw["script"], list
-                    ):
-                        return parsed_raw["script"]
-                    # If the LLM dumped everything in a single string value
-                    for key, value in parsed_raw.items():
-                        if isinstance(value, list):
-                            return value
-                        if isinstance(value, str):
-                            extracted = extract_array(value)
-                            if extracted:
-                                return extracted
             except Exception:
                 pass
 
-            # Fallback to extracting from raw string
-            extracted_script = extract_array(raw_response)
-            if extracted_script:
-                return extracted_script
+            extracted = extract_dict(raw_response)
+            if extracted and "script" in extracted:
+                return extracted
 
             log.warning("Format JSON tidak dikenali.")
-            return []
+            return {}
         except Exception as e:
             log.error(f"[Brainrot] Gagal generate script: {e}")
-            return []
+            return {}
 
 
 brainrot_script_generator = BrainrotScriptGenerator()
