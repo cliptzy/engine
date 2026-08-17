@@ -245,7 +245,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     log.info(f"[whisper] {start_time} --> {end_time} : {text}")
 
                     if config.subtitle.animation in ["scale", "hormozi"]:
-                        ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{{\\fscx50\\fscy50\\t(0,150,\\fscx100\\fscy100)}}{text}\n"
+                        ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{{\\fscx50\\fscy50\\t(0,100,\\fscx130\\fscy130)\\t(100,200,\\fscx100\\fscy100)}}{text}\n"
                     else:
                         ass_line = f"Dialogue: 0,{start_time},{end_time},Default,,0,0,0,,{text}\n"
                     f.write(ass_line)
@@ -405,11 +405,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                             target_scale = 130 if is_angry else (115 if is_hormozi else 100)
 
                             if config.subtitle.animation == "scale" or is_hormozi:
-                                anim = f"\\fscx50\\fscy50\\t(0,150,\\fscx{target_scale}\\fscy{target_scale})"
+                                anim = f"\\fscx50\\fscy50\\t(0,100,\\fscx{target_scale + 30}\\fscy{target_scale + 30})\\t(100,200,\\fscx{target_scale}\\fscy{target_scale})"
                             elif is_angry:
                                 anim = f"\\fscx{target_scale}\\fscy{target_scale}"
 
-                            line_text += f"{{\\c{ass_c}{anim}}}{word_str}{{\\c{config.subtitle.color}{reset_anim}}} "
+                            glow_tags = f"\\3c{ass_c}\\blur6\\bord6"
+                            reset_glow = "\\3c&H00000000&\\blur0\\bord3"
+
+                            line_text += f"{{\\c{config.subtitle.color}{glow_tags}{anim}}}{word_str}{{{reset_glow}{reset_anim}}} "
                         else:
                             # Normal word
                             line_text += f"{word_str} "

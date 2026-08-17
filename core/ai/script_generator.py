@@ -12,8 +12,7 @@ class BrainrotScriptGenerator:
     def generate_script(
         self,
         topic: str,
-        character_1: str,
-        character_2: str,
+        narrator: str,
         ai_config: Dict[str, Any],
         event_hook: Optional[Any] = None,
         language: str = "Indonesian",
@@ -22,7 +21,7 @@ class BrainrotScriptGenerator:
         Men-generate script menggunakan LLM.
         Kembaliannya adalah list of dict dengan format:
         [
-            {"speaker": "character_name", "text": "dialog..."},
+            {"speaker": "narrator", "text": "story text..."},
             ...
         ]
         """
@@ -37,18 +36,17 @@ class BrainrotScriptGenerator:
             return []
 
         prompt = f"""
-You are an expert comedy writer specializing in TikTok/YouTube Shorts content.
-Your task is to write a highly engaging, funny, and slightly chaotic conversation between two cartoon characters about a specific topic.
+You are an expert storyteller specializing in viral TikTok/YouTube Shorts content (like Reddit stories).
+Your task is to write a highly engaging, dramatic, and interesting story/narration about a specific topic.
 
 Topic: {topic}
-Character 1: {character_1}
-Character 2: {character_2}
+Narrator: {narrator}
 
 Rules:
-1. Make the dialogue punchy and short (suitable for vertical short videos).
-2. The total conversation should take about 30-60 seconds when spoken (around 6-12 lines of dialogue).
-3. Stay in character! Exaggerate their personalities.
-4. You CAN add emotion or action tags at the beginning of the text like [scared], [sigh], [angry], [laughs], etc., if it fits the character's reaction. This helps guide the AI voice engine.
+1. Make the narration punchy, fast-paced, and engaging (suitable for vertical short videos).
+2. The total story should take about 30-60 seconds when spoken. Split it into multiple short sentences/segments (around 6-12 lines).
+3. Stay in character! Exaggerate the narrator's personality if needed.
+4. DO NOT add any emotion or action tags (like [scared], [sigh], [angry]). Only output the spoken text.
 5. Output MUST be a valid JSON object containing a "script" array.
 6. Use {language} Language.
 
@@ -56,8 +54,8 @@ JSON Structure:
 ```json
 {{
   "script": [
-    {{"speaker": "{character_1}", "text": "[sigh] Dialog baris pertama..."}},
-    {{"speaker": "{character_2}", "text": "[angry] Balasan dari karakter 2..."}}
+    {{"speaker": "{narrator}", "text": "Kalimat pertama dari cerita..."}},
+    {{"speaker": "{narrator}", "text": "Kalimat kedua yang lebih seru..."}}
   ]
 }}
 ```

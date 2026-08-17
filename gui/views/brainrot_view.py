@@ -16,10 +16,34 @@ class BrainrotView(ft.Column):
         self.page_ref = page
         self.spacing = 20
         self.expand = True
+        self.scroll = ft.ScrollMode.AUTO
 
         self.topic_input = ft.TextField(
             label="Topik Percakapan (Contoh: Kenapa Netflix ada iklan)",
             expand=True,
+        )
+
+        def generate_random_topic(e):
+            import random
+            topics = [
+                "Kenapa orang suka makan seblak pedas gila",
+                "Misteri kenapa kucing suka menjatuhkan barang",
+                "Alasan kenapa alien belum mengunjungi bumi",
+                "Debat apakah bubur ayam harus diaduk atau tidak",
+                "Kenapa bangun pagi selalu terasa berat",
+                "Mitos kecoa terbang yang bikin panik",
+                "Gimana jadinya kalau dinosaurus masih hidup",
+                "Kenapa kita sering lupa mau ngomong apa",
+                "Konspirasi kenapa printer selalu rusak saat buru-buru",
+                "Alasan kenapa hari senin terasa sangat panjang"
+            ]
+            self.topic_input.value = random.choice(topics)
+            self.update()
+
+        self.btn_random_topic = ft.IconButton(
+            icon=ft.Icons.SHUFFLE,
+            on_click=generate_random_topic,
+            tooltip="Pilih Topik Acak",
         )
 
         self.language_input = ft.Dropdown(
@@ -35,7 +59,7 @@ class BrainrotView(ft.Column):
             width=150,
         )
         
-        topic_row = ft.Row([self.topic_input, self.language_input])
+        topic_row = ft.Row([self.topic_input, self.btn_random_topic, self.language_input])
 
         self.broll_input = ft.TextField(
             label="Path File B-Roll Video (.mp4)",
@@ -63,29 +87,17 @@ class BrainrotView(ft.Column):
 
         broll_row = ft.Row([self.broll_input, self.btn_pick_broll])
 
-        # Character 1 Setup
-        self.char1_name = ft.TextField(label="Nama Karakter 1", value="Spongebob", expand=1)
-        self.char1_voice = ft.Dropdown(
-            label="Suara Karakter 1", 
+        # Narrator Setup
+        self.narrator_name = ft.TextField(label="Nama Narator", value="Narator", expand=1)
+        self.narrator_voice = ft.Dropdown(
+            label="Suara Narator", 
             options=self._get_voice_options(),
-            value="id-ID-ArdiNeural",
+            value="am_adam",
             expand=1
         )
-        self.char1_img = ft.TextField(label="Path Gambar 1 (Opsional)", expand=1)
+        self.narrator_img = ft.TextField(label="Path Gambar (Opsional)", expand=1)
         
-        char1_row = ft.Row([self.char1_name, self.char1_voice, self.char1_img])
-
-        # Character 2 Setup
-        self.char2_name = ft.TextField(label="Nama Karakter 2", value="Mr. Krabs", expand=1)
-        self.char2_voice = ft.Dropdown(
-            label="Suara Karakter 2", 
-            options=self._get_voice_options(),
-            value="id-ID-GadisNeural",
-            expand=1
-        )
-        self.char2_img = ft.TextField(label="Path Gambar 2 (Opsional)", expand=1)
-        
-        char2_row = ft.Row([self.char2_name, self.char2_voice, self.char2_img])
+        narrator_row = ft.Row([self.narrator_name, self.narrator_voice, self.narrator_img])
 
         self.generate_btn = ft.Button(
             "Generate Brainrot Video",
@@ -99,14 +111,13 @@ class BrainrotView(ft.Column):
         )
 
         self.controls = [
-            ft.Text("Brainrot Video Generator", size=24, weight=ft.FontWeight.BOLD),
-            ft.Text("Buat video short viral dengan percakapan AI dan B-Roll otomatis.", color=ft.Colors.WHITE_70),
+            ft.Text("Brainrot Video Generator (Story Mode)", size=24, weight=ft.FontWeight.BOLD),
+            ft.Text("Buat video short viral dengan cerita AI dan B-Roll otomatis layaknya Reddit Story.", color=ft.Colors.WHITE_70),
             ft.Divider(),
             topic_row,
             broll_row,
-            ft.Text("Pengaturan Karakter", size=18, weight=ft.FontWeight.BOLD),
-            char1_row,
-            char2_row,
+            ft.Text("Pengaturan Narator", size=18, weight=ft.FontWeight.BOLD),
+            narrator_row,
             ft.Container(height=20),
             self.generate_btn,
         ]
@@ -160,8 +171,7 @@ class BrainrotView(ft.Column):
                 script = await asyncio.to_thread(
                     brainrot_script_generator.generate_script,
                     topic or "",
-                    self.char1_name.value or "",
-                    self.char2_name.value or "",
+                    self.narrator_name.value or "",
                     dataclasses.asdict(config.ai),
                     hook,
                     lang or "id"
@@ -173,12 +183,8 @@ class BrainrotView(ft.Column):
 
                 # Assign voice & images
                 for line in script:
-                    if line.get("speaker") == self.char1_name.value:
-                        line["voice"] = self.char1_voice.value or ""
-                        line["image"] = self.char1_img.value or ""
-                    else:
-                        line["voice"] = self.char2_voice.value or ""
-                        line["image"] = self.char2_img.value or ""
+                    line["voice"] = self.narrator_voice.value or ""
+                    line["image"] = self.narrator_img.value or ""
 
                 # 2. Process Video
                 job_id = str(uuid.uuid4())[:8]
