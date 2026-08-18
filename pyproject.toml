@@ -12,7 +12,7 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "yt-dlp",
+    "yt-dlp==2026.8.17.73947.dev0",
     "faster-whisper",
     "instagrapi",
     "supabase",
