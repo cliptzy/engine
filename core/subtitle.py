@@ -112,7 +112,9 @@ def generate_subtitle(
 
     def load_and_transcribe():
         if needs_wav_extraction:
-            log.info("[ffmpeg] Mengekstrak audio PCM (.wav) untuk Whisper + Voice Analysis...")
+            log.info(
+                "[ffmpeg] Mengekstrak audio PCM (.wav) untuk Whisper + Voice Analysis..."
+            )
 
             cmd_extract = [
                 "ffmpeg",
@@ -256,19 +258,29 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             )
 
             # Analyze text emotions per segment
-            if getattr(config.ai, "use_text_analysis", True) and config.subtitle.style != "plain":
+            if (
+                getattr(config.ai, "use_text_analysis", True)
+                and config.subtitle.style != "plain"
+            ):
                 from core.processing.text_analyzer import analyze_text_emotions
 
                 analyze_text_emotions(
-                    segments, words_data, language=target_lang if target_lang else "auto"
+                    segments,
+                    words_data,
+                    language=target_lang if target_lang else "auto",
                 )
 
             # Analyze voice levels
-            if getattr(config.ai, "use_voice_analysis", True) and config.subtitle.style != "plain":
+            if (
+                getattr(config.ai, "use_voice_analysis", True)
+                and config.subtitle.style != "plain"
+            ):
                 from core.processing.voice_analyzer import analyze_voice_emotions
 
                 analyze_voice_emotions(
-                    audio_wav, words_data, language=target_lang if target_lang else "auto"
+                    audio_wav,
+                    words_data,
+                    language=target_lang if target_lang else "auto",
                 )
 
     except Exception as e:
@@ -395,24 +407,27 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                             # Highlighted word
                             color_hex = w.get("color", "")
                             ass_c = hex_to_ass_color(color_hex)
-                            
+
                             if is_hormozi:
                                 # Hormozi removes emotion color, always uses yellow
                                 ass_c = "&H0000FFFF"
-                                
+
                             anim = ""
                             reset_anim = "\\fscx100\\fscy100"
-                            target_scale = 130 if is_angry else (115 if is_hormozi else 100)
+                            target_scale = (
+                                130 if is_angry else (115 if is_hormozi else 100)
+                            )
 
                             if config.subtitle.animation == "scale" or is_hormozi:
                                 anim = f"\\fscx50\\fscy50\\t(0,100,\\fscx{target_scale + 30}\\fscy{target_scale + 30})\\t(100,200,\\fscx{target_scale}\\fscy{target_scale})"
                             elif is_angry:
                                 anim = f"\\fscx{target_scale}\\fscy{target_scale}"
 
-                            glow_tags = f"\\3c{ass_c}\\blur6\\bord6"
-                            reset_glow = "\\3c&H00000000&\\blur0\\bord3"
+                            # Brutalist Style (Fill = emotion color, thick black outline, black shadow)
+                            brutalist_tags = f"\\c{ass_c}\\3c&H00000000&\\4c&H00000000&\\bord3\\shad3\\blur0"
+                            reset_brutalist = f"\\c{config.subtitle.color}\\3c&H00000000&\\4c{config.subtitle.bg_color}\\bord3\\shad3\\blur0"
 
-                            line_text += f"{{\\c{config.subtitle.color}{glow_tags}{anim}}}{word_str}{{{reset_glow}{reset_anim}}} "
+                            line_text += f"{{{brutalist_tags}{anim}}}{word_str}{{{reset_brutalist}{reset_anim}}} "
                         else:
                             # Normal word
                             line_text += f"{word_str} "
