@@ -351,6 +351,9 @@ class AIHighlightDetector:
         all_enriched = []
         all_standalone = []
 
+        import time
+        local_tz = time.tzname[time.daylight] if time.daylight else time.tzname[0]
+
         for idx, chunk in enumerate(words_chunks):
             chunk_info = (
                 f"\n(IMPORTANT: This is part {idx + 1} of {len(words_chunks)} of the total words. Focus on providing `enriched_transcript` ONLY for the words in this part!)\n"
@@ -386,6 +389,8 @@ RULES:
 6. NON-VERBAL EVENTS:
    If there is a screaming moment (Scream) or other important audio events but no words are spoken in `words_data` at that second, you CAN put a video effect into the `"standalone_video_effects"` array.
    Fill `"time"` (start second) and `"video_effect_override"` with the appropriate effect name.
+7. RECOMMENDED PUBLISH TIME:
+   Recommend the best time to publish this video (e.g., '18:00 - 20:00' or similar formats) based on the content and target audience. Add it to the `recommended_publish_time` field. Please consider the timezone to be {local_tz}.
 
 VALID EMOTION CATEGORIES:
 {emotion_str}
@@ -405,6 +410,7 @@ JSON Output Format:
     "title": "...",
     "tags": "#...",
     "highlight": "...",
+    "recommended_publish_time": "...",
     "enriched_transcript": [
         {{"word": "word", "start": 0.0, "end": 0.5, "emotion": "surprise", "color": "#FF0000", "voice_emotion": "angry", "score": 0.8, "video_effect_override": "vineboom"}}
     ],
@@ -441,6 +447,7 @@ JSON Output Format:
                     global_metadata["title"] = metadata.get("title", "")
                     global_metadata["tags"] = metadata.get("tags", "")
                     global_metadata["highlight"] = metadata.get("highlight", "")
+                    global_metadata["recommended_publish_time"] = metadata.get("recommended_publish_time", "")
 
                 all_enriched.extend(metadata.get("enriched_transcript", []))
                 all_standalone.extend(metadata.get("standalone_video_effects", []))

@@ -90,6 +90,11 @@ class UploadView(ft.Column):
             value=config.default_hashtags,
             expand=True,
         )
+        self.meta_publish_time = ft.TextField(
+            label="Rekomendasi Waktu Publish (AI)",
+            expand=True,
+            read_only=False,
+        )
         self.btn_save_meta = ft.Button(
             "Simpan Metadata", icon=ft.Icons.SAVE, on_click=self.save_metadata
         )
@@ -238,6 +243,7 @@ class UploadView(ft.Column):
                 ft.Text("Metadata Editor", weight=ft.FontWeight.BOLD),
                 self.meta_title,
                 self.meta_tags,
+                self.meta_publish_time,
                 ft.Row([self.btn_save_meta, self.btn_ai_meta]),
             ]
         )
@@ -619,6 +625,7 @@ class UploadView(ft.Column):
         # Load Metadata if exists
         self.meta_title.value = ""
         self.meta_tags.value = ""
+        self.meta_publish_time.value = ""
 
         if self.current_clip_index:
             meta_path = os.path.join(
@@ -629,6 +636,7 @@ class UploadView(ft.Column):
                     with open(meta_path, "r", encoding="utf-8") as f:
                         data = json.load(f)
                         self.meta_title.value = data.get("title", "")
+                        self.meta_publish_time.value = data.get("recommended_publish_time", "")
 
                         tags = data.get("tags", [])
                         if isinstance(tags, list):
@@ -660,6 +668,7 @@ class UploadView(ft.Column):
 
         data["title"] = self.meta_title.value
         data["tags"] = (self.meta_tags.value or "").split()
+        data["recommended_publish_time"] = self.meta_publish_time.value
 
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
@@ -739,6 +748,7 @@ class UploadView(ft.Column):
                 )
                 if result:
                     self.meta_title.value = result.get("title", self.meta_title.value)
+                    self.meta_publish_time.value = result.get("recommended_publish_time", self.meta_publish_time.value)
 
                     new_tags = result.get("tags", [])
                     if isinstance(new_tags, list):

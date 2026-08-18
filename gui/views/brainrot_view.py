@@ -238,6 +238,7 @@ class BrainrotView(ft.Column):
                 metadata = {
                     "title": result_data.get("title", f"Cerita {topic}"),
                     "tags": result_data.get("tags", ["brainrot", "story"]),
+                    "recommended_publish_time": result_data.get("recommended_publish_time", ""),
                 }
 
                 # Assign voice & images

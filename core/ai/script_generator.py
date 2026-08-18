@@ -39,6 +39,9 @@ class BrainrotScriptGenerator:
             log.error(f"[ERROR] Gagal memuat AI Provider untuk script generator: {e}")
             return {}
 
+        import time
+        local_tz = time.tzname[time.daylight] if time.daylight else time.tzname[0]
+        
         prompt = f"""
 You are an expert storyteller specializing in viral TikTok/YouTube Shorts content (like Reddit stories).
 Your task is to write a highly engaging, dramatic, and interesting story/narration about a specific topic.
@@ -51,15 +54,17 @@ Rules:
 2. The total story should take about 120-180 seconds when spoken. Split it into multiple short sentences/segments.
 3. Stay in character! Exaggerate the narrator's personality if needed.
 4. DO NOT add any emotion or action tags (like [scared], [sigh], [angry]). Only output the spoken text.
-5. Output MUST be a valid JSON object containing a "script" array, "title" (string), and "tags" (array of strings).
+5. Output MUST be a valid JSON object containing a "script" array, "title" (string), "tags" (array of strings), and "recommended_publish_time" (string).
 6. Use {language} Language.
 7. Include a Call to Action (CTA) in the middle of the script asking viewers to subscribe/follow, like, and share the video.
+8. Recommend the best time to publish this video (e.g., '18:00 - 20:00' or similar formats) based on the content and target audience. Add it to the `recommended_publish_time` field. Please consider the timezone to be {local_tz}.
 
 JSON Structure:
 ```json
 {{
   "title": "Judul Menarik",
   "tags": ["#tag1", "#tag2"],
+  "recommended_publish_time": "18:00 - 20:00",
   "script": [
     {{"speaker": "{narrator}", "text": "Kalimat pertama dari cerita..."}},
     {{"speaker": "{narrator}", "text": "Kalimat kedua yang lebih seru..."}}
