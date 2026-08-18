@@ -48,17 +48,18 @@ Narrator: {narrator}
 
 Rules:
 1. Make the narration punchy, fast-paced, and engaging (suitable for vertical short videos).
-2. The total story should take about 30-60 seconds when spoken. Split it into multiple short sentences/segments (around 6-12 lines).
+2. The total story should take about 120-180 seconds when spoken. Split it into multiple short sentences/segments.
 3. Stay in character! Exaggerate the narrator's personality if needed.
 4. DO NOT add any emotion or action tags (like [scared], [sigh], [angry]). Only output the spoken text.
 5. Output MUST be a valid JSON object containing a "script" array, "title" (string), and "tags" (array of strings).
 6. Use {language} Language.
+7. Include a Call to Action (CTA) in the middle of the script asking viewers to subscribe/follow, like, and share the video.
 
 JSON Structure:
 ```json
 {{
   "title": "Judul Menarik",
-  "tags": ["tag1", "tag2"],
+  "tags": ["#tag1", "#tag2"],
   "script": [
     {{"speaker": "{narrator}", "text": "Kalimat pertama dari cerita..."}},
     {{"speaker": "{narrator}", "text": "Kalimat kedua yang lebih seru..."}}

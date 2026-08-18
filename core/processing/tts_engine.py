@@ -60,7 +60,7 @@ def _run_kokoro_tts(text: str, voice: str, output_path: str, speed: float = 1.0)
     final_audio = np.concatenate(audio_chunks)
     sf.write(output_path, final_audio, 24000)
 
-async def generate_tts(text: str, voice: str, output_path: str, rate: str = "+0%", voice_clone_path: str = "") -> float:
+async def generate_tts(text: str, voice: str, output_path: str, rate: str = "+0%", voice_clone_path: str = "", pitch: str = "+0Hz") -> float:
     """
     Generate audio from text using Kokoro-TTS and return the duration of the generated audio.
     
@@ -69,6 +69,7 @@ async def generate_tts(text: str, voice: str, output_path: str, rate: str = "+0%
     :param output_path: Path to save the audio file.
     :param rate: Speed rate (e.g., '+0%', '-25%').
     :param voice_clone_path: Path to the reference audio for voice cloning.
+    :param pitch: Pitch shift (e.g., '+0Hz', '+10Hz').
     :return: Duration of the audio in seconds.
     """
     try:
@@ -124,6 +125,34 @@ async def generate_tts(text: str, voice: str, output_path: str, rate: str = "+0%
             await asyncio.to_thread(_run_voice_clone)
         except Exception as e:
             log.error(f"Voice cloning failed: {e}")
+
+    if pitch and pitch not in ("+0Hz", "0Hz", "0"):
+        try:
+            pitch_val = float(pitch.replace("Hz", "").replace("+", ""))
+            pitch_shift = 1.0 + (pitch_val / 100.0)
+            if pitch_shift <= 0.1:
+                pitch_shift = 0.1
+            
+            temp_path = output_path + ".temp.wav"
+            if os.path.exists(output_path):
+                os.rename(output_path, temp_path)
+                
+                def _run_pitch_shift():
+                    subprocess.run([
+                        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                        "-i", temp_path,
+                        "-filter:a", f"asetrate=24000*{pitch_shift},atempo=1/{pitch_shift}",
+                        output_path
+                    ], check=True)
+                
+                log.info(f"Applying pitch shift: {pitch_shift}")
+                await asyncio.to_thread(_run_pitch_shift)
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+        except Exception as e:
+            log.error(f"Failed to apply pitch shift: {e}")
+            if 'temp_path' in locals() and os.path.exists(temp_path) and not os.path.exists(output_path):
+                os.rename(temp_path, output_path)
 
     # Get duration using ffprobe
     try:

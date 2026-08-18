@@ -830,6 +830,8 @@ class UploadView(ft.Column):
                     idx = m.group(1)
                 elif bname == "merged.mp4":
                     idx = "merge"
+                elif bname == "final_brainrot.mp4":
+                    idx = "brainrot"
                 else:
                     idx = ""
 
