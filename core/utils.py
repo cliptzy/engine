@@ -73,7 +73,12 @@ def is_ffmpeg_libass_supported() -> bool:
         import re
 
         res = subprocess.run(
-            ["ffmpeg", "-filters"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3
+            ["ffmpeg", "-filters"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=3,
         )
         return bool(re.search(r"\bsubtitles\b", res.stdout))
     except Exception:
@@ -317,3 +322,49 @@ def restart_app() -> None:
 
     # Instantly exit the old process
     os._exit(0)
+
+
+def kill_active_subprocesses():
+    """
+    Kills all active subprocesses spawned by this application (e.g., ffmpeg, yt-dlp).
+    Called when the user cancels the process or exits the application.
+    """
+    import psutil
+
+    try:
+        current_process = psutil.Process(os.getpid())
+        children = current_process.children(recursive=True)
+
+        target_names = ["ffmpeg", "ffprobe", "yt-dlp", "ytdlp", "edge-tts"]
+
+        # Terminate gracefully first
+        for child in children:
+            try:
+                name = child.name().lower()
+                cmdline = " ".join(child.cmdline()).lower()
+                if any(x in name for x in target_names) or any(
+                    x in cmdline for x in target_names
+                ):
+                    child.terminate()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+
+        # Wait a bit and kill if still alive
+        gone, alive = psutil.wait_procs(children, timeout=2)
+        for p in alive:
+            try:
+                name = p.name().lower()
+                cmdline = " ".join(p.cmdline()).lower()
+                if any(x in name for x in target_names) or any(
+                    x in cmdline for x in target_names
+                ):
+                    p.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+    except Exception as e:
+        log.error(f"Error killing subprocesses: {e}")
+
+
+import atexit
+
+atexit.register(kill_active_subprocesses)

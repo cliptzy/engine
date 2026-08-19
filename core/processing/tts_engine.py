@@ -127,6 +127,7 @@ async def generate_tts(text: str, voice: str, output_path: str, rate: str = "+0%
             log.error(f"Voice cloning failed: {e}")
 
     if pitch and pitch not in ("+0Hz", "0Hz", "0"):
+        temp_path = ""
         try:
             pitch_val = float(pitch.replace("Hz", "").replace("+", ""))
             pitch_shift = 1.0 + (pitch_val / 100.0)

@@ -56,8 +56,10 @@ class ClipperView(ft.Column):
     def on_cancel_process_requested(self, *args, **kwargs):
         self._cancel_flag = True
         from core.logger import log
+        from core.utils import kill_active_subprocesses
 
         log.info("Membatalkan proses klip...")
+        kill_active_subprocesses()
 
     def on_start_process_requested(self, *args, **kwargs):
         from core.controller import controller

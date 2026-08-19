@@ -26,6 +26,7 @@ def process_single_clip(
     phase1_only: bool = False,
     is_sequential: bool = False,
     is_last_in_queue: bool = False,
+    only_download: bool = False,
 ) -> bool:
     original_hook = event_hook
 
@@ -141,7 +142,9 @@ def process_single_clip(
         _emotions_from_cache = os.path.exists(cropped_file)
 
         if not _emotions_from_cache:
-            if source_url and os.path.isfile(source_url):
+            if os.path.exists(temp_file):
+                log.info(f"Skipping download, temp_file already exists: {temp_file}")
+            elif source_url and os.path.isfile(source_url):
                 log.info(f"[ffmpeg] Memotong video lokal: {start}s - {end}s\n")
                 cmd_cut = [
                     "ffmpeg",
@@ -205,6 +208,9 @@ def process_single_clip(
             if not os.path.exists(temp_file):
                 log.error(f"Failed to download video segment for clip {index}.")
                 return False
+
+            if only_download:
+                return True
 
             out_w, out_h = config.out_width, config.out_height
 

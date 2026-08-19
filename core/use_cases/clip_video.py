@@ -284,6 +284,54 @@ class ClipVideoUseCase:
             return clip_output
 
         max_workers = getattr(config, "max_workers", 2)
+        
+        # PRE-DOWNLOAD PHASE: Selesaikan download semua segmen sebelum diproses
+        if not is_local:
+            log.info("Memulai pra-unduh semua segmen klip...")
+            def download_target(idx, item):
+                if is_cancelled and is_cancelled():
+                    return
+                clip_idx = item.get("original_index")
+                if clip_idx is None:
+                    clip_idx = idx
+                else:
+                    clip_idx = int(clip_idx)
+                
+                process_single_clip(
+                    video_id=video_id,
+                    item=item,
+                    index=clip_idx,
+                    total_duration=total_duration,
+                    crop_mode=crop,
+                    use_subtitle=subtitle,
+                    event_hook=event_hook,
+                    source_url=None,
+                    custom_prompt="",
+                    phase1_only=False,
+                    is_sequential=False,
+                    is_last_in_queue=False,
+                    only_download=True
+                )
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as dl_executor:
+                dl_futures = {
+                    dl_executor.submit(download_target, idx, item): item
+                    for idx, item in enumerate(targets, start=1)
+                }
+                for future in concurrent.futures.as_completed(dl_futures):
+                    if is_cancelled and is_cancelled():
+                        break
+                    current_item = dl_futures[future]
+                    try:
+                        future.result()
+                    except Exception as e:
+                        log.error(f"Error pada saat pra-unduh klip {current_item}: {e}")
+
+            if is_cancelled and is_cancelled():
+                return {"success": 0, "outputs": []}
+            
+            log.info("Pra-unduh selesai. Memulai pemrosesan paralel...")
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [
                 executor.submit(process_target, idx, item)

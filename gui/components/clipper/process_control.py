@@ -8,11 +8,14 @@ from gui.event_bus import event_bus
 
 class TaskRow(ft.Container):
     def __init__(self, clip_index: int, initial_stage: str):
+        import time
         super().__init__()
         self.clip_index = clip_index
         self.padding = ft.Padding(left=12, top=8, right=12, bottom=8)
         self.border_radius = 6
         self.bgcolor = ft.Colors.TRANSPARENT
+
+        self.start_time = time.time()
 
         self.icon = ft.Icon(ft.Icons.MOVIE, color=ft.Colors.INDIGO, size=20)
         title_text = (
@@ -20,17 +23,24 @@ class TaskRow(ft.Container):
         )
         self.title_ui = ft.Text(title_text, weight=ft.FontWeight.BOLD, size=13)
         self.stage_ui = ft.Text(initial_stage, size=12, color=ft.Colors.INDIGO)
+        self.time_ui = ft.Text("00:00", size=12, color=ft.Colors.OUTLINE, weight=ft.FontWeight.BOLD)
         self.spinner = ft.ProgressRing(width=16, height=16, stroke_width=2)
 
         self.content = ft.Row(
             [
                 self.icon,
                 ft.Column([self.title_ui, self.stage_ui], spacing=2, expand=True),
+                self.time_ui,
                 self.spinner,
             ],
             alignment=ft.MainAxisAlignment.START,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
+
+    def tick(self, now: float):
+        elapsed = int(now - self.start_time)
+        mins, secs = divmod(elapsed, 60)
+        self.time_ui.value = f"{mins:02d}:{secs:02d}"
 
     def update_state(
         self, new_stage: str, is_done: bool = False, is_error: bool = False
@@ -59,6 +69,7 @@ class ProcessControl(ft.Container):
         super().__init__()
         self.page_ref = page
         self.total_clips = 0
+        self.is_processing = False
         self.padding = 20
         self.border_radius = 12
         self.border = ft.Border.all(1, ft.Colors.OUTLINE_VARIANT)
@@ -241,6 +252,7 @@ class ProcessControl(ft.Container):
     def set_processing(self, processing: bool) -> None:
         self.start_btn.disabled = processing
         self.cancel_btn.disabled = not processing
+        self.is_processing = processing
 
         if processing:
             self.stage_text.value = "Status: Processing..."
@@ -250,6 +262,10 @@ class ProcessControl(ft.Container):
             # Clear tasks on start
             self.active_tasks_map.clear()
             self.tasks_list.controls.clear()
+
+            # Start timer loop
+            if self.page_ref:
+                self.page_ref.run_task(self._timer_loop)
         else:
             self.stage_text.value = "Status: Idle"
             self.stage_badge.bgcolor = ft.Colors.PRIMARY_CONTAINER
@@ -275,3 +291,21 @@ class ProcessControl(ft.Container):
                 self.update()
         except Exception:
             pass
+
+    async def _timer_loop(self):
+        import asyncio
+        import time
+
+        while getattr(self, "is_processing", False):
+            now = time.time()
+            for task in self.active_tasks_map.values():
+                if getattr(task, "spinner", None) and getattr(task.spinner, "visible", False):
+                    task.tick(now)
+            try:
+                if self.page:
+                    self.page.update()
+                else:
+                    self.update()
+            except Exception:
+                pass
+            await asyncio.sleep(1)

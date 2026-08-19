@@ -425,7 +425,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
                             # Brutalist Style (Fill = emotion color, thick black outline, black shadow)
                             brutalist_tags = f"\\c{ass_c}\\3c&H00000000&\\4c&H00000000&\\bord3\\shad3\\blur0"
-                            reset_brutalist = f"\\c{config.subtitle.color}\\3c&H00000000&\\4c{config.subtitle.bg_color}\\bord3\\shad3\\blur0"
+                            reset_brutalist = f"\\c{config.subtitle.color}\\3c&H00000000&\\4c&H00000000&\\bord3\\shad3\\blur0"
 
                             line_text += f"{{{brutalist_tags}{anim}}}{word_str}{{{reset_brutalist}{reset_anim}}} "
                         else:

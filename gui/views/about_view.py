@@ -138,8 +138,8 @@ class AboutView(ft.Column):
                     # Disable creation of command window on Windows when frozen
                     startupinfo = None
                     if getattr(subprocess, "STARTUPINFO", None):
-                        startupinfo = subprocess.STARTUPINFO()
-                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                        startupinfo = subprocess.STARTUPINFO()  # type: ignore
+                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW  # type: ignore
 
                     cmd = ["wmic", "path", "win32_VideoController", "get", "name"]
                     result = subprocess.run(
