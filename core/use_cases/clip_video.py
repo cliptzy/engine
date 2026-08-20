@@ -399,6 +399,7 @@ class ClipVideoUseCase:
                     raise RuntimeError(f"FFmpeg Error: {res.stderr}")
 
 
+                merged_thumb = os.path.splitext(merged_path)[0] + "_thumbnail.jpg"
                 outputs.append(
                     {
                         "name": merged_filename,

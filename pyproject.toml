@@ -49,6 +49,7 @@ dependencies = [
     "soundfile>=0.14.0",
     "kokoclone",
     "en-core-web-sm",
+    "matplotlib>=3.11.1",
 ]
 
 [project.scripts]

@@ -2,11 +2,12 @@ import os
 import subprocess
 from core.logger import log
 
-def get_dominant_emotion(metadata: dict) -> str:
+def get_dominant_emotion(metadata: dict | None) -> str:
     import random
     from core.constant import VALID_EMOTIONS
+    default_emo = random.choice(["happy", "shock", "confused"])
     if not metadata:
-        return random.choice(["happy", "shock", "confused"])
+        return default_emo
         
     visuals = metadata.get("visual_emotions", [])
     if visuals and isinstance(visuals, list):
@@ -16,7 +17,7 @@ def get_dominant_emotion(metadata: dict) -> str:
             if emo and emo in VALID_EMOTIONS and emo != "neutral":
                 counts[emo] = counts.get(emo, 0) + 1
         if counts:
-            return max(counts, key=counts.get)
+            return max(counts, key=lambda x: counts[x])
             
     transcript = metadata.get("enriched_transcript", [])
     if transcript and isinstance(transcript, list):
@@ -26,7 +27,7 @@ def get_dominant_emotion(metadata: dict) -> str:
             if emo and emo in VALID_EMOTIONS and emo != "neutral":
                 counts[emo] = counts.get(emo, 0) + 1
         if counts:
-            return max(counts, key=counts.get)
+            return max(counts, key=lambda x: counts[x])
             
     tags = metadata.get("tags", [])
     if isinstance(tags, list):
@@ -35,7 +36,9 @@ def get_dominant_emotion(metadata: dict) -> str:
             if tag_clean in VALID_EMOTIONS:
                 return tag_clean
                 
-def get_best_timestamp(metadata: dict) -> str:
+    return default_emo
+                
+def get_best_timestamp(metadata: dict | None) -> str:
     """Finds the best timestamp to extract a frame so subtitles/highlights are visible."""
     if metadata:
         # Jika ada highlight hook (yang biasanya tayang di 3 detik pertama), ambil dari detik ke-1
@@ -59,7 +62,7 @@ def get_best_timestamp(metadata: dict) -> str:
                 
     return "00:00:01.000"
 
-def generate_thumbnail(video_path: str, output_path: str, metadata: dict = None) -> bool:
+def generate_thumbnail(video_path: str, output_path: str, metadata: dict | None = None) -> bool:
     """
     Generate a thumbnail from a video file with emotion-based video effect overlay.
     

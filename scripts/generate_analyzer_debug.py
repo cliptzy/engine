@@ -48,7 +48,7 @@ def generate_analyzer_debug(
 
         # 2. Transcribe
         log.info("Mulai transkripsi Whisper untuk debug...")
-        model = get_whisper_model("small")
+        model = get_whisper_model("large-v3-turbo")
         segments_gen = _transcribe_with_language_sync(
             model, audio_wav, word_timestamps=True, target_lang="id"
         )
@@ -131,9 +131,34 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             for ev in ass_events:
                 f.write(ev)
 
-        # 7. Render Video
+        # 7. Siapkan Filter FFmpeg untuk drawbox dan subtitles
         log.info("Merender video debug dengan overlay...")
         ass_file_fwd = ass_file.replace("\\", "/").replace(":", "\\:")
+
+        vf_filters = [f"subtitles=filename='{ass_file_fwd}'"]
+        for i, ve in enumerate(visual_emotions):
+            if len(vf_filters) >= 85:  # Limit filters to avoid Command Line Too Long
+                break
+            box = ve.get("box", {})
+            if box:
+                x, y, w, h = (
+                    box.get("x", 0),
+                    box.get("y", 0),
+                    box.get("w", 0),
+                    box.get("h", 0),
+                )
+                if w > 0 and h > 0:
+                    t = float(ve.get("time", 0.0))
+                    next_t = (
+                        float(visual_emotions[i + 1].get("time", t + 1.0))
+                        if i + 1 < len(visual_emotions)
+                        else t + 1.0
+                    )
+                    vf_filters.append(
+                        f"drawbox=x={x}:y={y}:w={w}:h={h}:color=red@0.8:thickness=4:enable='between(t,{t},{next_t})'"
+                    )
+
+        vf_string = ",".join(vf_filters)
 
         # Pastikan tidak encode audio ulang agar cepat, cukup copy
         cmd = [
@@ -145,12 +170,35 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             "-i",
             input_file,
             "-vf",
-            f"subtitles=filename='{ass_file_fwd}'",
+            vf_string,
             "-c:a",
             "copy",
             output_file,
         ]
         run_command_with_logging(cmd, event_hook, prefix="[ffmpeg-debug]")
+
+        # 8. Generate Grafik Alur Emosi
+        try:
+            from gui.views.debugger_view import generate_emotion_chart_png
+
+            text_data = [
+                {"time": w["start"], "emotion": w.get("text_emotion", "unknown")}
+                for w in words_data
+                if w.get("text_emotion")
+            ]
+            voice_data = [
+                {"time": w["start"], "event": w.get("voice_emotion", "unknown")}
+                for w in words_data
+                if w.get("voice_emotion")
+            ]
+
+            chart_output = os.path.splitext(output_file)[0] + "_chart.png"
+            log.info(f"Generating emotion chart at {chart_output}")
+            generate_emotion_chart_png(
+                visual_emotions, text_data, voice_data, chart_output
+            )
+        except Exception as e:
+            log.error(f"Gagal memanggil generate_emotion_chart_png: {e}")
 
         # Cleanup
         try:

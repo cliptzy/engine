@@ -88,14 +88,19 @@ def analyze_video_emotions(
         h, w = frame.shape[:2]
 
         # Selalu potong kotak kecil di sekitar wajah pada video raw (temp_file)
-        crop_size = int(min(w, h) * 0.6)
-        center_x = int(cx_norm * w)
-        center_y = int(cy_norm * h)
-        x1 = max(0, center_x - crop_size // 2)
-        y1 = max(0, center_y - crop_size // 2)
-        x2 = min(w, x1 + crop_size)
-        y2 = min(h, y1 + crop_size)
-        cropped_face = frame[y1:y2, x1:x2]
+        if crop_mode == "raw":
+            x1, y1 = 0, 0
+            x2, y2 = w, h
+            cropped_face = frame
+        else:
+            crop_size = int(min(w, h) * 0.6)
+            center_x = int(cx_norm * w)
+            center_y = int(cy_norm * h)
+            x1 = max(0, center_x - crop_size // 2)
+            y1 = max(0, center_y - crop_size // 2)
+            x2 = min(w, x1 + crop_size)
+            y2 = min(h, y1 + crop_size)
+            cropped_face = frame[y1:y2, x1:x2]
 
         if cropped_face.size > 0:
             try:
@@ -213,10 +218,12 @@ def analyze_video_emotions(
                         }
                     elif region:
                         final_box = {
-                            k: int(v)
-                            for k, v in region.items()
-                            if k in ["x", "y", "w", "h"]
+                            "x": int(region.get("x", 0)) + x1,
+                            "y": int(region.get("y", 0)) + y1,
+                            "w": int(region.get("w", 0)),
+                            "h": int(region.get("h", 0)),
                         }
+
 
                     data = {
                         "time": round(timestamp_sec, 2),

@@ -1,6 +1,8 @@
 import asyncio
 import os
 import subprocess
+import re
+import random
 from typing import Any, Callable, Dict, List, Optional
 
 from core.logger import log
@@ -36,8 +38,6 @@ async def process_brainrot(
     total_duration = 0.0
 
     for idx, line in enumerate(script_data):
-        import re
-
         raw_text = line.get("text", "")
         # Hapus tag aksi/emosi dalam kurung dari teks TTS
         text = re.sub(r"\[.*?\]", "", raw_text).strip()
@@ -219,8 +219,6 @@ async def process_brainrot(
         log.warning(f"Failed to get broll info: {e}")
         broll_dur = 0.0
 
-    import random
-
     start_offset = 0.0
     if broll_dur > total_duration + 5:
         start_offset = random.uniform(0, broll_dur - total_duration)
@@ -319,7 +317,6 @@ async def process_brainrot(
         await asyncio.to_thread(_run_ff)
         
         from core.processing.thumbnail import generate_thumbnail
-        import os
         thumb_path = os.path.splitext(output_path)[0] + "_thumbnail.jpg"
         generate_thumbnail(output_path, thumb_path)
         

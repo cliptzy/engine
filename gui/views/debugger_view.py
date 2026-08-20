@@ -450,3 +450,60 @@ class DebuggerView(ft.Column):
             self.btn_debug_analyzers.disabled = False
         self.progress_ring.visible = False
         self.update()
+
+
+def generate_emotion_chart_png(
+    visual_data: list,
+    text_data: list,
+    voice_data: list,
+    output_path: str
+) -> bool:
+    """
+    Menghasilkan gambar grafik line chart diagram alur emosi per detik 
+    pada masing-masing variabel penilaian (Visual, Teks, dan Voice).
+    
+    Fungsi ini digunakan untuk keperluan penilaian atau laporan.
+    
+    Contoh format input data:
+    visual_data = [{"time": 0.0, "emotion": "marah"}, {"time": 1.0, "emotion": "neutral"}]
+    text_data = [{"time": 0.0, "emotion": "neutral"}]
+    voice_data = [{"time": 0.0, "event": "scream"}] # bisa pakai key 'event' atau 'emotion'
+    """
+    try:
+        import matplotlib.pyplot as plt
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Plot Visual
+        if visual_data:
+            t_vis = [float(item.get("time", 0.0)) for item in visual_data]
+            v_vis = [str(item.get("emotion", "unknown")).capitalize() for item in visual_data]
+            ax.plot(t_vis, v_vis, marker='o', label='Visual', color='blue', linestyle='-')
+
+        # Plot Teks
+        if text_data:
+            t_text = [float(item.get("time", 0.0)) for item in text_data]
+            v_text = [str(item.get("emotion", "unknown")).capitalize() for item in text_data]
+            ax.plot(t_text, v_text, marker='s', label='Teks', color='green', linestyle='--')
+
+        # Plot Voice
+        if voice_data:
+            t_voice = [float(item.get("time", 0.0)) for item in voice_data]
+            v_voice = [str(item.get("event", item.get("emotion", "unknown"))).capitalize() for item in voice_data]
+            ax.plot(t_voice, v_voice, marker='^', label='Voice', color='red', linestyle=':')
+
+        ax.set_xlabel('Waktu (Detik)')
+        ax.set_ylabel('Variabel Penilaian (Emosi / Event)')
+        ax.set_title('Grafik Diagram Alur Emosi Per Detik')
+        ax.legend()
+        ax.grid(True, linestyle='--', alpha=0.7)
+
+        plt.tight_layout()
+        plt.savefig(output_path, format='png', dpi=300)
+        plt.close(fig)
+        
+        return True
+    except Exception as ex:
+        from core.logger import log
+        log.error(f"Gagal generate gambar grafik emosi: {ex}")
+        return False
