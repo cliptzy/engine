@@ -45,23 +45,34 @@ def burn_subtitle_and_highlight(
                     with open(subtitle_file, "r", encoding="utf-8") as f:
                         ass_lines = f.readlines()
 
-                    has_highlight_style = any("Style: HighlightStyle" in line for line in ass_lines)
+                    has_highlight_style = any(
+                        "Style: HighlightStyle" in line for line in ass_lines
+                    )
                     new_ass_lines = []
                     in_styles_section = False
 
                     for line in ass_lines:
                         if not use_subtitle and line.startswith("Dialogue:"):
                             continue
-                        
+
                         new_ass_lines.append(line)
 
                         if line.strip() in ["[V4+ Styles]", "[V4 Styles]"]:
                             in_styles_section = True
-                        elif line.startswith("[") and line.strip() not in ["[V4+ Styles]", "[V4 Styles]"]:
+                        elif line.startswith("[") and line.strip() not in [
+                            "[V4+ Styles]",
+                            "[V4 Styles]",
+                        ]:
                             in_styles_section = False
 
-                        if in_styles_section and line.startswith("Format:") and not has_highlight_style:
-                            new_ass_lines.append("Style: HighlightStyle,Arial,65,&H00000000,&H00000000,&H00FFFFFF,&H00FFFFFF,-1,0,0,0,100,100,0,0,3,15,0,4,10,10,10,1\n")
+                        if (
+                            in_styles_section
+                            and line.startswith("Format:")
+                            and not has_highlight_style
+                        ):
+                            new_ass_lines.append(
+                                "Style: HighlightStyle,Arial,65,&H00000000,&H00000000,&H00FFFFFF,&H00FFFFFF,-1,0,0,0,100,100,0,0,3,15,0,4,10,10,10,1\n"
+                            )
 
                     with open(subtitle_file, "w", encoding="utf-8") as f:
                         f.writelines(new_ass_lines)
@@ -69,7 +80,7 @@ def burn_subtitle_and_highlight(
                     words = highlight_text.split() if highlight_text else []
                     lines_split = []
                     for i in range(0, len(words), 2):
-                        lines_split.append(" ".join(words[i:i+2]))
+                        lines_split.append(" ".join(words[i : i + 2]))
                     display_text = "\\N".join(lines_split)
 
                     font_size = 65
@@ -93,7 +104,9 @@ def burn_subtitle_and_highlight(
         )
         fontsdir_arg = ""
         if config.subtitle.fonts_dir and os.path.isdir(config.subtitle.fonts_dir):
-            fontsdir_fwd = config.subtitle.fonts_dir.replace("\\", "/").replace(":", "\\:")
+            fontsdir_fwd = config.subtitle.fonts_dir.replace("\\", "/").replace(
+                ":", "\\:"
+            )
             fontsdir_arg = f":fontsdir='{fontsdir_fwd}'"
 
         vf_chain = []
@@ -157,7 +170,13 @@ def burn_subtitle_and_highlight(
                     else:
                         if current_emotion and current_emotion != "neutral":
                             blocks.append(
-                                (current_emotion, start_t, end_t, current_ve, current_score)
+                                (
+                                    current_emotion,
+                                    start_t,
+                                    end_t,
+                                    current_ve,
+                                    current_score,
+                                )
                             )
                         current_emotion = mapped
                         current_ve = w_ve
@@ -172,8 +191,10 @@ def burn_subtitle_and_highlight(
 
             if len(blocks) > 0:
                 filtered_blocks = [b for b in blocks if b[3] != "none"]
-                filtered_blocks_by_score = sorted(filtered_blocks, key=lambda x: x[4], reverse=True)
-                
+                filtered_blocks_by_score = sorted(
+                    filtered_blocks, key=lambda x: x[4], reverse=True
+                )
+
                 temp_scheduled = []
 
                 for emo, s, e, ve_idx_str, _score in filtered_blocks_by_score:
@@ -198,7 +219,7 @@ def burn_subtitle_and_highlight(
 
                     if effect and effect.get("file"):
                         eff_name = effect.get("name")
-                        
+
                         overlap = False
                         for sch in temp_scheduled:
                             if abs(sch["start"] - s) < 5.0:
@@ -208,7 +229,9 @@ def burn_subtitle_and_highlight(
                         if overlap:
                             continue
 
-                        eff_file = os.path.join("assets", "video_effects", effect["file"])
+                        eff_file = os.path.join(
+                            "assets", "video_effects", effect["file"]
+                        )
                         if os.path.exists(eff_file):
                             selected_effects.append(eff_name)
                             temp_scheduled.append(
@@ -240,32 +263,38 @@ def burn_subtitle_and_highlight(
                 standalone_effects = (
                     metadata.get("standalone_video_effects", []) if metadata else []
                 )
-                standalone_effects = sorted(standalone_effects, key=lambda x: float(x.get("time", 0.0)))
+                standalone_effects = sorted(
+                    standalone_effects, key=lambda x: float(x.get("time", 0.0))
+                )
             for se in standalone_effects:
                 ve_name = se.get("video_effect_override")
                 s = float(se.get("time", 0.0))
-                
+
                 effect = None
                 if ve_name and ve_name not in ["none", "random"]:
                     try:
                         from core.video_effects import video_effect_manager
 
                         effect = video_effect_manager.get_effect_by_name(ve_name)
-                        
+
                         # Anti-spam: If effect was already used, try to pick an alternative with the same emotion
                         if effect and effect.get("name") in selected_effects:
                             emos = effect.get("emotions", [])
                             if emos:
-                                alt_effect = video_effect_manager.get_effect(emos[0], exclude=selected_effects)
+                                alt_effect = video_effect_manager.get_effect(
+                                    emos[0], exclude=selected_effects
+                                )
                                 if alt_effect:
                                     effect = alt_effect
 
                     except Exception as ex:
-                        log.warning(f"Gagal memuat standalone video effect {ve_name}: {ex}")
+                        log.warning(
+                            f"Gagal memuat standalone video effect {ve_name}: {ex}"
+                        )
 
                 if effect and effect.get("file"):
                     eff_name = effect.get("name")
-                    
+
                     # Prevent overlap with other scheduled effects only if same name
                     overlap = False
                     for scheduled in scheduled_video_effects:
@@ -276,9 +305,7 @@ def burn_subtitle_and_highlight(
                     if overlap:
                         continue
 
-                    eff_file = os.path.join(
-                        "assets", "video_effects", effect["file"]
-                    )
+                    eff_file = os.path.join("assets", "video_effects", effect["file"])
                     if os.path.exists(eff_file):
                         selected_effects.append(eff_name)
                         scheduled_video_effects.append(

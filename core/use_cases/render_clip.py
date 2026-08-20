@@ -82,10 +82,18 @@ class RenderClipUseCase:
                     success_count += 1
                 clip_path = os.path.join(job_dir, f"clip_{clip_idx}.mp4")
                 if os.path.exists(clip_path):
+                    from core.processing.thumbnail import generate_thumbnail
+                    from core.utils import read_json
+                    thumb_path = os.path.join(job_dir, f"clip_{clip_idx}_thumbnail.jpg")
+                    meta_file = os.path.join(job_dir, f"metadata_{clip_idx}.json")
+                    clip_meta = read_json(meta_file) if os.path.exists(meta_file) else {}
+                    generate_thumbnail(clip_path, thumb_path, metadata=clip_meta)
+
                     clip_output = {
                         "name": f"clip_{clip_idx}.mp4",
                         "path": os.path.abspath(clip_path),
                         "size": os.path.getsize(clip_path),
+                        "thumbnail": os.path.abspath(thumb_path) if os.path.exists(thumb_path) else None
                     }
                     with success_lock:
                         outputs.append(clip_output)

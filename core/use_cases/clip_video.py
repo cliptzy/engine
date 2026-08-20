@@ -116,6 +116,9 @@ class ClipVideoUseCase:
         config.subtitle.style = str(subtitle_style)
 
         config.padding = max(0, int(padding if padding is not None else 10))
+        
+        config.save_to_file()
+
         if "min_duration" in payload:
             config.min_duration = int(payload["min_duration"])
         config.set_ratio_preset(ratio)
@@ -263,10 +266,20 @@ class ClipVideoUseCase:
                 else:
                     clip_path = os.path.join(job_dir, f"clip_{clip_idx}.mp4")
                     if os.path.exists(clip_path):
+                        from core.processing.thumbnail import generate_thumbnail
+                        from core.utils import read_json
+                        
+                        thumb_path = os.path.join(job_dir, f"clip_{clip_idx}_thumbnail.jpg")
+                        meta_file = os.path.join(job_dir, f"metadata_{clip_idx}.json")
+                        clip_meta = read_json(meta_file) if os.path.exists(meta_file) else {}
+                        
+                        generate_thumbnail(clip_path, thumb_path, metadata=clip_meta)
+                        
                         clip_output = {
                             "name": f"clip_{clip_idx}.mp4",
                             "path": os.path.abspath(clip_path),
                             "size": os.path.getsize(clip_path),
+                            "thumbnail": os.path.abspath(thumb_path) if os.path.exists(thumb_path) else None
                         }
                 if clip_output:
                     with success_lock:
@@ -385,11 +398,13 @@ class ClipVideoUseCase:
                 if res.returncode != 0:
                     raise RuntimeError(f"FFmpeg Error: {res.stderr}")
 
+
                 outputs.append(
                     {
                         "name": merged_filename,
                         "path": os.path.abspath(merged_path),
                         "size": os.path.getsize(merged_path),
+                        "thumbnail": os.path.abspath(merged_thumb) if os.path.exists(merged_thumb) else None
                     }
                 )
 
@@ -452,6 +467,17 @@ class ClipVideoUseCase:
                             meta_file = os.path.join(job_dir, "metadata_merge.json")
                             write_json(meta_file, merged_metadata, indent=2)
                             log.info(f"Metadata kompilasi disimpan ke {meta_file}")
+                            
+                            # Generate merged thumbnail with metadata
+                            from core.processing.thumbnail import generate_thumbnail
+                            merged_thumb = os.path.join(job_dir, "merged_thumbnail.jpg")
+                            generate_thumbnail(merged_path, merged_thumb, metadata=merged_metadata)
+                            
+                            # Update output dict to have thumbnail
+                            for out in outputs:
+                                if out["name"] == merged_filename:
+                                    out["thumbnail"] = os.path.abspath(merged_thumb) if os.path.exists(merged_thumb) else None
+
                 except Exception as e:
                     log.warning(f"Gagal men-generate metadata kompilasi: {e}")
 

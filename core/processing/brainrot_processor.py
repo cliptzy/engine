@@ -50,7 +50,14 @@ async def process_brainrot(
         speaker = line.get("speaker", f"Speaker_{idx}")
 
         audio_path = os.path.join(job_dir, f"br_audio_{idx}.mp3")
-        dur = await generate_tts(text, voice, audio_path, rate=rate, pitch=pitch, voice_clone_path=voice_clone)
+        dur = await generate_tts(
+            text,
+            voice,
+            audio_path,
+            rate=rate,
+            pitch=pitch,
+            voice_clone_path=voice_clone,
+        )
 
         start_time = total_duration
         end_time = total_duration + dur
@@ -168,6 +175,7 @@ async def process_brainrot(
     # Randomize B-Roll start time and check for audio
     broll_has_audio = False
     try:
+
         def _get_broll_info():
             dur_res = subprocess.run(
                 [
@@ -185,7 +193,7 @@ async def process_brainrot(
                 check=True,
             )
             dur = float(dur_res.stdout.strip())
-            
+
             aud_res = subprocess.run(
                 [
                     "ffprobe",
@@ -284,10 +292,12 @@ async def process_brainrot(
     ass_path_escaped = ass_path.replace("\\", "/").replace(":", "\\:")
     final_v = "[v_final]"
     filter_complex.append(f"{last_v}subtitles=filename='{ass_path_escaped}'{final_v};")
-    
+
     final_a = "1:a"
     if broll_has_audio:
-        filter_complex.append("[0:a]volume=0.2[bg_aud];[bg_aud][1:a]amix=inputs=2:duration=shortest[a_final]")
+        filter_complex.append(
+            "[0:a]volume=0.1[bg_aud];[bg_aud][1:a]amix=inputs=2:duration=shortest[a_final]"
+        )
         final_a = "[a_final]"
 
     filter_string = "".join(filter_complex).rstrip(";")
@@ -307,6 +317,12 @@ async def process_brainrot(
             run_command_with_logging(cmd, event_hook, prefix="[ffmpeg-brainrot]")
 
         await asyncio.to_thread(_run_ff)
+        
+        from core.processing.thumbnail import generate_thumbnail
+        import os
+        thumb_path = os.path.splitext(output_path)[0] + "_thumbnail.jpg"
+        generate_thumbnail(output_path, thumb_path)
+        
         return output_path
     except Exception as e:
         log.error(f"Brainrot render failed: {e}")

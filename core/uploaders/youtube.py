@@ -135,6 +135,18 @@ class YouTubeUploader:
 
         video_id = response.get("id")
         if video_id:
+            thumbnail_path = metadata.get("thumbnail_path")
+            if thumbnail_path and os.path.exists(thumbnail_path):
+                try:
+                    log.info(f"[YouTube] Mengunggah thumbnail: {thumbnail_path}")
+                    youtube.thumbnails().set(
+                        videoId=video_id,
+                        media_body=MediaFileUpload(thumbnail_path)
+                    ).execute()
+                    log.info("[YouTube] Thumbnail berhasil diunggah.")
+                except Exception as e:
+                    log.warning(f"[YouTube] Gagal mengunggah thumbnail: {e}")
+                    
             url = f"https://youtube.com/shorts/{video_id}"
             return UploadResult(True, self.platform_name, url=url)
         else:

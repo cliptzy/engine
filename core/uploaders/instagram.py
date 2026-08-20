@@ -98,7 +98,7 @@ class InstagramUploader:
             logger.info(f"[Instagram] Berhasil login. Memulai upload Reels...")
             logger.info(f"Mengunggah ke Instagram: {file_path}, caption: {caption}")
 
-            thumb_path = f"{file_path}.jpg"
+            thumb_path = metadata.get("thumbnail_path", f"{file_path}.jpg")
             if not os.path.exists(thumb_path):
                 import subprocess
 

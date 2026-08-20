@@ -37,6 +37,14 @@ class UploadClipUseCase:
             publish_time_utc = publish_at.astimezone(timezone.utc)
             metadata["publish_at"] = publish_time_utc.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
+        # Generate thumbnail dynamically for all uploaded products
+        from core.processing.thumbnail import generate_thumbnail
+        import os
+        
+        thumbnail_path = os.path.splitext(str(video_path))[0] + "_thumbnail.jpg"
+        if generate_thumbnail(str(video_path), thumbnail_path, metadata):
+            metadata["thumbnail_path"] = thumbnail_path
+
         def hook(kind, data):
             if self.reporter and kind == "log":
                 self.reporter.on_log(str(data))
