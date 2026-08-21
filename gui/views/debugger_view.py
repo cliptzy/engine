@@ -204,7 +204,7 @@ class DebuggerView(ft.Column):
 
             if success:
                 show_snackbar(
-                    self.page_ref, f"Berhasil! Debug Video disimpan di {output_file}"
+                    self.page_ref, f"Berhasil! Debug Video & CSV disimpan di {output_file}"
                 )
             else:
                 show_snackbar(

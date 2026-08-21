@@ -1,3 +1,4 @@
+import csv
 import os
 import subprocess
 from typing import Callable, Optional
@@ -199,6 +200,45 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             )
         except Exception as e:
             log.error(f"Gagal memanggil generate_emotion_chart_png: {e}")
+
+        # 9. Generate CSV Timeline
+        try:
+            csv_output = os.path.splitext(output_file)[0] + "_timeline.csv"
+            events = []
+            
+            for w in words_data:
+                events.append({
+                    "time": w["start"],
+                    "type": "word",
+                    "content": w["word"],
+                    "text_emotion": w.get("text_emotion", "N/A"),
+                    "voice_emotion": w.get("voice_emotion", "N/A"),
+                    "visual_emotion": "",
+                    "visual_score": ""
+                })
+                
+            for v in visual_emotions:
+                events.append({
+                    "time": v.get("time", 0.0),
+                    "type": "visual",
+                    "content": str(v.get("box", "")),
+                    "text_emotion": "",
+                    "voice_emotion": "",
+                    "visual_emotion": v.get("emotion", "N/A"),
+                    "visual_score": v.get("score", 0.0)
+                })
+                
+            events.sort(key=lambda x: float(x["time"]))
+            
+            with open(csv_output, mode="w", newline="", encoding="utf-8") as f:
+                fieldnames = ["time", "type", "content", "text_emotion", "voice_emotion", "visual_emotion", "visual_score"]
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                for ev in events:
+                    writer.writerow(ev)
+            log.info(f"Berhasil mengekspor debug CSV ke {csv_output}")
+        except Exception as e:
+            log.error(f"Gagal mengekspor debug CSV: {e}")
 
         # Cleanup
         try:
