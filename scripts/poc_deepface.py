@@ -19,11 +19,11 @@ def get_emotion_pipeline():
 
             device = 0 if torch.cuda.is_available() else -1
             print(
-                "Memuat model emosi Hugging Face (dima806/facial_emotions_image_detection)..."
+                "Memuat model emosi Hugging Face (abhilash88/face-emotion-detection)..."
             )
             _emotion_pipeline = pipeline(
                 "image-classification",
-                model="dima806/facial_emotions_image_detection",
+                model="abhilash88/face-emotion-detection",
                 device=device,
             )
         except Exception as e:
@@ -34,7 +34,15 @@ def get_emotion_pipeline():
 
 def map_hf_emotion(label: str) -> str:
     label = label.lower()
-    mapping = {"joy": "happy", "happiness": "happy", "anger": "angry", "sadness": "sad"}
+    mapping = {
+        "label_0": "angry",
+        "label_1": "disgust",
+        "label_2": "fear",
+        "label_3": "happy",
+        "label_4": "sad",
+        "label_5": "surprise",
+        "label_6": "neutral",
+    }
     return mapping.get(label, label)
 
 
