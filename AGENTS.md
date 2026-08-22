@@ -203,3 +203,25 @@ _Peraturan dalam AGENTS.md ini mengikat untuk semua aktivitas pengembangan proye
 7. **Perubahan Parameter Dropdown**: Dilarang keras menggunakan keyword on_change pada komponen ft.Dropdown. Flet terbaru menggunakan keyword on_select sebagai parameter event.
 8. **Penghapusan Event Types Spesifik**: Pada versi Flet terbaru, beberapa class event spesifik seperti `ft.FilePickerResultEvent` telah dihapus atau diubah namanya. **Dilarang keras** memberikan anotasi tipe (*type hint*) secara spesifik pada argumen *event handler* (misalnya `def on_result(e: ft.FilePickerResultEvent):`). Gunakan argumen murni `def on_result(e):` untuk mencegah `AttributeError`.
 9. **Perubahan API FilePicker**: Pada versi Flet terbaru, komponen `ft.FilePicker` tidak lagi menerima argumen `on_result` pada saat inisialisasi (`__init__`). Sebaliknya, fungsi pengambilan file kini bersifat asinkron dan langsung mengembalikan hasil. Gunakan sintaks `files = await file_picker.pick_files(...)` di dalam fungsi _event handler_ yang bersifat `async`.
+
+---
+
+## 💅 11. ATURAN DESAIN UI/UX MODERN (MODERN DESIGN GUIDELINES)
+
+Untuk menjaga kualitas visual antarmuka tetap profesional dan mengikuti tren desain modern, setiap perubahan atau penambahan komponen GUI **WAJIB** menerapkan prinsip-prinsip berikut:
+
+1. **Efek Kedalaman (Elevation & Shadow)**
+   - Gunakan `ft.BoxShadow` untuk memberikan kedalaman pada komponen _Card_ atau panel.
+   - Contoh: `shadow=ft.BoxShadow(blur_radius=15, spread_radius=-5, color=ft.Colors.with_opacity(0.2, ft.Colors.BLACK), offset=ft.Offset(0, 8))`
+2. **Animasi & Interaksi (Micro-interactions)**
+   - Komponen interaktif (tombol, kartu) sebaiknya merespons tindakan pengguna (contoh: membesar saat _hover_).
+   - Gunakan `animate_scale=ft.Animation(200, ft.AnimationCurve.EASE_OUT)` dan ubah properti `.scale` saat event `on_hover` terpicu.
+3. **Glassmorphism & Blur**
+   - Gunakan efek blur transparan pada komponen melayang (_floating_), _header_, atau _sidebar_ menggunakan `ft.Blur` (contoh: `blur=ft.Blur(10, 10, ft.BlurTileMode.MIRROR)`) dan `bgcolor` dengan opacity.
+4. **Gradien untuk Call-to-Action (CTA)**
+   - Tombol utama atau elemen penekanan (_highlight_) sebaiknya menggunakan warna gradasi yang futuristik alih-alih warna solid.
+   - Contoh: `gradient=ft.LinearGradient(begin=ft.Alignment.TOP_LEFT, end=ft.Alignment.BOTTOM_RIGHT, colors=[ft.Colors.DEEP_PURPLE_400, ft.Colors.BLUE_500])`
+5. **Tipografi & Hirarki Teks**
+   - Pastikan ada perbedaan yang jelas antara judul dan teks pendukung melalui parameter `weight` (misal: `ft.FontWeight.W_800` vs `W_400`) dan warna (misal: putih untuk judul, `ft.Colors.ON_SURFACE_VARIANT` atau abu-abu untuk deskripsi).
+6. **Konsistensi Jarak (Spacing & Padding)**
+   - Patuhi sistem kelipatan 8 (8, 16, 24, 32) untuk menetapkan jarak. Selalu gunakan *constructor* berhuruf kapital sesuai aturan Flet terbaru: `ft.Padding(left=24, top=16, right=24, bottom=16)`.
