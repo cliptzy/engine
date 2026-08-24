@@ -55,6 +55,10 @@ class Router:
                 from gui.views.brainrot_view import BrainrotView
 
                 self._view_cache[route] = BrainrotView(self.page)
+            elif route == "compilation":
+                from gui.views.compilation_view import CompilationView
+
+                self._view_cache[route] = CompilationView(self.page)
             elif route == "about":
                 from gui.views.about_view import AboutView
 

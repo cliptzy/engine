@@ -40,6 +40,9 @@ Lapisan murni yang tidak memiliki ketergantungan pada UI (Flet). Berisi inti pem
 - **`ffmpeg.py`**: Wrapper untuk pemanggilan perintah komando FFmpeg.
 - **`logger.py`**: Sistem logging terpusat yang menulis log ke file lokal di folder `logs/`.
 - **`processor.py`**: Logika utama untuk pemotongan (cropping), penambahan padding, serta penggabungan video (stacking split-screen).
+- **`core/use_cases/compile_video.py`**: Orkestrator eksekusi kompilasi multi-video lokal menjadi kompilasi "Top N", lengkap dengan thumbnail, numbering cards, dan AI metadata.
+- **`core/processing/numbering.py`**: Menghasilkan video numbering card beserta narasi TTS singkat untuk mode kompilasi.
+- **`core/processing/thumbnail.py`**: Ekstraksi frame video dan overlay efek untuk membuat thumbnail dinamis atau thumbnail collage.
 - **`subtitle.py`**: Ekstraksi transkripsi menggunakan Whisper (atau Faster-Whisper) dan pemformatan file `.ass`.
 - **`utils.py`**: Fungsi utilitas untuk system pathing, pengecekan dependensi, dan helper IO lainnya.
 - **`youtube.py`**: Modul integrasi `yt-dlp` untuk mengunduh video dan mengekstrak metadata dari YouTube.

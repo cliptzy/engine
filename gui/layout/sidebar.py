@@ -23,6 +23,11 @@ class Sidebar(ft.NavigationRail):
                 label="Brainrot",
             ),
             ft.NavigationRailDestination(
+                icon=ft.Icons.COLLECTIONS_OUTLINED,  # type: ignore
+                selected_icon=ft.Icons.COLLECTIONS,  # type: ignore
+                label="Kompilasi",
+            ),
+            ft.NavigationRailDestination(
                 icon=ft.Icons.CLOUD_UPLOAD_OUTLINED,  # type: ignore
                 selected_icon=ft.Icons.CLOUD_UPLOAD,  # type: ignore
                 label="Upload",

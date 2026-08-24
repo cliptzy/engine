@@ -7,6 +7,7 @@ from core.interfaces import ProgressReporter
 from core.logger import log
 from core.uploaders.base import BaseUploader
 from core.use_cases.clip_video import ClipVideoUseCase
+from core.use_cases.compile_video import CompilationItem, CompileVideoUseCase
 from core.use_cases.detect_highlights import DetectHighlightsUseCase
 from core.use_cases.preview_clip import PreviewClipUseCase
 from core.use_cases.render_clip import RenderClipUseCase
@@ -31,6 +32,7 @@ class ClipController:
         self.preview_uc = PreviewClipUseCase(reporter=self.reporter)
         self.detect_uc = DetectHighlightsUseCase(reporter=self.reporter)
         self.render_uc = RenderClipUseCase(reporter=self.reporter)
+        self.compile_uc = CompileVideoUseCase(reporter=self.reporter)
 
     def get_preview(self, url: str) -> Dict[str, Any]:
         """Fetches metadata (title, thumbnail, duration, uploader) for a YouTube URL."""
@@ -66,6 +68,27 @@ class ClipController:
         Executes the Phase 2 rendering pipeline based on settings payload.
         """
         return self.render_uc.execute(payload, is_cancelled)
+
+    def execute_compilation(
+        self,
+        items: List[Dict[str, str]],
+        is_cancelled: Optional[Callable[[], bool]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Executes the compilation pipeline.
+
+        :param items: List of dicts with 'file_path' and 'moment_name' keys.
+        :param is_cancelled: Callable that returns True if user cancelled.
+        :return: Dict with success count, output path, etc.
+        """
+        compilation_items = [
+            CompilationItem(
+                file_path=item["file_path"],
+                moment_name=item["moment_name"],
+            )
+            for item in items
+        ]
+        return self.compile_uc.execute(compilation_items, is_cancelled)
 
     def generate_subtitle_preview_sample(self, payload: Dict[str, Any]) -> str:
         """

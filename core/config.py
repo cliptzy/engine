@@ -65,6 +65,18 @@ class InstagramConfig:
     auto_upload: bool = False
 
 
+@dataclass
+class CompilationConfig:
+    """Configuration for the compilation mode (Top N Meme)."""
+
+    ordering: str = "countdown"  # "countdown" (5→1) or "countup" (1→5)
+    numbering_duration: float = 3.0  # seconds per numbering card
+    use_tts: bool = True  # TTS narration per card
+    tts_template: str = "Nomor {n}! {name}!"  # TTS text template
+    use_subtitle: bool = True  # Whisper subtitle per clip
+    crop_mode: str = "default"  # crop mode for each clip
+
+
 import os
 import sys
 
@@ -119,6 +131,7 @@ class AppConfig:
     youtube: YoutubeConfig = field(default_factory=YoutubeConfig)
     tiktok: TikTokConfig = field(default_factory=TikTokConfig)
     instagram: InstagramConfig = field(default_factory=InstagramConfig)
+    compilation: CompilationConfig = field(default_factory=CompilationConfig)
 
     def set_ratio_preset(self, preset: str) -> None:
         """Sets the output resolution based on the given ratio preset."""
@@ -202,6 +215,12 @@ class AppConfig:
             "tts_voice": self.tts_voice,
             "upload_interval": self.upload_interval,
             "hw_accel": self.hw_accel,
+            "compilation_ordering": self.compilation.ordering,
+            "compilation_numbering_duration": self.compilation.numbering_duration,
+            "compilation_use_tts": self.compilation.use_tts,
+            "compilation_tts_template": self.compilation.tts_template,
+            "compilation_use_subtitle": self.compilation.use_subtitle,
+            "compilation_crop_mode": self.compilation.crop_mode,
         }
 
     def update_from_dict(self, data: dict) -> None:
@@ -350,6 +369,25 @@ class AppConfig:
             self.upload_interval = float(data["upload_interval"])
         if "hw_accel" in data and data["hw_accel"]:
             self.hw_accel = data["hw_accel"]
+
+        # Compilation config
+        if "compilation_ordering" in data and data["compilation_ordering"]:
+            self.compilation.ordering = data["compilation_ordering"]
+        if (
+            "compilation_numbering_duration" in data
+            and data["compilation_numbering_duration"] is not None
+        ):
+            self.compilation.numbering_duration = float(
+                data["compilation_numbering_duration"]
+            )
+        if "compilation_use_tts" in data:
+            self.compilation.use_tts = bool(data["compilation_use_tts"])
+        if "compilation_tts_template" in data and data["compilation_tts_template"]:
+            self.compilation.tts_template = data["compilation_tts_template"]
+        if "compilation_use_subtitle" in data:
+            self.compilation.use_subtitle = bool(data["compilation_use_subtitle"])
+        if "compilation_crop_mode" in data and data["compilation_crop_mode"]:
+            self.compilation.crop_mode = data["compilation_crop_mode"]
 
     def save_to_file(self, filepath: str = "config.json") -> bool:
         """Saves configuration to JSON file."""

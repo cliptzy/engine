@@ -142,3 +142,104 @@ def generate_thumbnail(video_path: str, output_path: str, metadata: dict | None 
     except Exception as e:
         log.error(f"Exception during thumbnail generation: {e}")
         return False
+
+def generate_compilation_thumbnail(clip_paths: list[str], output_path: str, event_hook=None) -> bool:
+    """
+    Generate a collage thumbnail from a list of compilation clips.
+    Extracts the best frame (at 1 second) from up to 4 clips and arranges them in a 2x2 grid.
+    
+    Args:
+        clip_paths: List of paths to the video clips.
+        output_path: Path to save the output thumbnail (.jpg).
+        event_hook: Optional event hook for logging/progress.
+        
+    Returns:
+        bool: True if generation is successful, False otherwise.
+    """
+    if not clip_paths:
+        log.error("No clips provided for compilation thumbnail.")
+        return False
+        
+    # Ambil maksimal 4 klip untuk grid 2x2
+    selected_clips = clip_paths[:4]
+    
+    # Kumpulkan input arguments
+    inputs = []
+    for clip in selected_clips:
+        if os.path.exists(clip):
+            inputs.extend(["-ss", "00:00:01.000", "-i", clip])
+            
+    if not inputs:
+        log.error("No valid clips found for compilation thumbnail.")
+        return False
+        
+    num_clips = len(inputs) // 4  # Karena tiap input pakai 4 string: "-ss", "00:...", "-i", "clip"
+    
+    # Buat filter complex untuk grid (collage)
+    # Target resolusi: 1280x720 (atau disesuaikan dengan kebutuhan yt)
+    w, h = 1280, 720
+    
+    if num_clips == 1:
+        filter_complex = f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}[out]"
+    elif num_clips == 2:
+        # Split 2 vertikal (side-by-side)
+        w2 = w // 2
+        filter_complex = (
+            f"[0:v]scale={w2}:{h}:force_original_aspect_ratio=increase,crop={w2}:{h}[v0]; "
+            f"[1:v]scale={w2}:{h}:force_original_aspect_ratio=increase,crop={w2}:{h}[v1]; "
+            f"[v0][v1]hstack=inputs=2[out]"
+        )
+    elif num_clips == 3:
+        # 2 atas, 1 bawah tengah (tapi pakai vstack/hstack ribet, pakai xstack)
+        w2, h2 = w // 2, h // 2
+        filter_complex = (
+            f"[0:v]scale={w2}:{h2}:force_original_aspect_ratio=increase,crop={w2}:{h2}[v0]; "
+            f"[1:v]scale={w2}:{h2}:force_original_aspect_ratio=increase,crop={w2}:{h2}[v1]; "
+            f"[2:v]scale={w}:({h2}):force_original_aspect_ratio=increase,crop={w}:({h2})[v2]; "
+            f"[v0][v1]hstack=inputs=2[top]; "
+            f"[top][v2]vstack=inputs=2[out]"
+        )
+    else:
+        # 4 clips = 2x2 grid
+        w2, h2 = w // 2, h // 2
+        filter_complex = (
+            f"[0:v]scale={w2}:{h2}:force_original_aspect_ratio=increase,crop={w2}:{h2}[v0]; "
+            f"[1:v]scale={w2}:{h2}:force_original_aspect_ratio=increase,crop={w2}:{h2}[v1]; "
+            f"[2:v]scale={w2}:{h2}:force_original_aspect_ratio=increase,crop={w2}:{h2}[v2]; "
+            f"[3:v]scale={w2}:{h2}:force_original_aspect_ratio=increase,crop={w2}:{h2}[v3]; "
+            f"[v0][v1]hstack=inputs=2[top]; "
+            f"[v2][v3]hstack=inputs=2[bottom]; "
+            f"[top][bottom]vstack=inputs=2[out]"
+        )
+        
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-hide_banner",
+        "-loglevel", "error"
+    ]
+    cmd.extend(inputs)
+    cmd.extend([
+        "-filter_complex", filter_complex,
+        "-map", "[out]",
+        "-vframes", "1",
+        "-q:v", "2",
+        output_path
+    ])
+    
+    log.info(f"Generating compilation thumbnail collage from {num_clips} clips...")
+    
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if res.returncode != 0:
+            log.error(f"Failed to generate compilation thumbnail: {res.stderr}")
+            return False
+            
+        log.info(f"Compilation thumbnail successfully generated: {output_path}")
+        if event_hook:
+            event_hook("log", f"Thumbnail kompilasi berhasil dibuat: {output_path}")
+        return True
+    except Exception as e:
+        log.error(f"Exception during compilation thumbnail generation: {e}")
+        return False
+

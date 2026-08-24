@@ -28,11 +28,8 @@ class ProgressIndicator(ft.Column):
     def value(self, val: float) -> None:
         self.progress_bar.value = val
         try:
-            if self.page:
-                self.page.update()
-            else:
-                self.update()
-        except Exception:
+            self.update()
+        except RuntimeError:
             pass
 
     @property
@@ -44,9 +41,6 @@ class ProgressIndicator(ft.Column):
     def label(self, val: str) -> None:
         self.label_text.value = val
         try:
-            if self.page:
-                self.page.update()
-            else:
-                self.update()
-        except Exception:
+            self.update()
+        except RuntimeError:
             pass
