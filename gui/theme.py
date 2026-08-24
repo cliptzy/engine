@@ -6,6 +6,7 @@ def build_theme() -> ft.Theme:
     return ft.Theme(
         font_family="Inter",
         color_scheme_seed=ft.Colors.DEEP_PURPLE,
+        use_material3=True,
         color_scheme=ft.ColorScheme(
             primary="#6C5CE7",
             on_primary="#FFFFFF",

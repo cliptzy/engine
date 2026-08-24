@@ -5,9 +5,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "anthony fantano_dayum boi he thic",
@@ -15,10 +13,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "shock",
-      "happy"
-    ]
+    "emotions": ["shock", "happy"]
   },
   {
     "name": "caster_excited",
@@ -26,9 +21,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "cat_firing ak47",
@@ -36,9 +29,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "angry"
-    ]
+    "emotions": ["angry"]
   },
   {
     "name": "cat_laugh",
@@ -46,9 +37,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "cat_slamming table",
@@ -56,9 +45,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "angry"
-    ]
+    "emotions": ["angry"]
   },
   {
     "name": "flightreact_woah woah hey hey",
@@ -66,10 +53,15 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "shock",
-      "fear"
-    ]
+    "emotions": ["shock", "fear"]
+  },
+  {
+    "name": "dog_scared",
+    "file": "dog_scared.mp4",
+    "type": "greenscreen",
+    "key_color": "0x00FF00",
+    "audio_filter": "",
+    "emotions": ["shock", "fear"]
   },
   {
     "name": "grandpa_what oh hel no",
@@ -77,9 +69,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "angry"
-    ]
+    "emotions": ["angry"]
   },
   {
     "name": "gta_ah shit here we go again",
@@ -87,10 +77,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "sad",
-      "fear"
-    ]
+    "emotions": ["sad", "fear"]
   },
   {
     "name": "gta_mission success",
@@ -98,9 +85,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "iDubbz_hey thats pretty good",
@@ -108,9 +93,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "ishowspeed_scream",
@@ -118,9 +101,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "fear"
-    ]
+    "emotions": ["fear"]
   },
   {
     "name": "jhon travolta_confused",
@@ -128,9 +109,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "confused"
-    ]
+    "emotions": ["confused"]
   },
   {
     "name": "ksi_nononono",
@@ -138,10 +117,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "fear",
-      "sad"
-    ]
+    "emotions": ["fear", "sad"]
   },
   {
     "name": "ksi_yesyesyesyes",
@@ -149,9 +125,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "man_crying",
@@ -159,9 +133,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "sad"
-    ]
+    "emotions": ["sad"]
   },
   {
     "name": "man_dayum daniel akakakakakakak",
@@ -169,9 +141,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "man_shocked",
@@ -179,9 +149,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "shock"
-    ]
+    "emotions": ["shock"]
   },
   {
     "name": "michael rosen_niceee",
@@ -189,9 +157,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "overlay_big brain time",
@@ -199,9 +165,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "confused"
-    ]
+    "emotions": ["confused"]
   },
   {
     "name": "overlay_internet error",
@@ -209,10 +173,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "confused",
-      "sad"
-    ]
+    "emotions": ["confused", "sad"]
   },
   {
     "name": "overlay_ooohhhhhhhh",
@@ -220,9 +181,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "shock"
-    ]
+    "emotions": ["shock"]
   },
   {
     "name": "overlay_windows error",
@@ -230,9 +189,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "confused"
-    ]
+    "emotions": ["confused"]
   },
   {
     "name": "patrick bateman_sigma",
@@ -240,9 +197,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "penguiz0_wooo yeah babyyy",
@@ -250,9 +205,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "risitas_laugh",
@@ -260,9 +213,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "sfx_cashregister",
@@ -270,9 +221,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "sfx_huh",
@@ -280,9 +229,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "confused"
-    ]
+    "emotions": ["confused"]
   },
   {
     "name": "sfx_kerja bagus",
@@ -290,9 +237,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "sfx_rizz",
@@ -300,9 +245,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy"
-    ]
+    "emotions": ["happy"]
   },
   {
     "name": "sfx_spongebob disappoint",
@@ -310,9 +253,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "sad"
-    ]
+    "emotions": ["sad"]
   },
   {
     "name": "sfx_uhh",
@@ -320,9 +261,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "confused"
-    ]
+    "emotions": ["confused"]
   },
   {
     "name": "sfx_vineboom",
@@ -330,11 +269,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "shock",
-      "fear",
-      "angry"
-    ]
+    "emotions": ["shock", "fear", "angry"]
   },
   {
     "name": "shaq_spicy",
@@ -342,10 +277,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "happy",
-      "shock"
-    ]
+    "emotions": ["happy", "shock"]
   },
   {
     "name": "the rock_sus",
@@ -353,9 +285,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "confused"
-    ]
+    "emotions": ["confused"]
   },
   {
     "name": "tyler1_scream",
@@ -363,9 +293,7 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "angry"
-    ]
+    "emotions": ["angry"]
   },
   {
     "name": "tyler1_woooo woooo",
@@ -373,8 +301,6 @@
     "type": "greenscreen",
     "key_color": "0x00FF00",
     "audio_filter": "",
-    "emotions": [
-      "fear"
-    ]
+    "emotions": ["fear"]
   }
 ]
