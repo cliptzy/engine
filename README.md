@@ -1,96 +1,195 @@
-# Cliptzy Desktop Standalone 🎬
+# Cliptzy AI Engine 🧠
 
 🇮🇩 **Bahasa Indonesia** | [🇺🇸 English](README_EN.md)
 
-Aplikasi Desktop Standalone native (berbasis Python & Flet) untuk mengambil momen paling ramah engangement (*Most Replayed / Heatmap*) dari video YouTube dan mengubahnya secara otomatis menjadi klip vertikal siap unggah untuk Shorts/Reels/TikTok — dilengkapi dengan animasi subtitle AI (Faster-Whisper), pemotong split-screen facecam, dan alur integrasi auto-upload.
+**FastAPI REST API Server** yang menyediakan layanan pemrosesan video AI untuk aplikasi desktop [Cliptzy](https://github.com/cliptzy/cliptzy) (Tauri). Engine ini menjalankan model-model AI berat (Faster-Whisper, DeepFace, Torch, Kokoro TTS) sebagai HTTP service lokal yang dikelola oleh Rust orchestrator.
 
 ---
 
-## 🌟 Keunggulan Standalone Desktop
+## 🏗️ Arsitektur
 
-- ⚡ **Native GUI (Flet)**: Tanpa server Flask, tanpa browser eksternal, dan responsif 100%.
-- 🎯 **Sidebar Navigation**: Navigasi intuitif untuk pemotong klip, kesiapan distribusi auto-upload, dan pengaturan.
-- 🎨 **Modern Dark Aesthetics**: Tampilan UI modern, navbar flat, dan kontrol visual yang presisi.
-- 📂 **Drag-and-Drop Native**: Tarik & lepas file `cookies.txt`, video Intro/Outro, atau link URL YouTube langsung ke jendela aplikasi.
-- 🔔 **System Tray & Desktop Notifications**: Indikator status taskbar dan notifikasi pop-up saat clipping selesai.
-- 🧹 **Clear Cache Manager**: Bersihkan file cache heatmap `segments.json` dan hasil klip video dalam satu klik.
-- 📦 **Standalone Executable Ready**: Kompilasi aplikasi menjadi 1 folder executable mandiri via PyInstaller.
+Engine ini adalah **headless API server** yang:
+- **Diluncurkan** oleh Rust (Tauri) sebagai child process.
+- **Berkomunikasi** melalui REST API di `127.0.0.1:<port>`.
+- **Tidak memiliki GUI** — semua UI ditangani oleh Tauri/Vue frontend.
+- **Entry point**: `server.py` (FastAPI + Uvicorn).
 
----
-
-## 🚀 Cara Menjalankan Aplikasi
-
-### Cara 1: Menggunakan Executable / Launcher (Paling Gampang)
-
-Cukup double-click file **`run.bat`**.
-
-Script ini akan otomatis:
-1. Menyiapkan environment Python secara aman.
-2. Memeriksa dependensi sistem (FFmpeg).
-3. Meluncurkan antarmuka Desktop GUI.
+```
+Tauri App (Rust) ──HTTP──▶ FastAPI Server (Python)
+     │                         │
+     │ std::process::Command   │ core/ modules
+     │                         │
+     ▼                         ▼
+  Manage lifecycle         Whisper, yt-dlp, FFmpeg,
+  (start/stop/health)      DeepFace, Torch, TTS
+```
 
 ---
 
-### Cara 2: Menjalankan Manual dari Source Code
+## 🚀 Menjalankan Engine (Development)
 
-Pastikan Python 3.10+ dan FFmpeg terinstal di sistem Anda:
+### Prasyarat
+
+- Python 3.13+
+- [uv](https://docs.astral.sh/uv/) (package manager)
+- FFmpeg terinstal dan tersedia di PATH
+
+### Instalasi & Jalankan
 
 ```bash
 # Install dependensi menggunakan uv
 uv sync
 
-# Menjalankan Aplikasi Desktop GUI
-uv run python main.py
+# Jalankan API server
+uv run python server.py --port 9721
 ```
 
-*Jika ingin menjalankan dalam mode CLI interaktif (terminal saja):*
+Server akan berjalan di `http://127.0.0.1:9721`. Cek status:
+
 ```bash
-python main.py --cli --url "https://youtu.be/VIDEO_ID"
+curl http://127.0.0.1:9721/health
+# {"status": "ok", "version": "4.0.0"}
 ```
 
 ---
 
-## 🛠️ Kompilasi Standalone Executable (PyInstaller)
+## 📡 API Endpoints
 
-Anda dapat membuat aplikasi biner standalone (sehingga dapat dijalankan di komputer pengguna tanpa perlu menginstal Python):
+### Health & System
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| `GET` | `/health` | Health check dasar |
+| `GET` | `/health/models` | Status model AI (Whisper, GPU, FFmpeg) |
 
-```bash
-python build_executable.py
-```
+### Clipper
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| `POST` | `/clipper/analyze` | Analisis heatmap YouTube, return segmen |
+| `POST` | `/clipper/process` | Proses single clip (crop, subtitle, effects) |
+| `POST` | `/clipper/compile` | Kompilasi multi-clip (Top N) |
+| `GET` | `/clipper/progress/{job_id}` | Status progress job |
+| `POST` | `/clipper/cancel/{job_id}` | Batalkan job |
 
-Hasil kompilasi biner executable akan tersimpan di dalam folder **`dist/cliptzy/`**.
+### Subtitle & AI
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| `POST` | `/subtitle/transcribe` | Transkripsi audio via Whisper |
+| `GET` | `/subtitle/models` | List model Whisper + status |
+| `POST` | `/subtitle/models/download` | Download model Whisper |
+
+### Upload
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| `POST` | `/upload/youtube` | Upload ke YouTube Shorts |
+| `POST` | `/upload/tiktok` | Upload ke TikTok |
+| `POST` | `/upload/instagram` | Upload ke Instagram Reels |
+| `GET` | `/upload/status/{job_id}` | Status upload |
 
 ---
 
-## 🎬 Fitur Utama Aplikasi
+## 🎬 Fitur Utama
 
-### 1. YouTube Clipper Dashboard
-- **Heatmap Scanner**: Membaca grafik *Most Replayed* YouTube dan menampilkan daftar segmen interaktif.
-- **Crop Modes**:
-  - `Default`: Center Crop vertikal 9:16 dari video asli.
-  - `Split Left`: Atas = Konten Tengah, Bawah = Facecam Kiri Bawah.
-  - `Split Right`: Atas = Konten Tengah, Bawah = Facecam Kanan Bawah.
-- **Rasio Output**: 9:16 (Shorts/TikTok), 1:1 (Square Feed), 16:9 (Landscape), Original.
-- **Auto Subtitle AI**: Transkripsi audio otomatis via `Faster-Whisper` dengan animasi font ASS.
+### 1. YouTube Clipper
+- **Heatmap Scanner**: Membaca grafik *Most Replayed* YouTube.
+- **Crop Modes**: Default, Split Left/Right, Face Track, Full, Multi Face (Podcast).
+- **Rasio Output**: 9:16, 1:1, 16:9, Original.
+- **Auto Subtitle AI**: Transkripsi via Faster-Whisper dengan animasi font ASS.
 
-### 2. Auto Upload & Distribution Workflow Layout
-- Layout dan persiapan integrasi API publikasi otomatis ke:
-  - 🔴 **YouTube Shorts** (Data API v3)
-  - 🎵 **TikTok** (Content Posting API)
-  - 📸 **Instagram Reels** (Graph API)
+### 2. Video Compilation (Top N)
+- Menggabungkan multiple clips menjadi satu video kompilasi.
+- Numbering card + TTS narasi otomatis.
+- AI-generated metadata (judul viral, deskripsi, hashtag).
 
-### 3. Integrated Video Player & Output Gallery
-- Pemutar video native built-in (Flet Video control) dengan slider *Play/Pause/Seek* dan tombol *Open Output Folder*.
+### 3. Auto Upload & Distribution
+- YouTube Shorts (Data API v3).
+- TikTok (Content Posting API).
+- Instagram Reels (Graph API).
+
+### 4. AI Features
+- **Whisper Transcription**: Multi-language speech-to-text.
+- **Face Tracking**: DeepFace + RetinaFace untuk dynamic crop.
+- **AI Highlight Detection**: Gemini/OpenAI/Ollama untuk menemukan momen viral.
+- **TTS Engine**: Kokoro TTS + Edge TTS untuk narasi.
 
 ---
 
-## 🧪 Pengujian Unit Test
+## 📁 Struktur Proyek
 
-Proyek ini dilengkapi dengan *unit test suite* internal:
+```
+engine/
+├── server.py              # Entry point FastAPI server
+├── api/                   # API endpoint routers
+│   ├── health.py          # Health check endpoints
+│   ├── clipper.py         # Clipper endpoints
+│   ├── subtitle.py        # Subtitle/Whisper endpoints
+│   ├── upload.py          # Upload endpoints
+│   └── job_manager.py     # In-memory job queue & tracking
+├── core/                  # Engine core (tanpa dependensi GUI/web)
+│   ├── ai/                # AI detection (LLM integration)
+│   ├── processing/        # Video processing pipeline
+│   ├── uploaders/         # Platform upload adapters
+│   ├── use_cases/         # Business logic orchestration
+│   ├── config.py          # Konfigurasi aplikasi
+│   ├── controller.py      # Workflow controller
+│   ├── processor.py       # Video crop & processing
+│   ├── subtitle.py        # Whisper transcription & ASS
+│   ├── youtube.py         # yt-dlp integration
+│   ├── ffmpeg.py          # FFmpeg wrapper
+│   ├── logger.py          # Centralized logging
+│   └── utils.py           # Path resolution & helpers
+├── fonts/                 # Subtitle fonts
+├── assets/                # Static assets
+├── tests/                 # Unit & integration tests
+├── config.json            # User configuration
+├── pyproject.toml         # Python project & dependencies
+└── AGENTS.md              # Aturan ketat AI & developer
+```
+
+---
+
+## 🧪 Pengujian
 
 ```bash
-python -m unittest tests/test_clipper.py
+# Unit tests
+uv run python -m pytest tests/
+
+# Test API endpoint
+uv run python -m pytest tests/test_api.py
+
+# Type checking
+make typecheck
 ```
+
+---
+
+## 🔒 Keamanan
+
+- Server **hanya bind ke `127.0.0.1`** — tidak dapat diakses dari luar mesin.
+- Tidak ada authentication karena hanya diakses oleh Rust orchestrator lokal.
+- Tidak ada CORS karena tidak diakses langsung oleh browser.
+
+---
+
+## 📦 Production Deployment
+
+Di production, engine ini di-package sebagai **Portable Python bundle** (`.zip`):
+
+```
+engine.zip/
+├── python/           # Portable Python runtime
+├── server.py         # Entry point
+├── api/              # API endpoints
+├── core/             # Engine core
+├── fonts/            # Fonts
+└── assets/           # Assets
+```
+
+Rust orchestrator (Tauri) akan:
+1. Mengecek apakah engine sudah terinstall.
+2. Jika belum → download `.zip` dari server → extract ke AppData.
+3. Menjalankan `python server.py --port <PORT>` sebagai child process.
+4. Melakukan health check polling sampai server ready.
+5. Mematikan proses Python saat aplikasi ditutup (graceful shutdown).
 
 ---
 
