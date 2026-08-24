@@ -12,7 +12,7 @@ from core.use_cases.detect_highlights import DetectHighlightsUseCase
 from core.use_cases.preview_clip import PreviewClipUseCase
 from core.use_cases.render_clip import RenderClipUseCase
 from core.use_cases.scan_video import ScanVideoUseCase
-from core.use_cases.upload_clip import UploadClipUseCase
+from core.use_cases.batch_upload import BatchUploadUseCase
 
 
 class ClipController:
@@ -102,21 +102,29 @@ class ClipController:
         """
         return self.detect_uc.execute(url, ai_config)
 
-    def upload_clip(
+    def execute_batch_upload(
         self,
-        uploader: BaseUploader,
-        video_path: str,
-        title: str,
-        description: str,
-        tags: List[str],
+        current_project_dir: str,
+        selected_clips: List[Dict[str, Any]],
+        platforms: List[str],
+        interval_hours: float,
+        schedule_date: Optional[Any] = None,
+        schedule_time: Optional[Any] = None,
+        is_cancelled: Optional[Callable[[], bool]] = None,
     ) -> bool:
         """
-        Uploads a video to a specific platform.
+        Uploads multiple clips in a batch queue to specific platforms.
         """
-        from pathlib import Path
-
-        upload_uc = UploadClipUseCase(uploader=uploader, reporter=self.reporter)
-        return upload_uc.execute(Path(video_path), title, description, tags)
+        upload_uc = BatchUploadUseCase(reporter=self.reporter)
+        return upload_uc.execute(
+            current_project_dir=current_project_dir,
+            selected_clips=selected_clips,
+            platforms=platforms,
+            interval_hours=interval_hours,
+            schedule_date=schedule_date,
+            schedule_time=schedule_time,
+            is_cancelled=is_cancelled,
+        )
 
     def import_cookies(self, file_path: str) -> bool:
         """Imports Netscape cookies file."""

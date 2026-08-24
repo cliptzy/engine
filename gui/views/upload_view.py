@@ -825,195 +825,53 @@ class UploadView(ft.Column):
 
         async def run_uploader_task():
             import asyncio
-            import datetime
-
-            from core.uploaders.factory import UploaderFactory
+            from core.controller import controller
             from gui.state import app_state
 
-            # Load metadata untuk masing-masing klip terpilih
-            metadata_dict = {}
-            for clip_item in selected_clips:
-                clip_path = clip_item["path"]
-                bname = os.path.basename(clip_path)
-                m = re.match(r"^clip_(\d+)\.mp4$", bname)
-                if m:
-                    idx = m.group(1)
-                elif bname == "merged.mp4":
-                    idx = "merge"
-                elif bname == "final_brainrot.mp4":
-                    idx = "brainrot"
-                else:
-                    idx = ""
+            def is_cancelled_check():
+                return self._is_upload_cancelled
 
-                # Baca file metadata jika ada
-                meta = {"title": bname, "tags": ""}
-                if idx:
-                    meta_path = os.path.join(
-                        self.current_project_dir, f"metadata_{idx}.json"
-                    )
-                    if os.path.exists(meta_path):
+            # Wrap the actual controller call in a thread since it blocks and executes the upload
+            def do_batch_upload():
+                # We need to set up a reporter proxy that updates the app_state and UI
+                view = self
+                class UIProgressReporter:
+                    def on_log(self, message: str) -> None:
+                        app_state.append_log(message)
+                    
+                    def on_progress(self, label: str, current: int, total: int) -> None:
+                        view.upload_status_text.value = label
+                        if total > 0:
+                            view.upload_progress.value = current / total
                         try:
-                            with open(meta_path, "r", encoding="utf-8") as f_meta:
-                                saved_meta = json.load(f_meta)
-                                if saved_meta:
-                                    tags_raw = saved_meta.get("tags", "")
-                                    if isinstance(tags_raw, list):
-                                        saved_meta["tags"] = " ".join(tags_raw)
-                                    meta.update(saved_meta)
+                            view._page.update()
                         except Exception:
                             pass
 
-                # Tambahkan default hashtags tanpa menimpa metadata tags
-                default_tags = (config.default_hashtags or "").split()
-                meta_tags = meta.get("tags", "").split()
-                for dt in default_tags:
-                    if dt not in meta_tags:
-                        meta_tags.append(dt)
-                meta["tags"] = " ".join(meta_tags)
-
-                metadata_dict[clip_path] = meta
-
-            total_tasks = len(selected_clips) * len(platforms)
-            completed = 0
-
-            # Instantiate uploaders
-            uploaders = []
-            for p in platforms:
+                    def on_error(self, error: str) -> None:
+                        app_state.append_log(f"ERROR: {error}")
+                    
+                    def on_finished(self, result: Any) -> None:
+                        pass
+                
+                
+                # Replace the controller's reporter temporarily or just inject it to execute
+                original_reporter = controller.reporter
+                controller.reporter = UIProgressReporter()
                 try:
-                    uploader = await asyncio.to_thread(UploaderFactory.create, p)
-                    uploaders.append(uploader)
-                except Exception as ex:
-                    app_state.append_log(f"[UPLOAD] Gagal memuat uploader {p}: {ex}")
-
-            utc7_time = datetime.timezone(datetime.timedelta(hours=7))
-
-            def adjust_for_quiet_hours(
-                dt: datetime.datetime,
-            ) -> tuple[datetime.datetime, bool]:
-                # Jam sepi: 00:00 s/d 05:59 (WIB / UTC+7)
-                # Jam sepi: 22:00 s/d 23:59 (WIB / UTC+7)
-                if dt.hour < 6:
-                    adjusted_dt = dt.replace(hour=6, minute=0, second=0, microsecond=0)
-                    return adjusted_dt, True
-                return dt, False
-
-            if getattr(self, "schedule_date", None):
-                s_date = self.schedule_date
-                s_time = getattr(self, "schedule_time", None) or datetime.time(0, 0)
-                dt_naive = datetime.datetime.combine(s_date, s_time)  # type: ignore
-                base_time = dt_naive.replace(tzinfo=utc7_time)
-            else:
-                base_time = datetime.datetime.now(utc7_time) + datetime.timedelta(
-                    minutes=30
-                )
-
-            last_publish_time = None
-            for idx_clip, clip_item in enumerate(selected_clips):
-                if self._is_upload_cancelled:
-                    break
-
-                clip = clip_item["path"]
-                clip_meta = metadata_dict.get(clip, {})
-                clip_name = os.path.basename(clip)
-
-                # Konstruksi description menggunakan title + hashtags
-                title_val = clip_meta.get("title", "")
-                tags_val = clip_meta.get("tags", "")
-                clip_meta["description"] = f"{title_val}\n\n{tags_val}".strip()
-
-                is_scheduled = interval_hours > 0 or getattr(
-                    self, "schedule_date", None
-                )
-                if is_scheduled:
-                    publish_time = base_time + datetime.timedelta(
-                        hours=interval_hours * idx_clip
+                    controller.execute_batch_upload(
+                        current_project_dir=self.current_project_dir,
+                        selected_clips=selected_clips,
+                        platforms=platforms,
+                        interval_hours=interval_hours,
+                        schedule_date=getattr(self, "schedule_date", None),
+                        schedule_time=getattr(self, "schedule_time", None),
+                        is_cancelled=is_cancelled_check
                     )
-                else:
-                    publish_time = base_time
+                finally:
+                    controller.reporter = original_reporter
 
-                orig_publish_time = publish_time
-
-                # Jalankan guard jam sepi
-                publish_time, _ = adjust_for_quiet_hours(publish_time)
-
-                # Pastikan minimal ada selisih interval_hours dengan klip sebelumnya jika dijadwalkan
-                if last_publish_time is not None and interval_hours > 0:
-                    min_publish_time = last_publish_time + datetime.timedelta(
-                        hours=interval_hours
-                    )
-                    if publish_time < min_publish_time:
-                        publish_time = min_publish_time
-
-                adjusted = publish_time != orig_publish_time
-                if adjusted:
-                    msg = f"[UPLOAD] ⚠️ Jadwal publikasi untuk {clip_name} digeser ke {publish_time.strftime('%d-%m-%Y %H:%M WIB')} (semula {orig_publish_time.strftime('%H:%M WIB')}) karena masuk jam sepi atau menyesuaikan antrean."
-                    app_state.append_log(msg)
-                    log.info(msg)
-
-                last_publish_time = publish_time
-
-                if is_scheduled or adjusted:
-                    publish_time_utc = publish_time.astimezone(datetime.timezone.utc)
-                    clip_meta["publish_at"] = publish_time_utc.strftime(
-                        "%Y-%m-%dT%H:%M:%S.000Z"
-                    )
-
-                for uploader in uploaders:
-                    if self._is_upload_cancelled:
-                        break
-
-                    log_msg = f"[UPLOAD] Memulai upload {clip_name} ke {uploader.platform_name}..."
-                    app_state.append_log(log_msg)
-                    self.upload_status_text.value = (
-                        f"Mengunggah {clip_name} ke {uploader.platform_name}..."
-                    )
-                    self._page.update()
-
-                    # Lakukan upload di thread blocking I/O
-                    def do_upload():
-                        try:
-
-                            def hook(kind, data):
-                                if kind == "log":
-                                    app_state.append_log(str(data))
-
-                            return uploader.upload(clip, clip_meta, event_hook=hook)
-                        except Exception as ex_upload:
-                            log.error(f"Uploader exception: {ex_upload}")
-                            from core.uploaders.base import UploadResult
-
-                            return UploadResult(
-                                success=False,
-                                platform=uploader.platform_name,
-                                error_msg=str(ex_upload),
-                            )
-
-                    result = await asyncio.to_thread(do_upload)
-
-                    if result.success:
-                        app_state.append_log(
-                            f"[UPLOAD] ✅ Sukses upload ke {uploader.platform_name}: {result.url}"
-                        )
-                    else:
-                        app_state.append_log(
-                            f"[UPLOAD] ❌ Gagal upload ke {uploader.platform_name}: {result.error_msg}"
-                        )
-
-                    completed += 1
-                    self.upload_progress.value = completed / total_tasks
-                    self._page.update()
-
-                    await asyncio.sleep(2.0)
-
-            # Close uploaders
-            for uploader in uploaders:
-                if hasattr(uploader, "close"):
-                    try:
-                        await asyncio.to_thread(uploader.close)
-                    except Exception as e_close:
-                        app_state.append_log(
-                            f"[UPLOAD] Gagal menutup uploader {uploader.platform_name}: {e_close}"
-                        )
+            await asyncio.to_thread(do_batch_upload)
 
             # Selesai
             self.upload_btn.disabled = False
@@ -1024,6 +882,11 @@ class UploadView(ft.Column):
                 self.upload_status_text.value = "⚠️ Upload Dibatalkan"
                 self.upload_status_text.color = ft.Colors.RED_400
                 show_snackbar(self._page, "Proses upload dibatalkan.", error=True)
+            else:
+                self.upload_status_text.value = "✅ Upload Selesai"
+                self.upload_status_text.color = ft.Colors.GREEN_400
+                
+            self._page.update()
 
         self._page.run_task(run_uploader_task)
 
