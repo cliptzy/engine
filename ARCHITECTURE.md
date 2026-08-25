@@ -1,44 +1,37 @@
 # 🏗️ ARCHITECTURE.md — Struktur & Desain Sistem Cliptzy
 
-Dokumen ini mendeskripsikan arsitektur sistem dari **Cliptzy Desktop Standalone**. Aplikasi ini menggunakan arsitektur _Three-Tier_ (Tiga Lapisan) yang dirancang untuk memisahkan logika UI, alur kerja (controller), dan pemrosesan utama (engine).
+Dokumen ini mendeskripsikan arsitektur sistem dari **Cliptzy Engine** sebagai backend API yang independen. Proyek ini dibangun sebagai REST API (FastAPI) yang akan dipanggil oleh Rust Orchestrator dan Vue Frontend melalui arsitektur Hybrid Tauri.
 
 ## 1. Pemisahan Lapisan (Layer Separation)
 
-Aplikasi dibangun dengan memisahkan UI dan Engine (Core) yang dihubungkan oleh Controller.
+Aplikasi dibangun dengan memisahkan API Layer, Controller, dan Core Engine.
 
-### A. UI Layer (`gui/`)
+### A. API Layer (`api/`)
 
-Bertanggung jawab murni atas antarmuka pengguna (tampilan), tata letak, penerimaan input dari user, dan pembaruan visual. Dibangun menggunakan **Flet**.
+Bertanggung jawab sebagai interface HTTP yang melayani permintaan dari Rust (proxy dari frontend Vue).
+Dibangun menggunakan **FastAPI**.
 
-- **`app.py`**: Inisialisasi aplikasi Flet dan tata letak dasar.
-- **`router.py`**: Navigasi dan routing view aplikasi.
-- **`state.py`**: Pengelolaan status reaktif aplikasi.
-- **`theme.py`**: Konfigurasi tema gelap Flet.
-- **`event_bus.py`**: Sistem komunikasi antar-komponen asinkron.
-- **`workers.py`**: Implementasi `BackgroundWorker` berbasis multi-threading Python yang thread-safe untuk UI update Flet.
-- **`layout/`**: Tata letak dasar (Header, Sidebar, MainLayout, StatusBar).
-- **`views/`**: Halaman utama aplikasi (LoginView, ClipperView, CreatorHubView, SettingsView).
-- **`components/`**: Komponen visual modular yang reusable (seperti LogViewer, ProgressIndicator, SpinBox, VideoCard, ClipConfig, Preview, dll.).
+- **`server.py`**: Entry point utama FastAPI (`uvicorn`). Menginisialisasi server, lifespan event, dan router.
+- **`api/health.py`**: Router untuk health checks.
+- **`api/clipper.py`**: Router untuk operasi clipping, analyze, compile, dll.
+- **`api/subtitle.py`**: Router untuk operasi transkripsi dan ass rendering.
+- **`api/upload.py`**: Router untuk auto-upload (YouTube, TikTok, dll).
+- **`api/job_manager.py`**: Sistem queue dan job management untuk long-running tasks.
 
 ### B. Controller Layer (`core/controller.py`)
 
-Bertindak sebagai penghubung antara UI Layer dan Engine Layer.
-
-- **Tugas**:
-  - Menerima dan memvalidasi input dari UI.
-  - Mengelola _state_ (status) global dari aplikasi.
-  - Mengorkestrasi pemanggilan ke modul-modul di _Engine Layer_.
-  - Menyediakan _interface_ terpusat untuk _worker threads_ yang berjalan di latar belakang sehingga UI tidak memanggil langsung fungsi berat di _Engine Layer_.
+Bertindak sebagai orkestrator dan penghubung antara API Layer dan modul Core.
+Berisi _business logic_ untuk alur kerja yang melibatkan beberapa modul inti (mis: download -> crop -> transkripsi -> subtitle -> efek -> render).
 
 ### C. Engine Layer (`core/`)
 
-Lapisan murni yang tidak memiliki ketergantungan pada UI (Flet). Berisi inti pemrosesan data, pengolahan file, dan operasi jaringan.
+Lapisan murni yang tidak memiliki ketergantungan pada interface eksternal. Berisi inti pemrosesan data, pengolahan file, operasi jaringan, dan machine learning.
 
 - **`core/ai/detector.py`**: Logika deteksi _highlight_ menggunakan LLM (Ollama, Gemini API, OpenAI API).
 - **`channel_manager.py`**: Logika manajemen dan kurasi channel YouTube kreator.
 - **`config.py`**: Pengelolaan konfigurasi aplikasi (membaca dan menyimpan ke `config.json`).
 - **`ffmpeg.py`**: Wrapper untuk pemanggilan perintah komando FFmpeg.
-- **`logger.py`**: Sistem logging terpusat yang menulis log ke file lokal di folder `logs/`.
+- **`logger.py`**: Sistem logging terpusat yang menulis log ke stdout (untuk ditangkap Rust) dan file lokal di folder `logs/`.
 - **`processor.py`**: Logika utama untuk pemotongan (cropping), penambahan padding, serta penggabungan video (stacking split-screen).
 - **`core/use_cases/compile_video.py`**: Orkestrator eksekusi kompilasi multi-video lokal menjadi kompilasi "Top N", lengkap dengan thumbnail, numbering cards, dan AI metadata.
 - **`core/processing/numbering.py`**: Menghasilkan video numbering card beserta narasi TTS singkat untuk mode kompilasi.
@@ -46,29 +39,30 @@ Lapisan murni yang tidak memiliki ketergantungan pada UI (Flet). Berisi inti pem
 - **`subtitle.py`**: Ekstraksi transkripsi menggunakan Whisper (atau Faster-Whisper) dan pemformatan file `.ass`.
 - **`utils.py`**: Fungsi utilitas untuk system pathing, pengecekan dependensi, dan helper IO lainnya.
 - **`youtube.py`**: Modul integrasi `yt-dlp` untuk mengunduh video dan mengekstrak metadata dari YouTube.
-- **`yt_dlp_logger.py`**: Adapter terpusat yang menjembatani antarmuka logger kustom yt-dlp dengan sistem logging standar Python (`core/logger.py`). Semua pesan yt-dlp secara otomatis muncul di GUI `LogViewer` melalui `EventBusLogHandler`.
+- **`yt_dlp_logger.py`**: Adapter terpusat yang menjembatani antarmuka logger kustom yt-dlp dengan sistem logging standar Python (`core/logger.py`).
 
 ## 2. Manajemen Threading & Aliran Data (Data Flow)
 
-Cliptzy memiliki kebijakan **Non-Blocking UI**. Oleh karena itu:
+Engine Cliptzy berfungsi sebagai background processor. Oleh karena itu:
 
-- Fungsi berat (seperti `yt-dlp` download, `Whisper` transkripsi, `FFmpeg` filter) **DILARANG** dijalankan di _Main Thread_ GUI.
-- **BackgroundWorker (di `gui/workers.py`)**: Digunakan untuk mengeksekusi operasi tersebut secara asinkron menggunakan multi-threading Python yang aman untuk pembaruan UI Flet.
-- **Cancellation**: Controller dan Worker mendukung pengecekan flag `is_cancelled` untuk menghentikan pemrosesan (`yt-dlp`, FFmpeg subprocess) dengan aman dan membersihkan _temporary files_.
+- API call yang berat (seperti transkripsi, rendering) berjalan melalui **Job Queue**.
+- Endpoint REST langsung mengembalikan response _202 Accepted_ dan `job_id`.
+- Operasi sinkron (seperti `subprocess.call` untuk FFmpeg) **HARUS** di-offload ke background thread menggunakan `asyncio.to_thread` atau dijalankan di worker async terpisah agar tidak memblokir _event loop_ FastAPI.
 
 ## 3. Direktori Penyimpanan Lokal (Local Storage & Cache)
 
 - **`clips/`**: Menyimpan hasil render `.mp4` akhir.
 - **`logs/`**: Menyimpan berkas log dari jalannya aplikasi dan pesan error (`cliptzy.log`).
 - **`config.json`**: Menyimpan preferensi yang disetel oleh pengguna (misal pengaturan AI, rasio crop, konfigurasi subtitle).
-- **`cookies.txt`**: File autentikasi Netscape untuk `yt-dlp` guna mengakses video yang memiliki restriksi usia atau akun.
-- **`bin/ffmpeg`**: (Opsional) Lokasi internal untuk _standalone_ binary FFmpeg jika aplikasi dirilis secara bundling.
+- **`cred/`**: Folder penyimpan kredensial atau cookie (`yt_cookies.txt`, `tiktok_cookies.txt`, dsb).
+- **`fonts/`**: Koleksi file font untuk render ASS.
 
-## 4. Standalone & Bundling
+## 4. Distribusi Engine (Portable)
 
-- Aplikasi ini dapat di-_compile_ dengan PyInstaller atau Nuitka.
-- Semua pemanggilan _path_ file (seperti font atau aset UI) menggunakan _relative path_ berbasis _execution root_ (melalui `sys._MEIPASS` untuk _frozen executable_) seperti yang terimplementasi di fungsi-fungsi _utils_.
+- Engine ini dipaket ke dalam arsip `engine.zip` terpisah dari aplikasi Tauri utama.
+- Berisi _Portable Python_ environment (atau virtualenv mandiri).
+- Akan diekstrak otomatis oleh fitur _Bootstrapper_ milik Rust Orchestrator.
 
 ---
 
-_Dokumen ini diperbarui secara berkala mengikuti arsitektur terkini dari proyek refactoring Cliptzy._
+_Dokumen ini diperbarui secara berkala mengikuti arsitektur FastAPI (Tauri Hybrid)._

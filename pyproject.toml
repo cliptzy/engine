@@ -27,11 +27,6 @@ dependencies = [
     "openai",
     "opencv-python-headless",
     "edge-tts",
-    "flet",
-    "flet-video",
-    "flet-audio",
-    "pystray",
-    "desktop-notifier",
     "certifi",
     "tiktok-uploader @ git+https://github.com/dickymuliafiqri/tiktok-uploader",
     "deepface",
@@ -50,6 +45,10 @@ dependencies = [
     "kokoclone",
     "en-core-web-sm",
     "matplotlib>=3.11.1",
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.52.3",
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
 ]
 
 [project.scripts]
